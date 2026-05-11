@@ -1,0 +1,55 @@
+{
+  "name": "wwdc-mcp-server",
+  "version": "0.1.0",
+  "description": "MCP server for Apple WWDC sessions, tutorials, HIG, sample code, and Swift Evolution — local-first with Ollama embeddings",
+  "main": "dist/index.js",
+  "type": "module",
+  "bin": {
+    "wwdc-mcp-server": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "ingest": "tsx src/ingest/run.ts",
+    "ingest:wwdc": "tsx src/ingest/run.ts --source wwdc",
+    "ingest:tutorials": "tsx src/ingest/run.ts --source tutorials",
+    "ingest:hig": "tsx src/ingest/run.ts --source hig",
+    "ingest:evolution": "tsx src/ingest/run.ts --source evolution",
+    "ingest:all": "tsx src/ingest/run.ts --source all",
+    "smoke": "tsx tests/smoke.ts",
+    "test": "tsx tests/smoke.ts && tsx tests/ingest-parse.ts && tsx tests/mcp-e2e.ts",
+    "test:parse": "tsx tests/ingest-parse.ts",
+    "test:e2e": "tsx tests/mcp-e2e.ts",
+    "test:live": "tsx tests/ingest-live.ts",
+    "eval": "tsx tests/eval.ts"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "wwdc",
+    "apple",
+    "swift",
+    "swiftui",
+    "ios"
+  ],
+  "author": "Scott",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.6.1",
+    "axios": "^1.7.9",
+    "better-sqlite3": "^11.5.0",
+    "cheerio": "^1.0.0",
+    "p-limit": "^6.1.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/node": "^22.10.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

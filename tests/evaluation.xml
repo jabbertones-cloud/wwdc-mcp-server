@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  wwdc-mcp-server evaluation.
+
+  All questions are read-only, independent, and verifiable by direct string comparison
+  against tool outputs. Answers are stable (stable identifiers, not volatile counts).
+-->
+<evaluation>
+  <qa_pair>
+    <question>A WWDC 2024 session introduces SwiftUI's declarative syntax for UI across Apple platforms. What is the canonical session id used by this MCP server for "SwiftUI essentials"?</question>
+    <answer>wwdc2024-10150</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>WWDC 2025 unveiled Apple's on-device language-model framework. A session titled "Meet Foundation Models" documents it — what is its canonical session id?</question>
+    <answer>wwdc2025-286</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>Apple's tutorials are published as DocC JSON under one base path on developer.apple.com. What is that base path (the path prefix that comes before `{slug}.json`)?</question>
+    <answer>/tutorials/data/tutorials/</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>The wwdc-mcp-server uses a Swift Evolution proposal id format like `SE-0428` pulled from apple/swift-evolution. What prefix string does every proposal id start with?</question>
+    <answer>SE-</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>The wwdc-mcp-server uses a local embedding model served by Ollama for semantic search. What is the default model name?</question>
+    <answer>nomic-embed-text</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>What is the default port the wwdc-mcp-server expects Ollama to be listening on?</question>
+    <answer>11434</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>The wwdc_session_deep_link tool adds a query parameter so a session URL jumps to a specific time. What is that parameter name?</question>
+    <answer>time</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>The wwdc-mcp-server response truncation threshold is tuned to keep outputs within a specific character budget. What is that CHARACTER_LIMIT value?</question>
+    <answer>25000</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>Tool names in this server follow a service-prefix convention. All general WWDC search/list/get tools begin with which 5-character prefix?</question>
+    <answer>wwdc_</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>The wwdc-mcp-server stores its local index in a SQLite file. What is the default filename written under the project's data/ directory?</question>
+    <answer>wwdc.db</answer>
+  </qa_pair>
+</evaluation>
