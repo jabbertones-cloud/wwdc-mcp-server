@@ -35,5 +35,8 @@ jobs:
       - name: Parse test
         run: npm run test:parse
 
+      - name: E2E test (MCP protocol)
+        run: npm run test:e2e
+
       - name: Audit
         run: npm audit --audit-level=high
