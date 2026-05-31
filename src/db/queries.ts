@@ -316,16 +316,23 @@ export function searchSessionsFts(
   query: string,
   limit: number,
   offset: number,
+  year?: number,
 ): { hits: SearchHit[]; total: number } {
-  const total = (db.prepare(`SELECT COUNT(*) AS c FROM sessions_fts WHERE sessions_fts MATCH ?`).get(query) as any).c;
+  const yearPredicate = year === undefined ? "" : "AND s.year = ?";
+  const params = year === undefined ? [query] : [query, year];
+  const total = (db.prepare(`
+    SELECT COUNT(*) AS c
+    FROM sessions_fts JOIN sessions s ON s.rowid = sessions_fts.rowid
+    WHERE sessions_fts MATCH ? ${yearPredicate}
+  `).get(...params) as any).c;
   const rows = db.prepare(`
     SELECT s.id, s.title, s.url, s.year, s.topics,
            snippet(sessions_fts, 2, '[', ']', '…', 16) AS snip,
            bm25(sessions_fts) AS score
     FROM sessions_fts JOIN sessions s ON s.rowid = sessions_fts.rowid
-    WHERE sessions_fts MATCH ?
+    WHERE sessions_fts MATCH ? ${yearPredicate}
     ORDER BY score LIMIT ? OFFSET ?
-  `).all(query, limit, offset) as any[];
+  `).all(...params, limit, offset) as any[];
   return {
     total,
     hits: rows.map((r) => ({
