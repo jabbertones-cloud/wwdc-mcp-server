@@ -1,6 +1,6 @@
 {
   "name": "wwdc-mcp-server",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "MCP server for Apple WWDC sessions, tutorials, HIG, sample code, and Swift Evolution — local-first with Ollama embeddings",
   "main": "dist/index.js",
   "type": "module",
