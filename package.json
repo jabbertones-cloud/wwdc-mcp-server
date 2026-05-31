@@ -42,8 +42,16 @@
     "swiftui",
     "ios"
   ],
-  "author": "Scott",
+  "author": "Scott Manthey",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jabbertones-cloud/wwdc-mcp-server.git"
+  },
+  "homepage": "https://github.com/jabbertones-cloud/wwdc-mcp-server#readme",
+  "bugs": {
+    "url": "https://github.com/jabbertones-cloud/wwdc-mcp-server/issues"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.6.1",
     "axios": "^1.7.9",

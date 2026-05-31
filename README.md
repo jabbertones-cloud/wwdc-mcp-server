@@ -85,9 +85,16 @@ Example:
 Requires Node.js 20 or newer.
 
 ```bash
+git clone https://github.com/jabbertones-cloud/wwdc-mcp-server.git
 cd wwdc-mcp-server
 npm install
 npm run build
+```
+
+Or run directly without cloning (no build step):
+
+```bash
+npx wwdc-mcp-server
 ```
 
 Ollama (optional but recommended for semantic search):
@@ -115,7 +122,7 @@ You can restrict WWDC years with `--year 2024 --year 2025`, and cap evolution wi
 |----------|----------|---------|-------------|
 | `OLLAMA_BASE` | No | `http://127.0.0.1:11434` | Ollama base URL |
 | `OLLAMA_EMBED_MODEL` | No | `nomic-embed-text` | Embedding model for semantic reranking |
-| `WWDC_DB_PATH` | No | `~/.wwdc-mcp/wwdc.db` | Custom SQLite database path |
+| `WWDC_MCP_DB` | No | `<repo>/data/wwdc.db` | Custom SQLite database path |
 
 Without Ollama the server falls back to pure keyword (FTS5) search.
 
