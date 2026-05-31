@@ -78,8 +78,8 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
       let total = 0;
 
       if (kinds.includes("session")) {
-        const { hits: h, total: t } = searchSessionsFts(db, fts, limit, offset);
-        for (const hh of h.filter((x) => !year || x.year === year)) hits.push(hh);
+        const { hits: h, total: t } = searchSessionsFts(db, fts, limit, offset, year);
+        hits.push(...h);
         total += t;
       }
       if (kinds.includes("tutorial")) {
@@ -219,10 +219,19 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
       if (!s) return { isError: true, content: [{ type: "text", text: errorText(`session not found: ${id}`) }] };
       let total = seconds;
       if (total === undefined && timestamp) {
-        const parts = timestamp.split(":").map(Number);
+        const rawParts = timestamp.split(":");
+        const parts = rawParts.map(Number);
+        if (
+          rawParts.length < 1 ||
+          rawParts.length > 3 ||
+          parts.some((part) => !Number.isInteger(part) || part < 0)
+        ) {
+          return { isError: true, content: [{ type: "text", text: errorText("Invalid timestamp. Use HH:MM:SS, MM:SS, or seconds.") }] };
+        }
         total = parts.length === 3 ? parts[0]! * 3600 + parts[1]! * 60 + parts[2]! : parts.length === 2 ? parts[0]! * 60 + parts[1]! : parts[0]!;
       }
       if (total === undefined) return { isError: true, content: [{ type: "text", text: errorText("Provide either `seconds` or `timestamp`.") }] };
+      if (!Number.isInteger(total) || total < 0) return { isError: true, content: [{ type: "text", text: errorText("Time must resolve to a non-negative integer number of seconds.") }] };
       const url = `${s.url}?time=${total}`;
       const md = `[${s.title}](${url}) — ${Math.floor(total / 60)}:${(total % 60).toString().padStart(2, "0")}`;
       return { content: [{ type: "text", text: formatResponse(format, md, { id, url, seconds: total }) }] };
@@ -263,7 +272,14 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
     },
     async ({ pattern, is_regex, limit, format }) => {
       const rows = db.prepare(`SELECT id, session_id, title, url, kind FROM sample_code`).all() as Array<{ id: string; session_id: string; title: string; url: string; kind: string }>;
-      const re = is_regex ? new RegExp(pattern, "i") : null;
+      let re: RegExp | null = null;
+      if (is_regex) {
+        try {
+          re = new RegExp(pattern, "i");
+        } catch (e: any) {
+          return { isError: true, content: [{ type: "text", text: errorText(`Invalid regex: ${e?.message ?? String(e)}`) }] };
+        }
+      }
       const needle = pattern.toLowerCase();
       const hits = rows.filter((r) => re ? re.test(r.url) : r.url.toLowerCase().includes(needle)).slice(0, limit);
       const md = `# Sample-code grep: ${pattern}\n\n${hits.map((h) => `- [${h.session_id ?? "?"}] ${h.title}\n  ${h.url}`).join("\n")}`;

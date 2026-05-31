@@ -196,6 +196,15 @@ async function main(): Promise<void> {
       assert.ok(data.hits.length >= 1, "session hit");
       assert.ok(data.hits.find((h: any) => h.id === "wwdc2024-10150"), "SwiftUI session present");
     }
+    // 1b) wwdc_search — year filter applies in SQL, including total
+    {
+      const r = await call("wwdc_search", { query: "LanguageModelSession", kinds: ["session"], year: 2024, format: "json" });
+      assert.ok(!r.isError, "wwdc_search year filter errored");
+      const data = JSON.parse(textOf(r));
+      assert.equal(data.total, 0);
+      assert.equal(data.count, 0);
+      assert.deepEqual(data.hits, []);
+    }
 
     // 2) wwdc_list_years
     {
@@ -259,7 +268,12 @@ async function main(): Promise<void> {
       const data = JSON.parse(textOf(r));
       assert.equal(data.seconds, 130);
     }
-    // 7d) error when neither
+    // 7d) invalid timestamp
+    {
+      const r = await call("wwdc_session_deep_link", { id: "wwdc2024-10150", timestamp: "not-a-time", format: "markdown" });
+      assert.ok(r.isError, "invalid timestamp → isError");
+    }
+    // 7e) error when neither
     {
       const r = await call("wwdc_session_deep_link", { id: "wwdc2024-10150", format: "markdown" });
       assert.ok(r.isError, "deep_link w/o seconds → isError");
@@ -285,6 +299,12 @@ async function main(): Promise<void> {
       const r = await call("wwdc_sample_code_grep", { pattern: "\\.zip$", is_regex: true, format: "json" });
       const data = JSON.parse(textOf(r));
       assert.ok(data.count >= 1);
+    }
+    // 9c) invalid regex returns a tool error, not a protocol crash
+    {
+      const r = await call("wwdc_sample_code_grep", { pattern: "[", is_regex: true, format: "markdown" });
+      assert.ok(r.isError, "invalid regex → isError");
+      assert.match(textOf(r), /Invalid regex/);
     }
 
     // 10) apple_doc_lookup — offline (Ollama/network disabled). Accept either success or error, but should return a tool response (no protocol crash).
