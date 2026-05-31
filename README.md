@@ -1,8 +1,10 @@
 # wwdc-mcp-server
 
+<!-- mcp-name: wwdc -->
+
 Local-first MCP server that indexes Apple's WWDC sessions, tutorials, Human Interface Guidelines, and Swift Evolution proposals — with hybrid keyword + semantic search powered by **Ollama** running locally (no paid APIs).
 
-Works with **OpenAI Codex**, **Claude**, **Cursor**, or any MCP-compatible client. No paid APIs required — all retrieval runs locally via Ollama.
+Works with **OpenAI Codex**, **Claude**, **Cursor**, **Windsurf**, **Zed**, or any MCP-compatible client. No paid APIs required — all retrieval runs locally via Ollama.
 
 [![CI](https://github.com/jabbertones-cloud/wwdc-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/jabbertones-cloud/wwdc-mcp-server/actions/workflows/ci.yml)
 
@@ -66,9 +68,21 @@ npm run ingest:evolution  # Swift Evolution proposals
 
 You can restrict WWDC years with `--year 2024 --year 2025`, and cap evolution with `--limit 20`.
 
-## Register with Claude / Claude Code
+## Environment variables
 
-Add to your MCP config (e.g. `~/.config/Claude/claude_desktop_config.json` or `.cursor/mcp.json`):
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `OLLAMA_BASE` | No | `http://127.0.0.1:11434` | Ollama base URL |
+| `OLLAMA_EMBED_MODEL` | No | `nomic-embed-text` | Embedding model for semantic reranking |
+| `WWDC_DB_PATH` | No | `~/.wwdc-mcp/wwdc.db` | Custom SQLite database path |
+
+Without Ollama the server falls back to pure keyword (FTS5) search.
+
+## Connect to your AI client
+
+### Claude Desktop
+
+`~/Library/Application Support/Claude/claude_desktop_config.json`
 
 ```json
 {
@@ -85,7 +99,70 @@ Add to your MCP config (e.g. `~/.config/Claude/claude_desktop_config.json` or `.
 }
 ```
 
-Or run directly via `tsx` in dev:
+### VS Code (GitHub Copilot / MCP extension)
+
+`.vscode/mcp.json` in your workspace:
+
+```json
+{
+  "servers": {
+    "wwdc": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["/absolute/path/to/wwdc-mcp-server/dist/index.js"]
+    }
+  }
+}
+```
+
+### Cursor
+
+`~/.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "wwdc": {
+      "command": "node",
+      "args": ["/absolute/path/to/wwdc-mcp-server/dist/index.js"]
+    }
+  }
+}
+```
+
+### Windsurf
+
+`~/.codeium/windsurf/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "wwdc": {
+      "command": "node",
+      "args": ["/absolute/path/to/wwdc-mcp-server/dist/index.js"]
+    }
+  }
+}
+```
+
+### Zed
+
+`.zed/settings.json` in your project:
+
+```json
+{
+  "context_servers": {
+    "wwdc": {
+      "command": {
+        "path": "node",
+        "args": ["/absolute/path/to/wwdc-mcp-server/dist/index.js"]
+      }
+    }
+  }
+}
+```
+
+### Dev mode (any client, via tsx)
 
 ```json
 {
@@ -96,27 +173,6 @@ Or run directly via `tsx` in dev:
     }
   }
 }
-```
-
-## Skill wiring
-
-The following skills should reference this server when they need WWDC/Apple docs material:
-
-- **ios-swift-builder** — call `wwdc_search` for SwiftUI/Foundation Models/Liquid Glass context.
-- **swift-ios-dev** — `apple_doc_lookup` for signing/provisioning/background-modes docs; `apple_swift_evolution_get` for language-mode changes.
-- **veritap-ios-builder** — `wwdc_search` for NFC/CoreNFC/App Clips sessions.
-- **game-center-ios** — `wwdc_search` for GameKit sessions + `apple_doc_lookup`.
-- **screenshot-notes-ios** — `wwdc_search` for Vision framework + CoreML sessions.
-- **deep-linking** — `wwdc_search` for Universal Links + App Clips.
-
-Add this snippet to the relevant SKILL.md:
-
-```markdown
-## Authoritative Apple source
-
-Use the `wwdc-mcp-server` tools to look up Apple's canonical WWDC + docs material before answering.
-Start with `wwdc_search` (kinds=["session","tutorial","hig","evolution"]), then pull full details
-with `wwdc_get_session` or `apple_tutorial_get`. Use `wwdc_session_deep_link` when citing a chapter.
 ```
 
 ## Scheduled ingest
