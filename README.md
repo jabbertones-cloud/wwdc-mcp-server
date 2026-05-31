@@ -39,6 +39,8 @@ Works with **OpenAI Codex**, **Claude**, **Cursor**, or any MCP-compatible clien
 
 ## Install
 
+Requires Node.js 20 or newer.
+
 ```bash
 cd wwdc-mcp-server
 npm install
