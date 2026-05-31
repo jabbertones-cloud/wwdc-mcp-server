@@ -17,6 +17,15 @@ import type {
 } from "../types.js";
 
 const nowIso = () => new Date().toISOString();
+const applePlatformTerms = new Set(["ios", "macos", "watchos", "tvos", "visionos", "ipados"]);
+
+function unquoteFtsLiteral(query: string): string {
+  const trimmed = query.trim();
+  if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+    return trimmed.slice(1, -1).replace(/""/g, '"');
+  }
+  return trimmed;
+}
 
 // ---------- Upserts ----------
 
@@ -350,6 +359,41 @@ export function searchSessionsFts(
   if (filters.requireTranscript) {
     predicates.push("s.transcript IS NOT NULL AND LENGTH(s.transcript) > 0");
   }
+
+  const literalQuery = unquoteFtsLiteral(query).toLowerCase();
+  if (applePlatformTerms.has(literalQuery)) {
+    predicates.push("LOWER(s.platforms) LIKE ?");
+    params.push(`%${literalQuery}%`);
+    const filterSql = predicates.length ? `WHERE ${predicates.join(" AND ")}` : "";
+    const total = (db.prepare(`
+      SELECT COUNT(*) AS c
+      FROM sessions s
+      ${filterSql}
+    `).get(...params.slice(1)) as any).c;
+    const rows = db.prepare(`
+      SELECT s.id, s.title, s.url, s.year, s.topics, s.platforms,
+             substr(COALESCE(s.description, ''), 1, 240) AS snip,
+             0 AS score
+      FROM sessions s
+      ${filterSql}
+      ORDER BY s.year DESC, s.session_number LIMIT ? OFFSET ?
+    `).all(...params.slice(1), limit, offset) as any[];
+    return {
+      total,
+      hits: rows.map((r) => ({
+        id: r.id,
+        kind: "session" as const,
+        title: r.title,
+        url: r.url,
+        snippet: r.snip,
+        year: r.year,
+        topics: r.topics ? safeJson<string[]>(r.topics, []) : [],
+        platforms: r.platforms ? safeJson<string[]>(r.platforms, []) : [],
+        score: r.score,
+      })),
+    };
+  }
+
   const filterSql = predicates.length ? `AND ${predicates.join(" AND ")}` : "";
   const total = (db.prepare(`
     SELECT COUNT(*) AS c
@@ -357,7 +401,7 @@ export function searchSessionsFts(
     WHERE sessions_fts MATCH ? ${filterSql}
   `).get(...params) as any).c;
   const rows = db.prepare(`
-    SELECT s.id, s.title, s.url, s.year, s.topics,
+    SELECT s.id, s.title, s.url, s.year, s.topics, s.platforms,
            snippet(sessions_fts, 2, '[', ']', '…', 16) AS snip,
            bm25(sessions_fts) AS score
     FROM sessions_fts JOIN sessions s ON s.rowid = sessions_fts.rowid
@@ -374,6 +418,7 @@ export function searchSessionsFts(
       snippet: r.snip,
       year: r.year,
       topics: r.topics ? safeJson<string[]>(r.topics, []) : [],
+      platforms: r.platforms ? safeJson<string[]>(r.platforms, []) : [],
       score: r.score,
     })),
   };

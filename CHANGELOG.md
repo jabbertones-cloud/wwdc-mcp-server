@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added platform-only session search fallback, so queries like `macOS` and `iOS` search session platform metadata instead of returning empty FTS misses.
+- Added platform metadata to session search hits and judgment evidence.
+- Made search judgment more conservative for broad platform-only queries and more actionable for empty local indexes by returning exact ingest commands.
 - Fixed transcript extraction: now reads individual `.sentence` spans to skip UI chrome ("Search this video…", "Transcript Code") present in 2025+ pages. Falls back to full container text for older pages.
 - Added primary chapter extraction path for WWDC 2025+: `a.jump-to-time[data-start-time]` anchors with float-safe `Math.floor(parseFloat())` conversion. Chapters increased from 5 to up to 16 per session.
 - Added `li.chapter-item` to supplement-li chapter selector for broader coverage.

@@ -101,6 +101,7 @@ type SearchHitWithJudgment = {
   score?: number;
   year?: number;
   topics?: string[];
+  platforms?: string[];
   judgment?: {
     confidence: "high" | "medium" | "low";
     reasons: string[];
@@ -109,8 +110,29 @@ type SearchHitWithJudgment = {
   };
 };
 
+const APPLE_PLATFORM_TERMS = ["ios", "macos", "watchos", "tvos", "visionos", "ipados"];
+const APPLE_FRAMEWORK_TERMS = [
+  "swiftui", "swiftdata", "observation", "storekit", "gamekit", "appkit", "uikit",
+  "instruments", "foundation models", "foundationmodels", "core data", "coredata",
+  "metal", "realitykit", "cloudkit", "widgetkit",
+];
+
+function analyzeQuery(query: string) {
+  const normalized = query.toLowerCase().replace(/[^a-z0-9+.# ]+/g, " ").replace(/\s+/g, " ").trim();
+  const words = normalized.split(" ").filter(Boolean);
+  const platformTerms = APPLE_PLATFORM_TERMS.filter((term) => words.includes(term));
+  const frameworkTerms = APPLE_FRAMEWORK_TERMS.filter((term) => normalized.includes(term));
+  return {
+    normalized,
+    platformTerms,
+    frameworkTerms,
+    isPlatformOnly: words.length > 0 && words.every((word) => APPLE_PLATFORM_TERMS.includes(word)),
+  };
+}
+
 function judgeHit(query: string, hit: SearchHitWithJudgment): NonNullable<SearchHitWithJudgment["judgment"]> {
   const q = query.toLowerCase();
+  const signals = analyzeQuery(query);
   const reasons: string[] = [];
   const caveats: string[] = [];
   const next = hit.kind === "session"
@@ -124,26 +146,37 @@ function judgeHit(query: string, hit: SearchHitWithJudgment): NonNullable<Search
   if (hit.title.toLowerCase().includes(q)) reasons.push("query appears in title");
   if ((hit.snippet ?? "").toLowerCase().includes(q)) reasons.push("query appears in indexed snippet");
   if ((hit.topics ?? []).some((topic) => topic.toLowerCase().includes(q))) reasons.push("query appears in topics/status");
+  if ((hit.platforms ?? []).some((platform) => signals.platformTerms.includes(platform.toLowerCase()))) reasons.push("query appears in platform metadata");
+  if (signals.frameworkTerms.some((term) => `${hit.title} ${(hit.topics ?? []).join(" ")} ${hit.snippet ?? ""}`.toLowerCase().includes(term))) reasons.push("Apple framework term matches indexed metadata");
   if (hit.kind === "session" && hit.year && hit.year >= 2024) reasons.push("recent WWDC session");
   if (!hit.snippet) caveats.push("no snippet available for this hit");
   if (hit.kind === "session" && !hit.year) caveats.push("session year missing");
+  if (signals.isPlatformOnly) caveats.push("platform-only query is broad; add framework, API, or failure symptom for audit-grade guidance");
 
-  const confidence = reasons.length >= 2 ? "high" : reasons.length === 1 ? "medium" : "low";
+  const rawConfidence = reasons.length >= 2 ? "high" : reasons.length === 1 ? "medium" : "low";
+  const confidence = signals.isPlatformOnly && rawConfidence === "high" ? "medium" : rawConfidence;
   return { confidence, reasons, caveats, suggested_next_tools: next };
 }
 
-function judgeSearch(query: string, hits: SearchHitWithJudgment[], total: number, hybrid: boolean) {
+function judgeSearch(query: string, hits: SearchHitWithJudgment[], total: number, hybrid: boolean, ingestStatus = [] as ReturnType<typeof listIngestStatus>) {
+  const signals = analyzeQuery(query);
   const top = hits[0]?.judgment?.confidence ?? "low";
   const confidence = total === 0 ? "low" : top;
   const caveats: string[] = [];
-  if (total === 0) caveats.push("no indexed matches; broaden query or run ingest");
+  const indexedItems = ingestStatus.reduce((sum, row) => sum + row.itemsIngested, 0);
+  if (total === 0 && indexedItems === 0) {
+    caveats.push("local index appears empty; run `npm run ingest:all` or `npm run ingest:wwdc -- --year 2024 --year 2025`");
+  } else if (total === 0) {
+    caveats.push("no indexed matches; broaden query or run targeted ingest");
+  }
+  if (signals.isPlatformOnly) caveats.push("platform-only query is broad; add framework, API, error text, or app feature before making code changes");
   if (!hybrid) caveats.push("semantic rerank unavailable; results use FTS only");
   if (hits.length < total) caveats.push("more results available via offset");
   return {
     confidence,
     basis: hits.slice(0, 3).map((hit) => `${hit.kind}:${hit.id}`),
     caveats,
-    suggested_next_tools: total === 0 ? ["wwdc_ingest_status", "wwdc_list_topics"] : [...new Set(hits.flatMap((hit) => hit.judgment?.suggested_next_tools ?? []))].slice(0, 4),
+    suggested_next_tools: total === 0 ? ["wwdc_ingest_status", "wwdc_list_topics", "wwdc_list_years"] : [...new Set(hits.flatMap((hit) => hit.judgment?.suggested_next_tools ?? []))].slice(0, 4),
     answer_readiness: confidence === "high" ? "good_seed_context" : confidence === "medium" ? "needs_follow_up" : "insufficient_context",
   };
 }
@@ -215,7 +248,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
 
       const page = hits.slice(0, limit);
       const judgedPage = page.map((hit) => judgment || detail === "detailed" ? { ...hit, judgment: judgeHit(query, hit) } : hit);
-      const searchJudgment = judgment || detail === "detailed" ? judgeSearch(query, judgedPage, total, ollamaOn) : undefined;
+      const searchJudgment = judgment || detail === "detailed" ? judgeSearch(query, judgedPage, total, ollamaOn, listIngestStatus(db)) : undefined;
       const md = renderSearchMd(query, judgedPage, total, searchJudgment, detail);
       const data = {
         query,

@@ -251,6 +251,16 @@ async function main(): Promise<void> {
       assert.equal(data.judgment.answer_readiness, "insufficient_context");
       assert.ok(data.judgment.suggested_next_tools.includes("wwdc_ingest_status"));
     }
+    // 1e) wwdc_search — platform-only judgment stays cautious
+    {
+      const r = await call("wwdc_search", { query: "macOS", kinds: ["session"], format: "json" });
+      assert.ok(!r.isError, "wwdc_search platform-only query errored");
+      const data = JSON.parse(textOf(r));
+      assert.ok(data.hits[0].platforms.includes("macOS"), "session platforms included");
+      assert.equal(data.judgment.answer_readiness, "needs_follow_up");
+      assert.ok(data.judgment.caveats.some((c: string) => c.includes("platform-only query")));
+      assert.ok(data.hits[0].judgment.reasons.includes("query appears in platform metadata"));
+    }
 
     // 2) wwdc_list_years
     {

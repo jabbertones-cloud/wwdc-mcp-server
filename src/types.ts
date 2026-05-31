@@ -172,6 +172,7 @@ export interface SearchHit {
   snippet?: string;
   year?: number;
   topics?: string[];
+  platforms?: string[];
   score?: number;
 }
 

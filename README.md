@@ -55,6 +55,8 @@ Works with **OpenAI Codex**, **Claude**, **Cursor**, **Windsurf**, **Zed**, or a
 | `judgment` | Include confidence, caveats, and suggested next tools |
 | `detail` | `compact`, `standard`, or `detailed` markdown output |
 
+Judgment metadata is intentionally conservative. Platform-only searches like `macOS` or `iOS` are marked as broad, even when many results match, because app audits need a framework, API, symptom, or feature term. If the local index is empty, search judgment points directly to ingest commands instead of returning silent low-confidence misses.
+
 Example:
 
 ```json
