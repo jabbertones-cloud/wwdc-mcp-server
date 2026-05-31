@@ -2,7 +2,9 @@
 
 Local-first MCP server that indexes Apple's WWDC sessions, tutorials, Human Interface Guidelines, and Swift Evolution proposals — with hybrid keyword + semantic search powered by **Ollama** running locally (no paid APIs).
 
-Built to back iOS/SwiftUI skills (ios-swift-builder, swift-ios-dev, veritap-ios-builder, game-center-ios, screenshot-notes-ios, deep-linking).
+Works with **OpenAI Codex**, **Claude**, **Cursor**, or any MCP-compatible client. No paid APIs required — all retrieval runs locally via Ollama.
+
+[![CI](https://github.com/jabbertones-cloud/wwdc-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/jabbertones-cloud/wwdc-mcp-server/actions/workflows/ci.yml)
 
 ## Features
 
