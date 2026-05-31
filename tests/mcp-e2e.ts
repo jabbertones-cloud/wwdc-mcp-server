@@ -62,8 +62,18 @@ function seedDb(dbPath: string): void {
     relatedDocs: ["https://developer.apple.com/documentation/foundationmodels"],
     deepLinks: [],
   };
+  const s3: WwdcSession = {
+    ...s1, id: "wwdc2024-99999", sessionNumber: "99999",
+    title: "Query string deep links",
+    description: "Regression fixture for sessions whose URLs already have query parameters.",
+    url: "https://developer.apple.com/videos/play/wwdc2024/99999/?foo=bar",
+    transcript: "Deep links should preserve existing query parameters.",
+    sampleCodeUrls: [],
+    deepLinks: [],
+  };
   upsertSession(db, s1);
   upsertSession(db, s2);
+  upsertSession(db, s3);
 
   // Sample-code ref (used by wwdc_list_session_code + wwdc_sample_code_grep)
   upsertSampleCode(db, {
@@ -268,12 +278,20 @@ async function main(): Promise<void> {
       const data = JSON.parse(textOf(r));
       assert.equal(data.seconds, 130);
     }
-    // 7d) invalid timestamp
+    // 7d) preserves existing query strings
+    {
+      const r = await call("wwdc_session_deep_link", { id: "wwdc2024-99999", seconds: 42, format: "json" });
+      const data = JSON.parse(textOf(r));
+      assert.ok(data.url.includes("foo=bar"));
+      assert.ok(data.url.includes("time=42"));
+      assert.ok(!data.url.includes("?foo=bar?time="));
+    }
+    // 7e) invalid timestamp
     {
       const r = await call("wwdc_session_deep_link", { id: "wwdc2024-10150", timestamp: "not-a-time", format: "markdown" });
       assert.ok(r.isError, "invalid timestamp → isError");
     }
-    // 7e) error when neither
+    // 7f) error when neither
     {
       const r = await call("wwdc_session_deep_link", { id: "wwdc2024-10150", format: "markdown" });
       assert.ok(r.isError, "deep_link w/o seconds → isError");
@@ -312,6 +330,12 @@ async function main(): Promise<void> {
       const r = await call("apple_doc_lookup", { path: "swiftui/view", format: "markdown" });
       // In offline CI the network call to developer.apple.com may fail; what matters is it degrades gracefully rather than crashing.
       assert.ok(r.content && r.content.length > 0, "apple_doc_lookup returns content");
+    }
+    // 10b) apple_doc_lookup rejects non-Apple URLs before fetch
+    {
+      const r = await call("apple_doc_lookup", { path: "https://example.com/documentation/swiftui/view", format: "markdown" });
+      assert.ok(r.isError, "non-Apple doc URL → isError");
+      assert.match(textOf(r), /developer\.apple\.com/);
     }
 
     // 11) apple_tutorial_get

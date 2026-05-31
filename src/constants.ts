@@ -45,7 +45,7 @@ export const OLLAMA_EMBED_DIM = 768;
 
 // HTTP client tuning
 export const USER_AGENT =
-  "wwdc-mcp-server/0.1.1 (+https://github.com/jabbertones-cloud/wwdc-mcp-server)";
+  "wwdc-mcp-server/0.1.2 (+https://github.com/jabbertones-cloud/wwdc-mcp-server)";
 export const REQUEST_TIMEOUT_MS = 20_000;
 export const REQUEST_RETRY = 2;
 export const REQUEST_CONCURRENCY = 4; // Be polite to Apple

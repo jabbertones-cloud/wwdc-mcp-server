@@ -38,5 +38,8 @@ jobs:
       - name: E2E test (MCP protocol)
         run: npm run test:e2e
 
+      - name: Package smoke
+        run: npm run test:package
+
       - name: Audit
         run: npm audit --audit-level=high

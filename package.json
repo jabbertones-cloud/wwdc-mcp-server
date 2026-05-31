@@ -1,6 +1,6 @@
 {
   "name": "wwdc-mcp-server",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "MCP server for Apple WWDC sessions, tutorials, HIG, sample code, and Swift Evolution — local-first with Ollama embeddings",
   "main": "dist/index.js",
   "type": "module",
@@ -9,6 +9,8 @@
   },
   "scripts": {
     "build": "tsc",
+    "prepare": "npm run build",
+    "prepack": "npm run build",
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
     "ingest": "tsx src/ingest/run.ts",
@@ -18,12 +20,18 @@
     "ingest:evolution": "tsx src/ingest/run.ts --source evolution",
     "ingest:all": "tsx src/ingest/run.ts --source all",
     "smoke": "tsx tests/smoke.ts",
-    "test": "tsx tests/smoke.ts && tsx tests/ingest-parse.ts && tsx tests/mcp-e2e.ts",
+    "test": "tsx tests/smoke.ts && tsx tests/ingest-parse.ts && tsx tests/mcp-e2e.ts && tsx tests/package-smoke.ts",
     "test:parse": "tsx tests/ingest-parse.ts",
     "test:e2e": "tsx tests/mcp-e2e.ts",
+    "test:package": "tsx tests/package-smoke.ts",
     "test:live": "tsx tests/ingest-live.ts",
     "eval": "tsx tests/eval.ts"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "keywords": [
     "mcp",
     "model-context-protocol",

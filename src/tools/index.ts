@@ -54,6 +54,43 @@ function ftsQuote(q: string): string {
   return `"${q.replace(/"/g, '""')}"`;
 }
 
+function documentationPathFromInput(input: string): { clean?: string; error?: string } {
+  const trimmed = input.trim();
+  if (/^https?:\/\//i.test(trimmed)) {
+    let parsed: URL;
+    try {
+      parsed = new URL(trimmed);
+    } catch {
+      return { error: "Invalid Apple documentation URL." };
+    }
+    if (parsed.protocol !== "https:" || parsed.hostname !== "developer.apple.com") {
+      return { error: "Only https://developer.apple.com/documentation/... URLs are supported." };
+    }
+    const match = parsed.pathname.match(/^\/documentation\/(.+)$/);
+    if (!match) {
+      return { error: "Apple documentation URL must start with /documentation/." };
+    }
+    return { clean: normalizeDocumentationPath(match[1]!) };
+  }
+  return { clean: normalizeDocumentationPath(trimmed) };
+}
+
+function normalizeDocumentationPath(input: string): string {
+  return input
+    .replace(/^\/+/, "")
+    .replace(/^documentation\//, "")
+    .replace(/\/+$/, "")
+    .split("/")
+    .map((part) => encodeURIComponent(decodeURIComponent(part)))
+    .join("/");
+}
+
+function deepLinkUrl(baseUrl: string, seconds: number): string {
+  const url = new URL(baseUrl);
+  url.searchParams.set("time", String(seconds));
+  return url.toString();
+}
+
 export function registerAllTools(server: McpServer, db: DatabaseType): void {
   // ---------- wwdc_search ----------
   server.registerTool(
@@ -232,7 +269,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
       }
       if (total === undefined) return { isError: true, content: [{ type: "text", text: errorText("Provide either `seconds` or `timestamp`.") }] };
       if (!Number.isInteger(total) || total < 0) return { isError: true, content: [{ type: "text", text: errorText("Time must resolve to a non-negative integer number of seconds.") }] };
-      const url = `${s.url}?time=${total}`;
+      const url = deepLinkUrl(s.url, total);
       const md = `[${s.title}](${url}) — ${Math.floor(total / 60)}:${(total % 60).toString().padStart(2, "0")}`;
       return { content: [{ type: "text", text: formatResponse(format, md, { id, url, seconds: total }) }] };
     },
@@ -294,13 +331,17 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
       title: "Lookup an Apple developer doc",
       description: "Fetch an Apple /documentation JSON node by path (e.g. 'swiftui/view', 'foundationmodels/languagemodel'). Returns live data (no cache).",
       inputSchema: {
-        path: z.string().min(1).describe("Framework path, e.g. `swiftui/view` (no leading /documentation)."),
+        path: z.string().min(1).describe("Framework path or Apple documentation URL, e.g. `swiftui/view` or `https://developer.apple.com/documentation/swiftui/view`."),
         format: formatArg,
       },
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     },
     async ({ path, format }) => {
-      const clean = path.replace(/^\/+/, "").replace(/^documentation\//, "");
+      const normalized = documentationPathFromInput(path);
+      if (normalized.error || !normalized.clean) {
+        return { isError: true, content: [{ type: "text", text: errorText(normalized.error ?? "Invalid documentation path.") }] };
+      }
+      const clean = normalized.clean;
       const jsonUrl = `https://developer.apple.com/tutorials/data/documentation/${clean}.json`;
       const htmlUrl = `${APPLE_DOCS_BASE}/${clean}`;
       try {
