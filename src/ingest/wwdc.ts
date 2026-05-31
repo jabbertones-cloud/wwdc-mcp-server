@@ -100,8 +100,17 @@ export function parseSessionPage(
   const durMatch = durText.match(/(\d+)\s*min/i);
   if (durMatch) duration = parseInt(durMatch[1]!, 10) * 60;
 
-  // Transcript
-  const transcript = $("#transcript, .transcript, .video-transcript").text().replace(/\s+/g, " ").trim() || undefined;
+  // Transcript — prefer individual sentence spans (2025+) to avoid picking up
+  // UI chrome ("Search this video…", "Transcript Code") that lives in the same
+  // #transcript container. Fall back to full container text for older pages.
+  const sentences = $("#transcript .sentence, .transcript .sentence")
+    .map((_, el) => $(el).text().trim())
+    .get()
+    .filter(Boolean);
+  const transcript =
+    sentences.length > 0
+      ? sentences.join(" ")
+      : ($("#transcript, .transcript, .video-transcript").text().replace(/\s+/g, " ").trim() || undefined);
 
   // Sample code + related docs
   const sampleCodeUrls: string[] = [];
@@ -117,20 +126,31 @@ export function parseSessionPage(
     }
   });
 
-  // Chapter deep links — handle two layouts:
-  //   (a) legacy data-start anchors
-  //   (b) 2024+ supplement <li> text of shape "M:SS - Label" or "H:MM:SS - Label"
+  // Chapter deep links — handle three layouts:
+  //   (a) 2025+ jump-to-time anchors: <a class="jump-to-time" data-start-time="125">Label</a>
+  //   (b) legacy data-start anchors: <a data-start="00:02:10">Label</a>
+  //   (c) 2024+ supplement <li> text of shape "M:SS - Label" or "H:MM:SS - Label"
   // Strip duplicates and ignore "Copy Code" snippet lines (those are inline samples, not chapters).
   const deepLinks: WwdcSession["deepLinks"] = [];
   const seenChapters = new Set<string>();
   const addChapter = (seconds: number, label: string): void => {
+    if (!label || label.length > 120 || /[{}]/.test(label)) return;
     const key = `${seconds}::${label}`;
     if (seenChapters.has(key)) return;
     seenChapters.add(key);
     deepLinks.push({ label, seconds, url: `${info.url}?time=${seconds}` });
   };
 
-  // (a) legacy anchors
+  // (a) 2025+ jump-to-time anchors — most reliable, integer data-start-time attribute
+  $("a.jump-to-time[data-start-time]").each((_, el) => {
+    const raw = $(el).attr("data-start-time");
+    if (!raw) return;
+    const seconds = Math.floor(parseFloat(raw));
+    if (isNaN(seconds)) return;
+    addChapter(seconds, $(el).text().trim());
+  });
+
+  // (b) legacy anchors
   $(".chapters-list a[data-start], .chapter-link[data-start]").each((_, el) => {
     const label = $(el).text().trim();
     const start = $(el).attr("data-start") ?? $(el).attr("data-time");
@@ -140,10 +160,10 @@ export function parseSessionPage(
     addChapter(seconds, label);
   });
 
-  // (b) supplement <li> text lines — "0:00 - Introduction"
+  // (c) supplement <li> text lines — "0:00 - Introduction"
   // Match leading timestamp (M:SS or H:MM:SS), optional leading prefix like "Copy Code" which we skip.
   const chapterRe = /^(\d{1,2}:\d{2}(?::\d{2})?)\s*[-–—]\s*(.+?)$/;
-  $(".supplement li, .chapters li").each((_, el) => {
+  $(".supplement li, .chapters li, li.chapter-item").each((_, el) => {
     const raw = $(el).text().trim().replace(/\s+/g, " ");
     if (!raw) return;
     // Skip sample-code blocks ("Copy Code 1:28 - Existing Live Activity views struct ...")
@@ -152,12 +172,7 @@ export function parseSessionPage(
     if (!m) return;
     const seconds = parseTime(m[1]!);
     if (seconds === null) return;
-    const label = m[2]!.trim();
-    // Reject anything with code-like braces, suggests a sample-code leak
-    if (/[{}]/.test(label)) return;
-    // Reject absurdly long labels (sample code)
-    if (label.length > 120) return;
-    addChapter(seconds, label);
+    addChapter(seconds, m[2]!.trim());
   });
 
   // video url (hls/mp4 meta)

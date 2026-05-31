@@ -120,6 +120,52 @@ test("captures topics from meta keywords fallback", () => {
   assert.ok(s.topics.includes("Apple Watch"));
 });
 
+// 2025+ jump-to-time anchor format (<a class="jump-to-time" data-start-time="N">)
+const htmlWith2025Chapters = `<!doctype html><html><head>
+  <meta property="og:title" content="Demo - WWDC25 - Videos - Apple Developer" />
+</head><body>
+  <ul class="no-bullet chapter-list">
+    <li class="chapter-item" data-start-time="0">0:00 - <a class="jump-to-time" href="?time=0" data-start-time="0">Introduction</a></li>
+    <li class="chapter-item" data-start-time="125">2:05 - <a class="jump-to-time" href="?time=125" data-start-time="125">Overview</a></li>
+    <li class="chapter-item" data-start-time="330">5:30 - <a class="jump-to-time" href="?time=330" data-start-time="330">Details</a></li>
+    <li class="chapter-item" data-start-time="761">12:41 - <a class="jump-to-time" href="?time=761" data-start-time="761.0">Wrap-up</a></li>
+  </ul>
+  <div id="transcript">
+    <span class="sentence">Hi, I'm Erik.</span>
+    <span class="sentence">Today we discuss SwiftUI.</span>
+  </div>
+</body></html>`;
+
+test("parses 2025+ jump-to-time chapter anchors", () => {
+  const s = parseSessionPage(htmlWith2025Chapters, { ...info, year: 2025, sessionNumber: "999" });
+  assert.equal(s.deepLinks.length, 4, `expected 4 chapters, got ${s.deepLinks.length}`);
+  assert.deepEqual(
+    s.deepLinks.map((d) => d.seconds).sort((a, b) => a - b),
+    [0, 125, 330, 761],
+  );
+  assert.equal(s.deepLinks.find((d) => d.seconds === 0)?.label, "Introduction");
+  assert.equal(s.deepLinks.find((d) => d.seconds === 761)?.seconds, 761); // float data-start-time floored
+});
+
+test("extracts transcript from .sentence spans, skipping UI chrome", () => {
+  const s = parseSessionPage(htmlWith2025Chapters, { ...info, year: 2025, sessionNumber: "999" });
+  assert.equal(s.transcript, "Hi, I'm Erik. Today we discuss SwiftUI.");
+});
+
+test("dedupes jump-to-time anchors and supplement li (2025 overlap)", () => {
+  const overlap = `<!doctype html><html><head><meta property="og:title" content="M" /></head><body>
+    <ul class="chapter-list">
+      <li class="chapter-item" data-start-time="0">0:00 - <a class="jump-to-time" data-start-time="0">Introduction</a></li>
+      <li class="chapter-item" data-start-time="125">2:05 - <a class="jump-to-time" data-start-time="125">Overview</a></li>
+    </ul>
+    <div class="supplement"><ul>
+      <li>0:00 - Introduction</li>
+      <li>2:05 - Overview</li>
+    </ul></div></body></html>`;
+  const s = parseSessionPage(overlap, info);
+  assert.equal(s.deepLinks.length, 2, `expected 2 unique chapters, got ${s.deepLinks.length}`);
+});
+
 // Done
 if (process.exitCode) {
   console.error("[ingest-parse] some tests FAILED");
