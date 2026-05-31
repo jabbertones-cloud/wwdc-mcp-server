@@ -62,6 +62,7 @@ Current security posture:
 - No user credentials stored or transmitted.
 - No paid API keys required.
 - `npm audit --audit-level=high` is part of CI.
+- Search/session tools expose judgment metadata so agent clients can inspect confidence, caveats, and recommended follow-up tools instead of treating every hit as equally authoritative.
 - Security reporting documented in `SECURITY.md`.
 
 ## Readiness checklist
@@ -72,9 +73,10 @@ Current security posture:
 - Contributing guide: yes.
 - Security policy: yes.
 - CI: build, smoke test, parse test, high-severity audit.
+- MCP e2e coverage: all 15 tools plus filtered search, no-hit judgment, session response shaping, package smoke.
 - Local verification:
   - `npm run build`
-  - `npm run smoke`
+  - `npm test`
   - `npm audit --audit-level=high`
 
 ## Suggested application answer

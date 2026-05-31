@@ -48,6 +48,7 @@ import { DEFAULT_LIMIT, MAX_LIMIT } from "../constants.js";
 const formatArg = z.enum(["markdown", "json"]).default("markdown").describe("Response format");
 const limitArg = z.number().int().min(1).max(MAX_LIMIT).default(DEFAULT_LIMIT);
 const offsetArg = z.number().int().min(0).default(0);
+const detailArg = z.enum(["compact", "standard", "detailed"]).default("standard").describe("How much judgment and context to include.");
 
 /** Quote an FTS5 query safely — keep phrases, escape quotes. */
 function ftsQuote(q: string): string {
@@ -91,6 +92,62 @@ function deepLinkUrl(baseUrl: string, seconds: number): string {
   return url.toString();
 }
 
+type SearchHitWithJudgment = {
+  id: string;
+  kind: string;
+  title: string;
+  url: string;
+  snippet?: string;
+  score?: number;
+  year?: number;
+  topics?: string[];
+  judgment?: {
+    confidence: "high" | "medium" | "low";
+    reasons: string[];
+    caveats: string[];
+    suggested_next_tools: string[];
+  };
+};
+
+function judgeHit(query: string, hit: SearchHitWithJudgment): NonNullable<SearchHitWithJudgment["judgment"]> {
+  const q = query.toLowerCase();
+  const reasons: string[] = [];
+  const caveats: string[] = [];
+  const next = hit.kind === "session"
+    ? ["wwdc_get_session", "wwdc_session_deep_link"]
+    : hit.kind === "tutorial"
+      ? ["apple_tutorial_get"]
+      : hit.kind === "hig"
+        ? ["apple_hig_search", "apple_doc_lookup"]
+        : ["apple_swift_evolution_get"];
+
+  if (hit.title.toLowerCase().includes(q)) reasons.push("query appears in title");
+  if ((hit.snippet ?? "").toLowerCase().includes(q)) reasons.push("query appears in indexed snippet");
+  if ((hit.topics ?? []).some((topic) => topic.toLowerCase().includes(q))) reasons.push("query appears in topics/status");
+  if (hit.kind === "session" && hit.year && hit.year >= 2024) reasons.push("recent WWDC session");
+  if (!hit.snippet) caveats.push("no snippet available for this hit");
+  if (hit.kind === "session" && !hit.year) caveats.push("session year missing");
+
+  const confidence = reasons.length >= 2 ? "high" : reasons.length === 1 ? "medium" : "low";
+  return { confidence, reasons, caveats, suggested_next_tools: next };
+}
+
+function judgeSearch(query: string, hits: SearchHitWithJudgment[], total: number, hybrid: boolean) {
+  const top = hits[0]?.judgment?.confidence ?? "low";
+  const confidence = total === 0 ? "low" : top;
+  const caveats: string[] = [];
+  if (total === 0) caveats.push("no indexed matches; broaden query or run ingest");
+  if (!hybrid) caveats.push("semantic rerank unavailable; results use FTS only");
+  if (hits.length < total) caveats.push("more results available via offset");
+  return {
+    confidence,
+    basis: hits.slice(0, 3).map((hit) => `${hit.kind}:${hit.id}`),
+    caveats,
+    suggested_next_tools: total === 0 ? ["wwdc_ingest_status", "wwdc_list_topics"] : [...new Set(hits.flatMap((hit) => hit.judgment?.suggested_next_tools ?? []))].slice(0, 4),
+    answer_readiness: confidence === "high" ? "good_seed_context" : confidence === "medium" ? "needs_follow_up" : "insufficient_context",
+  };
+}
+
 export function registerAllTools(server: McpServer, db: DatabaseType): void {
   // ---------- wwdc_search ----------
   server.registerTool(
@@ -103,19 +160,33 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
         query: z.string().min(1).describe("Search query; supports multi-word phrases."),
         kinds: z.array(z.enum(["session", "tutorial", "hig", "evolution"])).default(["session", "tutorial", "hig", "evolution"]),
         year: z.number().int().optional().describe("Restrict to a WWDC year."),
+        year_min: z.number().int().optional().describe("Restrict WWDC sessions to this year or newer."),
+        year_max: z.number().int().optional().describe("Restrict WWDC sessions to this year or older."),
+        topics: z.array(z.string().min(1)).default([]).describe("Require WWDC session topics/status text to include every value."),
+        platforms: z.array(z.string().min(1)).default([]).describe("Require WWDC session platforms to include every value."),
+        require_transcript: z.boolean().default(false).describe("Only return WWDC sessions with transcript text."),
+        judgment: z.boolean().default(true).describe("Include per-hit and overall search judgment metadata."),
+        detail: detailArg,
         limit: limitArg,
         offset: offsetArg,
         format: formatArg,
       },
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
-    async ({ query, kinds, year, limit, offset, format }) => {
+    async ({ query, kinds, year, year_min, year_max, topics, platforms, require_transcript, judgment, detail, limit, offset, format }) => {
       const fts = ftsQuote(query);
-      const hits: Array<{ id: string; kind: string; title: string; url: string; snippet?: string; score?: number; year?: number; topics?: string[] }> = [];
+      const hits: SearchHitWithJudgment[] = [];
       let total = 0;
 
       if (kinds.includes("session")) {
-        const { hits: h, total: t } = searchSessionsFts(db, fts, limit, offset, year);
+        const { hits: h, total: t } = searchSessionsFts(db, fts, limit, offset, {
+          year,
+          yearMin: year_min,
+          yearMax: year_max,
+          topics,
+          platforms,
+          requireTranscript: require_transcript,
+        });
         hits.push(...h);
         total += t;
       }
@@ -143,8 +214,18 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
       }
 
       const page = hits.slice(0, limit);
-      const md = renderSearchMd(query, page, total);
-      const data = { query, total, count: page.length, hits: page, hybrid: ollamaOn };
+      const judgedPage = page.map((hit) => judgment || detail === "detailed" ? { ...hit, judgment: judgeHit(query, hit) } : hit);
+      const searchJudgment = judgment || detail === "detailed" ? judgeSearch(query, judgedPage, total, ollamaOn) : undefined;
+      const md = renderSearchMd(query, judgedPage, total, searchJudgment, detail);
+      const data = {
+        query,
+        filters: { kinds, year, year_min, year_max, topics, platforms, require_transcript },
+        total,
+        count: judgedPage.length,
+        hits: judgedPage,
+        judgment: searchJudgment,
+        hybrid: ollamaOn,
+      };
       return { content: [{ type: "text", text: formatResponse(format, md, data) }] };
     },
   );
@@ -224,16 +305,39 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
       inputSchema: {
         id: z.string().min(1).describe("Session id, e.g. wwdc2024-10150"),
         include_transcript: z.boolean().default(true),
+        transcript_chars: z.number().int().min(500).max(25_000).default(8000).describe("Maximum transcript characters to return in markdown/json when transcript is included."),
+        include_chapters: z.boolean().default(true),
+        include_sample_code: z.boolean().default(true),
+        include_related_docs: z.boolean().default(true),
+        include_judgment: z.boolean().default(true),
         format: formatArg,
       },
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
-    async ({ id, include_transcript, format }) => {
+    async ({ id, include_transcript, transcript_chars, include_chapters, include_sample_code, include_related_docs, include_judgment, format }) => {
       const s = getSession(db, id);
       if (!s) return { isError: true, content: [{ type: "text", text: errorText(`session not found: ${id}`, "Use wwdc_search or wwdc_list_years → session list.") }] };
       if (!include_transcript) s.transcript = undefined;
-      const md = renderSessionMd(s);
-      return { content: [{ type: "text", text: formatResponse(format, md, s) }] };
+      if (s.transcript && s.transcript.length > transcript_chars) s.transcript = truncate(s.transcript, transcript_chars);
+      if (!include_chapters) s.deepLinks = [];
+      if (!include_sample_code) s.sampleCodeUrls = [];
+      if (!include_related_docs) s.relatedDocs = [];
+      const sessionJudgment = include_judgment ? {
+        confidence: s.transcript ? "high" : "medium",
+        coverage: {
+          has_transcript: Boolean(s.transcript),
+          chapter_count: s.deepLinks?.length ?? 0,
+          sample_code_count: s.sampleCodeUrls.length,
+          related_doc_count: s.relatedDocs.length,
+        },
+        caveats: [
+          ...(s.transcript ? [] : ["transcript unavailable"]),
+          ...((s.deepLinks?.length ?? 0) === 0 ? ["chapter deep links unavailable"] : []),
+        ],
+        suggested_next_tools: ["wwdc_session_deep_link", "wwdc_list_session_code", "apple_doc_lookup"],
+      } : undefined;
+      const md = renderSessionMd(s, sessionJudgment);
+      return { content: [{ type: "text", text: formatResponse(format, md, { ...s, judgment: sessionJudgment }) }] };
     },
   );
 
@@ -459,12 +563,25 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
 
 function renderSearchMd(
   query: string,
-  hits: Array<{ id: string; kind: string; title: string; url: string; snippet?: string; year?: number }>,
+  hits: SearchHitWithJudgment[],
   total: number,
+  judgment?: ReturnType<typeof judgeSearch>,
+  detail: "compact" | "standard" | "detailed" = "standard",
 ): string {
   if (hits.length === 0) return `No matches for **${query}** (total=${total}).`;
-  const lines = hits.map((h) => `- **[${h.kind}]** ${h.title}${h.year ? ` — WWDC ${h.year}` : ""}\n  ${h.url}${h.snippet ? `\n  _${h.snippet}_` : ""}`);
-  return `# Search: ${query}\n\n${lines.join("\n")}\n\n_${hits.length} shown / ${total} matched_`;
+  const lines = hits.map((h) => {
+    const basics = `- **[${h.kind}]** ${h.title}${h.year ? ` — WWDC ${h.year}` : ""}\n  ${h.url}`;
+    if (detail === "compact") return basics;
+    const snippet = h.snippet ? `\n  _${h.snippet}_` : "";
+    const reasons = detail === "detailed" && h.judgment?.reasons.length
+      ? `\n  Judgment: ${h.judgment.confidence}; ${h.judgment.reasons.join("; ")}`
+      : "";
+    return `${basics}${snippet}${reasons}`;
+  });
+  const judgmentMd = judgment
+    ? `\n\n## Search judgment\n- confidence: ${judgment.confidence}\n- answer readiness: ${judgment.answer_readiness}${judgment.caveats.length ? `\n- caveats: ${judgment.caveats.join("; ")}` : ""}${judgment.suggested_next_tools.length ? `\n- next tools: ${judgment.suggested_next_tools.join(", ")}` : ""}`
+    : "";
+  return `# Search: ${query}\n\n${lines.join("\n")}\n\n_${hits.length} shown / ${total} matched_${judgmentMd}`;
 }
 
 function renderSessionMd(s: {
@@ -472,6 +589,11 @@ function renderSessionMd(s: {
   topics: string[]; platforms: string[]; speakers?: string[]; duration?: number;
   transcript?: string; sampleCodeUrls: string[]; relatedDocs: string[];
   deepLinks?: { label: string; seconds: number; url: string }[];
+}, judgment?: {
+  confidence: string;
+  coverage: { has_transcript: boolean; chapter_count: number; sample_code_count: number; related_doc_count: number };
+  caveats: string[];
+  suggested_next_tools: string[];
 }): string {
   const dur = s.duration ? ` — ${Math.round(s.duration / 60)} min` : "";
   const topics = s.topics.length ? `**Topics:** ${s.topics.join(", ")}\n` : "";
@@ -482,6 +604,9 @@ function renderSessionMd(s: {
     : "";
   const sample = s.sampleCodeUrls.length ? `\n## Sample code\n${s.sampleCodeUrls.map((u) => `- ${u}`).join("\n")}\n` : "";
   const docs = s.relatedDocs.length ? `\n## Related docs\n${s.relatedDocs.slice(0, 15).map((u) => `- ${u}`).join("\n")}\n` : "";
-  const transcript = s.transcript ? `\n## Transcript (excerpt)\n${truncate(s.transcript, 8000)}\n` : "";
-  return `# ${s.title}\nWWDC ${s.year}${dur}\n${topics}${plats}${speakers}\n${s.description}\n\n${s.url}\n${chaps}${sample}${docs}${transcript}`;
+  const transcript = s.transcript ? `\n## Transcript (excerpt)\n${s.transcript}\n` : "";
+  const judgmentMd = judgment
+    ? `\n## Session judgment\n- confidence: ${judgment.confidence}\n- coverage: transcript=${judgment.coverage.has_transcript}, chapters=${judgment.coverage.chapter_count}, sample_code=${judgment.coverage.sample_code_count}, related_docs=${judgment.coverage.related_doc_count}${judgment.caveats.length ? `\n- caveats: ${judgment.caveats.join("; ")}` : ""}\n- next tools: ${judgment.suggested_next_tools.join(", ")}\n`
+    : "";
+  return `# ${s.title}\nWWDC ${s.year}${dur}\n${topics}${plats}${speakers}\n${s.description}\n\n${s.url}\n${judgmentMd}${chaps}${sample}${docs}${transcript}`;
 }

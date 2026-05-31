@@ -316,21 +316,52 @@ export function searchSessionsFts(
   query: string,
   limit: number,
   offset: number,
-  year?: number,
+  filters: {
+    year?: number;
+    yearMin?: number;
+    yearMax?: number;
+    topics?: string[];
+    platforms?: string[];
+    requireTranscript?: boolean;
+  } = {},
 ): { hits: SearchHit[]; total: number } {
-  const yearPredicate = year === undefined ? "" : "AND s.year = ?";
-  const params = year === undefined ? [query] : [query, year];
+  const predicates: string[] = [];
+  const params: unknown[] = [query];
+  if (filters.year !== undefined) {
+    predicates.push("s.year = ?");
+    params.push(filters.year);
+  }
+  if (filters.yearMin !== undefined) {
+    predicates.push("s.year >= ?");
+    params.push(filters.yearMin);
+  }
+  if (filters.yearMax !== undefined) {
+    predicates.push("s.year <= ?");
+    params.push(filters.yearMax);
+  }
+  for (const topic of filters.topics ?? []) {
+    predicates.push("LOWER(s.topics) LIKE ?");
+    params.push(`%${topic.toLowerCase()}%`);
+  }
+  for (const platform of filters.platforms ?? []) {
+    predicates.push("LOWER(s.platforms) LIKE ?");
+    params.push(`%${platform.toLowerCase()}%`);
+  }
+  if (filters.requireTranscript) {
+    predicates.push("s.transcript IS NOT NULL AND LENGTH(s.transcript) > 0");
+  }
+  const filterSql = predicates.length ? `AND ${predicates.join(" AND ")}` : "";
   const total = (db.prepare(`
     SELECT COUNT(*) AS c
     FROM sessions_fts JOIN sessions s ON s.rowid = sessions_fts.rowid
-    WHERE sessions_fts MATCH ? ${yearPredicate}
+    WHERE sessions_fts MATCH ? ${filterSql}
   `).get(...params) as any).c;
   const rows = db.prepare(`
     SELECT s.id, s.title, s.url, s.year, s.topics,
            snippet(sessions_fts, 2, '[', ']', '…', 16) AS snip,
            bm25(sessions_fts) AS score
     FROM sessions_fts JOIN sessions s ON s.rowid = sessions_fts.rowid
-    WHERE sessions_fts MATCH ? ${yearPredicate}
+    WHERE sessions_fts MATCH ? ${filterSql}
     ORDER BY score LIMIT ? OFFSET ?
   `).all(...params, limit, offset) as any[];
   return {

@@ -18,6 +18,7 @@ Works with **OpenAI Codex**, **Claude**, **Cursor**, **Windsurf**, **Zed**, or a
 - **Hybrid search** — SQLite FTS5 (porter stemmer) keyword match + Ollama `nomic-embed-text` semantic reranking.
 - **Deep links** — generate `?time=SECONDS` URLs that jump straight to a session chapter.
 - **Sample-code grep** — filter every indexed zip/repo URL by substring or regex.
+- **Judgment metadata** — search/session responses can include confidence, evidence basis, caveats, and suggested next MCP tools.
 
 ## 15 MCP tools
 
@@ -38,6 +39,46 @@ Works with **OpenAI Codex**, **Claude**, **Cursor**, **Windsurf**, **Zed**, or a
 | `apple_swift_evolution_get` | Proposal by id (SE-0428) |
 | `apple_swift_evolution_list` | List proposals, optional status filter |
 | `wwdc_ingest_status` | Per-source last-run metadata + what's new |
+
+## Search parameters
+
+`wwdc_search` supports focused retrieval for agent workflows:
+
+| Parameter | Purpose |
+|-----------|---------|
+| `kinds` | Limit search to `session`, `tutorial`, `hig`, and/or `evolution` |
+| `year` | Restrict sessions to one WWDC year |
+| `year_min`, `year_max` | Restrict sessions to a year range |
+| `topics` | Require session topics/status text to include each value |
+| `platforms` | Require session platforms to include each value |
+| `require_transcript` | Return only sessions with transcript text |
+| `judgment` | Include confidence, caveats, and suggested next tools |
+| `detail` | `compact`, `standard`, or `detailed` markdown output |
+
+Example:
+
+```json
+{
+  "query": "SwiftUI navigation",
+  "kinds": ["session"],
+  "year_min": 2024,
+  "topics": ["SwiftUI"],
+  "platforms": ["visionOS"],
+  "require_transcript": true,
+  "detail": "detailed"
+}
+```
+
+`wwdc_get_session` also supports response shaping:
+
+| Parameter | Purpose |
+|-----------|---------|
+| `include_transcript` | Include or omit transcript text |
+| `transcript_chars` | Cap returned transcript characters, from 500 to 25,000 |
+| `include_chapters` | Include or omit chapter deep-links |
+| `include_sample_code` | Include or omit sample-code URLs |
+| `include_related_docs` | Include or omit related Apple docs |
+| `include_judgment` | Include confidence, coverage, caveats, and suggested next tools |
 
 ## Install
 
@@ -192,6 +233,7 @@ During WWDC week, re-run `npm run ingest:wwdc` every 30 min to catch newly-publi
 ```bash
 npm run smoke   # offline DB/FTS assertions
 npm run build   # TypeScript strict typecheck
+npm test        # smoke + parse + MCP e2e + package smoke
 ```
 
 The `tests/evaluation.xml` file contains 10 read-only, stable QA pairs for scoring LLM answer quality with the MCP builder evaluation harness.

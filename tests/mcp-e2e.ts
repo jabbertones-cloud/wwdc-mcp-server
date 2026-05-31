@@ -43,7 +43,7 @@ function seedDb(dbPath: string): void {
     topics: ["SwiftUI", "Swift"],
     platforms: ["iOS", "macOS", "watchOS", "visionOS"],
     speakers: ["Taylor Kelly"],
-    transcript: "SwiftUI gives you a declarative syntax to describe your UI. Views, state, and bindings.",
+    transcript: "SwiftUI gives you a declarative syntax to describe your UI. Views, state, and bindings. ".repeat(30),
     sampleCodeUrls: ["https://developer.apple.com/tutorials/sample-code/swiftui-essentials.zip"],
     relatedDocs: ["https://developer.apple.com/documentation/swiftui"],
     videoUrl: undefined,
@@ -215,6 +215,42 @@ async function main(): Promise<void> {
       assert.equal(data.count, 0);
       assert.deepEqual(data.hits, []);
     }
+    // 1c) wwdc_search — expanded session filters and judgment metadata
+    {
+      const r = await call("wwdc_search", {
+        query: "declarative",
+        kinds: ["session"],
+        year_min: 2024,
+        year_max: 2024,
+        topics: ["SwiftUI"],
+        platforms: ["visionOS"],
+        require_transcript: true,
+        detail: "detailed",
+        judgment: true,
+        format: "json",
+      });
+      assert.ok(!r.isError, "wwdc_search expanded filters errored");
+      const data = JSON.parse(textOf(r));
+      assert.equal(data.filters.year_min, 2024);
+      assert.equal(data.filters.year_max, 2024);
+      assert.deepEqual(data.filters.topics, ["SwiftUI"]);
+      assert.deepEqual(data.filters.platforms, ["visionOS"]);
+      assert.equal(data.filters.require_transcript, true);
+      assert.ok(data.hits.find((h: any) => h.id === "wwdc2024-10150"), "filtered SwiftUI session present");
+      assert.ok(data.hits.every((h: any) => h.year === 2024), "year range applied");
+      assert.ok(data.hits[0].judgment.reasons.length >= 1, "per-hit judgment reasons");
+      assert.ok(data.judgment.suggested_next_tools.includes("wwdc_get_session"), "overall judgment next tool");
+    }
+    // 1d) wwdc_search — no-hit judgment is explicit
+    {
+      const r = await call("wwdc_search", { query: "SwiftUI", kinds: ["session"], platforms: ["tvOS"], format: "json" });
+      assert.ok(!r.isError, "wwdc_search no-hit filter errored");
+      const data = JSON.parse(textOf(r));
+      assert.equal(data.total, 0);
+      assert.equal(data.count, 0);
+      assert.equal(data.judgment.answer_readiness, "insufficient_context");
+      assert.ok(data.judgment.suggested_next_tools.includes("wwdc_ingest_status"));
+    }
 
     // 2) wwdc_list_years
     {
@@ -252,6 +288,26 @@ async function main(): Promise<void> {
       const data = JSON.parse(textOf(r));
       assert.equal(data.title, "SwiftUI essentials");
       assert.ok(data.transcript);
+      assert.equal(data.judgment.coverage.has_transcript, true);
+    }
+    // 6a) wwdc_get_session — output controls
+    {
+      const r = await call("wwdc_get_session", {
+        id: "wwdc2024-10150",
+        include_chapters: false,
+        include_sample_code: false,
+        include_related_docs: false,
+        transcript_chars: 500,
+        format: "json",
+      });
+      const data = JSON.parse(textOf(r));
+      assert.equal(data.deepLinks.length, 0);
+      assert.equal(data.sampleCodeUrls.length, 0);
+      assert.equal(data.relatedDocs.length, 0);
+      assert.equal(data.judgment.coverage.chapter_count, 0);
+      assert.equal(data.judgment.coverage.sample_code_count, 0);
+      assert.equal(data.judgment.coverage.related_doc_count, 0);
+      assert.ok(data.transcript.includes("truncated"), "transcript was truncated");
     }
     // 6b) not found
     {
