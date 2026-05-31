@@ -92,11 +92,20 @@ Paste the block from `docs/SKILL-WIRING.md` near the top of each of:
 ## 7. Verify
 
 ```bash
-npm run smoke                   # 12 offline assertions — must pass
+npm run build                   # TypeScript strict typecheck
+npm test                        # smoke + parse + MCP e2e + package smoke
+npm audit --audit-level=high
 npx tsx tests/wwdc-live.ts      # live pipeline: discover + ingest 3 sessions
 ```
 
-## 8. Evaluation harness
+## 8. MCP response controls
+
+Current public release supports richer `wwdc_search` filters for session year ranges, topics,
+platforms, transcript presence, judgment metadata, and output detail level. `wwdc_get_session`
+supports transcript character caps plus toggles for chapters, sample code, related docs, and
+session judgment metadata.
+
+## 9. Evaluation harness
 
 10 stable QA pairs live at `tests/evaluation.xml` for use with the MCP builder evaluation
 harness. Example questions: which tool returns session chapter deep-links, which Ollama
