@@ -458,11 +458,17 @@ Package.swift declares `.macOS(.v13)` for the test target, but the iOS app targe
 
 **Tech stack:** SwiftUI `MenuBarExtra` + AppKit + Carbon hotkey + AXUIElement + `@Observable`.
 
-**Top issues:**
-- `ClipboardMonitor.startMonitoring()` uses `Timer.scheduledTimer(withTimeInterval: 0.5, ...)` polling — replace with `NSPasteboard.changedNotification` observation (not available on macOS for general pasteboard, but the changeCount check could be moved to a `NSWorkspace` or Carbon event hook for lower CPU)
-- Carbon `RegisterEventHotKey` is a 2003-era API; `NSEvent.addGlobalMonitorForEvents(matching: .keyDown, handler:)` or `KeyboardShortcuts` package is the modern approach
-- The 3-second AXUIElement scan timer has no exponential backoff when accessibility permission is revoked — it will spin at 3Hz logging errors
-- `CLAUDE.md` in the repo is a detailed architecture doc — this is correct practice for AI-assisted maintenance
+**Fixes applied and committed (`73e6d19`, `3a71333`):**
+
+| ID | Fix | File |
+|----|-----|------|
+| CB-0 | Removed dead `requestAccessibilityPermission(completion:)` — defined but never called from any source | `AccessibilityHelper.swift` |
+| CB-1 | 3× `DispatchQueue.main.async { self.lastError = ... }` inside `enumerateMenuBarItems()` (which runs on `DispatchQueue.global()`) → `Task { @MainActor [weak self] in self?.lastError = ... }` — eliminates data race on @Observable state | `MenuBarController.swift` |
+
+**Open issues:**
+- `MenuBarController` is `@Observable` but not `@MainActor` — full actor isolation would require restructuring `discoverMenuBarItems()` to not bridge via GCD continuation; flagged for future sprint
+- Carbon `RegisterEventHotKey` is a 2003-era API; `NSEvent.addGlobalMonitorForEvents(matching: .keyDown, handler:)` is the modern approach
+- 3-second AXUIElement scan timer has no exponential backoff when accessibility permission is revoked
 
 **Recommended sessions:** wwdc2025-256 (Liquid Glass MenuBarExtra styling), wwdc2025-229 (macOS accessibility best practices).
 
@@ -498,12 +504,20 @@ Package.swift declares `.macOS(.v13)` for the test target, but the iOS app targe
 
 **What it does:** macOS window switcher — custom Cmd+Tab replacement with window thumbnails, filtering by app.
 
-**Tech stack:** SwiftUI + AppKit + AXUIElement.
+**Tech stack:** SwiftUI + AppKit + AXUIElement + `@Observable`.
 
-**Top issues:**
-- `WindowListService` enumerates windows via `CGWindowListCopyWindowInfo` — this function is deprecated in macOS 15 in favor of the new Screen Capture Kit window listing API (`SCShareableContent`)
-- Thumbnail generation likely uses `CGWindowListCreateImage` — also deprecated in macOS 15 in favor of `SCScreenshotManager`
-- `SwitcherOverlayView` rendering timing (key-down latency to overlay display) needs profiling with wwdc2025-306's SwiftUI instrument
+**Fixes applied and committed (`92f708b`):**
+
+| ID | Fix | File |
+|----|-----|------|
+| CT-0 | `AccessibilityHelper.requestAccessibilityPermission()`: `DispatchQueue.main.async { showAccessibilityAlert() }` → `Task { @MainActor in showAccessibilityAlert() }` | `AccessibilityHelper.swift` |
+| CT-1 | `WindowManager.quitApp()`: `DispatchQueue.main.asyncAfter(deadline: .now() + 0.5)` → `Task { try? await Task.sleep(for: .seconds(0.5)); await MainActor.run { ... } }` | `WindowManager.swift` |
+| CT-2 | `SettingsView` "Grant Access" button: same `asyncAfter` pattern → `Task + Task.sleep` | `SettingsView.swift` |
+
+**Open issues:**
+- `WindowListService` enumerates windows via `CGWindowListCopyWindowInfo` — deprecated macOS 15; replace with `SCShareableContent` (ScreenCaptureKit)
+- Thumbnail generation uses `CGWindowListCreateImage` — also deprecated macOS 15; replace with `SCScreenshotManager`
+- `SwitcherOverlayView` key-down latency needs profiling with wwdc2025-306's SwiftUI instrument
 
 ---
 
@@ -522,9 +536,17 @@ Package.swift declares `.macOS(.v13)` for the test target, but the iOS app targe
 
 ### ClawSentinel
 
-**What it does:** Unclear — only one Swift file found (`ClawSentinelApp.swift`). Appears to be a skeleton/placeholder.
+**What it does:** Minimal macOS menu bar status monitor — reports disk free space (GiB), shows a shield icon that changes color below 5 GiB, refreshes every 30 seconds. Single-file app.
 
-**Top issues:** Effectively empty. No functional code to audit.
+**Fixes applied and committed (`dd0052c`):**
+
+| ID | Fix | File |
+|----|-----|------|
+| CS-0 | `SentinelMonitor: ObservableObject` → `@Observable`, removed 4 `@Published`, `import Observation` added | `ClawSentinelApp.swift` |
+| CS-1 | `@StateObject private var monitor` → `@State private var monitor` in App entry | `ClawSentinelApp.swift` |
+| CS-2 | `@ObservedObject var monitor: SentinelMonitor` → `var monitor: SentinelMonitor` in View | `ClawSentinelApp.swift` |
+
+**No open issues** — single-file app, zero dead code, zero GCD patterns, no OO remaining.
 
 ---
 
