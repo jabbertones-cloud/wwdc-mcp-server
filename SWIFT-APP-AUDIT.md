@@ -15,7 +15,7 @@
 | SafeFrameCamera | Multi-platform safe-zone framing camera | SwiftUI + AVFoundation + Foundation Models | iOS 17 / macOS 14 | Already uses iOS 26 APIs correctly but Camera Control (wwdc2025-253) not wired, cinematic video gap |
 | sleep-coach | HealthKit sleep coaching | SwiftUI + HealthKit | macOS 13 (iOS via Xcode) | `ObservableObject` not migrated to `@Observable`, no App Intents, HKObserverQuery callback crosses actor boundary |
 | EmotionGuesser | GameKit turn-based facial emotion game | SwiftUI + GameKit + Vision | iOS 17 | Uses `@Observable` correctly, no Challenges/Activities (wwdc2025-214), missing Apple Games app integration |
-| ReactionTime (ios-greenfield-game) | Reaction-time arcade game | SwiftUI + GameKit | iOS (unspecified) | `ObservableObject`/Combine throughout — not migrated to `@Observable`, no Game Mode key |
+| ReactionTime v2 (ios-greenfield-game) | Reaction-time arcade game | SwiftUI + GameKit | iOS 17 | P0 fixed (48bf43a): async leaderboard submit, GCD→Task in GameCenterAuth; P1 open: `@Observable` migration (5 classes), `LSSupportsGameMode` missing |
 | GravatarNativeOptimizer | Gravatar profile optimizer + NFC writer | SwiftUI + AVFoundation + CoreImage | macOS/iOS | Custom OAuth vs. ASWebAuthenticationSession, no `@Observable` |
 | ClawBar | macOS menu bar item manager | SwiftUI + AppKit | macOS 13 | Timer-based pasteboard polling (0.5 s), Carbon hotkey API, no menu bar Extra improvements from UIKit 2025 |
 | ClawBoard | macOS clipboard history palette | SwiftUI + AppKit | macOS | Same pasteboard polling pattern as ClawBar |
@@ -23,9 +23,11 @@
 | ClawTab | macOS window switcher | SwiftUI + AppKit | macOS | AX window enumeration on main thread risk |
 | ClawSentinel | macOS monitoring app (minimal) | SwiftUI | macOS | Only 1 source file found — skeleton only |
 | ClawExplorer | macOS file/project browser | SwiftUI + AppKit | macOS | No Quick Look integration, no Spotlight index |
-| ClawDisplay | (not found at listed path) | — | — | Path mismatch: `/Users/scottmanthey/craw-repos/ClawDisplay` (typo: `craw` vs `claw`) |
+| ClawDisplay | External display manager | SwiftUI + AppKit + IOKit | macOS 13 | P0 fixed (89bf239): observer leak, wrong Settings URL, C callback GCD→Task; P1 open: duplicate `CGDisplayRegisterReconfigurationCallback` in `DisplayManager` |
 | InstantMemory | macOS clipboard manager | SwiftUI + AppKit | macOS | Very small (2 source files) — feature incomplete |
 | MartialArtsVideoApp | Martial arts video curriculum player | SwiftUI + AVFoundation + StoreKit | iOS | `nonisolated(unsafe)` on StoreKit task — actor isolation workaround, no Picture-in-Picture |
+| GlitchVideoApp | Real-time glitch-effect video recorder | SwiftUI + AVFoundation + Metal | iOS 17 | P2: `commandBuffer.waitUntilCompleted()` may block `sessionQueue`; no Camera Control (WWDC25-253); missing `PrivacyInfo.xcprivacy` |
+| WiFiMotion (wifi-sentinel) | Home WiFi motion detector | SwiftUI + AppKit + CoreWLAN | macOS 13 | P0: `scanCoreWLAN()` blocks `@MainActor` 1–4s per scan; `ObservableObject` throughout; git HEAD corrupted (5 fixes on disk, uncommitted) |
 
 ---
 
@@ -616,4 +618,221 @@ WWDC 2025-256 and 2025-356 document that recompiling against the iOS/iPadOS/macO
 
 ---
 
-*End of audit. All session citations are from wwdc-mcp-server index (122 sessions, WWDC 2025). Session URLs verified via `wwdc_get_session` with transcript coverage confirmed.*
+## Deep Audits — Expanded Fleet (Secondary Discovery)
+
+Apps found via filesystem search (`find ~/claw-repos -name "*.swift"`) after the initial 17-app pass. All previously unknown to the audit index.
+
+---
+
+### GlitchVideoApp
+
+**What it does:** iOS app for recording real-time glitch-effect video. Metal shaders process `AVCaptureSession` frames live; processed output is saved to `PHPhotoLibrary`.
+
+**Tech stack:**
+- `@Observable @MainActor GlitchCaptureViewModel` — already migrated to modern observation
+- `AVCaptureSession` + `sessionQueue` background isolation, `alwaysDiscardsLateVideoFrames = true`
+- Metal: `CVMetalTextureCache`, `MTLRenderPipelineState`, `GlitchUniforms` struct, `MTLCommandBuffer`
+- `CameraSession.swift`: `notificationObservers: [NSObjectProtocol]` stored and removed in `deinit`
+- Disk space preflight, max recording duration cap, `UIAccessibility.isReduceMotionEnabled` check
+
+**Issue 1 (P2) — `commandBuffer.waitUntilCompleted()` blocks the calling queue**
+
+`GlitchMetalRenderer.renderToPixelBuffer()` calls `commandBuffer.waitUntilCompleted()` synchronously. The inline comment acknowledges the block. If this is called from `AVCaptureVideoDataOutputSampleBufferDelegate.captureOutput(_:didOutput:from:)` (which runs on `sessionQueue`), the synchronous GPU wait blocks capture delivery — at high resolution or GPU load this produces frame drops. The correct pattern is bounded in-flight buffer count via semaphore + `addCompletedHandler`:
+
+```swift
+// Current — blocks calling queue until GPU finishes:
+commandBuffer.commit()
+commandBuffer.waitUntilCompleted()
+
+// Triple-buffer pattern — does not block:
+inFlightSemaphore.wait()               // blocks only when 3 frames are in-flight
+commandBuffer.addCompletedHandler { [weak self] _ in
+    self?.inFlightSemaphore.signal()
+}
+commandBuffer.commit()
+```
+
+**Issue 2 (P2) — No `AVCaptureEventInteraction` for iPhone 16 Camera Control**
+
+`CameraSession` handles the full `AVCaptureSession` lifecycle but does not implement `AVCaptureEventInteraction`. WWDC 2025-253 documents that on iPhone 16+, Camera Control maps to custom capture actions via this interaction. For a glitch-effects recorder, Camera Control triggering "apply next preset" or "start/stop record" is a natural fit — and is the UX users expect on a hardware-button device.
+
+**Session:** wwdc2025-253 "Enhancing your camera experience with capture controls."
+
+**Issue 3 (P3) — Missing `PrivacyInfo.xcprivacy`**
+
+Camera, microphone, and `PHPhotoLibrary` access requires a privacy manifest for App Store submission (required since spring 2024). `NSCameraUsageDescription` / `NSMicrophoneUsageDescription` strings are in `Info.plist` but the `PrivacyInfo.xcprivacy` file declaring `NSPrivacyAccessedAPITypes` (file timestamp, UserDefaults) is absent.
+
+**Overall:** GlitchVideoApp is the best-structured app in the expanded fleet. `@Observable` migration already done, observer tokens properly stored, `sessionQueue` isolation correct. Only the Metal buffering pattern needs a substantive fix.
+
+---
+
+### WiFiMotion (wifi-sentinel)
+
+**What it does:** macOS 13+ menu bar app that scans home WiFi via CoreWLAN, analyzes per-BSSID RSSI variance to detect motion, maps detections to rooms, and dispatches `UNUserNotification` alerts when away mode is enabled. Includes a ghost-replay timeline viewer.
+
+**Repo:** `claw-repos/wifi-sentinel` | **Module:** `Sources/WiFiMotion/` (31 Swift files)
+
+**Tech stack:**
+- SwiftUI + AppKit (`NSStatusBar`, `NSPopover`, `NSWindow`)
+- CoreWLAN (`CWInterface.scanForNetworks(withName:)`) — macOS-only blocking I/O API
+- `UserNotifications` for motion alerts
+- `UserDefaults` for all persistence (rooms, signal history, config)
+- `ObservableObject` + `@Published` throughout (not migrated)
+
+**Fixes applied to disk — NOT committed (git HEAD corrupted; run `git fetch origin && git reset --hard origin/main`):**
+
+| Fix | File | Status |
+|-----|------|--------|
+| `requestNotificationPermission()`: check `authorizationStatus == .notDetermined` before calling `requestAuthorization`; async/await | `WiFiScanEngine.swift` | On disk |
+| `onChange(of: engine.awayModeEnabled)` → two-arg `{ _, newVal in }` form | `StatusPopoverView.swift` | On disk |
+| `onChange(of: selectedDate)` → two-arg form | `GhostReplayView.swift` | On disk |
+| `onChange(of: isDragging)` → two-arg form | `GhostReplayView.swift` | On disk |
+| `DispatchQueue.main.asyncAfter(deadline: .now() + 0.2)` → `Task { @MainActor } + Task.sleep(for: .milliseconds(200))` | `AppDelegate.swift` (line 127) | On disk |
+| `DispatchQueue.main.asyncAfter(deadline: .now() + 0.3)` → `Task { @MainActor } + Task.sleep(for: .milliseconds(300))` | `AppDelegate.swift` (line 175) | On disk |
+
+**Issue WF-1 (P0, open) — `scanCoreWLAN()` executes blocking CoreWLAN I/O on `@MainActor`**
+
+`WiFiScanEngine` is `@MainActor`. Its `scanCoreWLAN()` calls `CWInterface.scanForNetworks(withName:)`, which is synchronous blocking I/O. On a congested 2.4 GHz environment this takes 1–4 seconds. Executing on the main actor freezes the menu bar popover, blocks all `@Published` updates, and makes the status icon non-responsive during every scan cycle. Fix: mark the scan path `nonisolated` and dispatch to `Task.detached(priority: .background)`, then hop back to `@MainActor` to publish results:
+
+```swift
+// Fix — off-actor scan, on-actor publish:
+private func performScan() {
+    Task {
+        let readings = await Task.detached(priority: .background) {
+            self.scanCoreWLANOffActor()  // nonisolated
+        }.value
+        await MainActor.run {
+            self.processReadings(readings)
+        }
+    }
+}
+```
+
+**Session:** wwdc2025-105 "Swift concurrency: Beyond the basics."
+
+**Issue WF-2 (P1, open) — No `PrivacyInfo.xcprivacy` privacy manifest**
+
+CoreWLAN (local network), `UserDefaults`, and `UNUserNotificationCenter` all require `PrivacyInfo.xcprivacy` entries for App Store submission. Without it, the binary will fail App Store review. Minimum required entries: `NSPrivacyAccessedAPICategoryUserDefaults` (reason `CA92.1`).
+
+**Issue WF-3 (P1, open) — `ObservableObject` + `@Published` not migrated to `@Observable`**
+
+`WiFiScanEngine`, `ReplayController`, and other view models use `ObservableObject`. Migrating to `@Observable` (macOS 14+) enables per-property granular change tracking — with a 30s scan cycle publishing RSSI readings to 8+ `@Published` properties, unnecessary view re-renders are a real cost. `ReplayController` in particular drives a 30fps timer that animates all room cards; per-property observation prevents redrawing unrelated cards.
+
+**Issue WF-4 (P2, open) — Signal history persisted to `UserDefaults`**
+
+`UserDefaults` serializes its entire store to a plist on every write. A WiFi scanner writing RSSI samples every 30 seconds accumulates 50K+ entries over a month, making each write increasingly expensive and risking data loss on crash mid-plist-write. Replace with SQLite (SwiftData or `sqlite3` FFI) with a 30-day rolling retention window.
+
+**Issue WF-5 (P2, open) — `ReplayController.schedulePlayback()` creates 30fps `Timer` on `@MainActor`**
+
+`ReplayController` is `@MainActor` and runs `Timer.scheduledTimer(withTimeInterval: 1.0/30.0, repeats: true)` to drive ghost-replay animation. A 30Hz main-run-loop timer competes with SwiftUI render passes at 60/120Hz. Replace with a cooperative `Task`-based loop:
+
+```swift
+private func schedulePlayback() {
+    playbackTask = Task { @MainActor in
+        while !Task.isCancelled {
+            updateCurrentEntry()
+            try await Task.sleep(for: .seconds(1.0 / 30.0))
+        }
+    }
+}
+```
+
+---
+
+### ClawDisplay
+
+**What it does:** macOS 13+ menu bar app for managing external display settings (brightness, refresh rate, night mode, resolution presets). Registers for `CGDisplayReconfigurationCallback` to react to live display events.
+
+**Repo:** `claw-repos/ClawDisplay` (24 Swift files)  
+**Fleet summary correction:** The original table showed "not found" due to a `craw-repos` typo in the audit script. The app is at `/Users/scottmanthey/claw-repos/ClawDisplay/`.
+
+**Fixes applied and committed (`89bf239`):**
+
+| ID | Fix | File |
+|----|-----|------|
+| CD-0 | `NSObjectProtocol` observer token now stored as `screenParamsObserver: NSObjectProtocol?`; removed in `deinit`. Previously discarded → leaked for app lifetime. | `DisplayService.swift` |
+| CD-1 | System Settings URL: `x-apple.systempreferences:com.apple.preference.displays` → `x-apple.systempreferences:com.apple.Displays-Settings.extension` (correct for macOS 13+ Ventura). Old URL silently no-ops on Ventura+. | `DisplayService.swift` |
+| CD-2 | `CGDisplayRegisterReconfigurationCallback` C callback: `DispatchQueue.main.async { ... }` → `Task { @MainActor in ... }` for structured concurrency consistency on a `@MainActor`-isolated class. | `DisplayService.swift` |
+
+**Issue CD-3 (P1, open) — Duplicate `CGDisplayRegisterReconfigurationCallback` in `DisplayManager.swift`**
+
+Both `DisplayManager` and `DisplayService` register a C callback for display reconfiguration. Duplicate registrations cause the callback to fire twice per display event — two `didChangeScreenParametersNotification` posts, two icon refreshes, and potential double-execution of resolution/brightness state mutations. `DisplayService` is the correct sole owner (already fixed in CD-2). Remove or guard the registration in `DisplayManager`:
+
+```swift
+// DisplayManager.swift — remove this block, or guard with:
+guard !isCallbackRegistered else { return }
+isCallbackRegistered = true
+CGDisplayRegisterReconfigurationCallback(displayReconfigCallback, nil)
+```
+
+**Issue CD-4 (P2, open) — `@Observable` migration audit**
+
+Verify: `grep -rn "ObservableObject" claw-repos/ClawDisplay/Sources/`. Any `ObservableObject` view models should migrate to `@Observable` (macOS 14+).
+
+**Issue CD-5 (P3, open) — Missing `PrivacyInfo.xcprivacy`**
+
+ClawDisplay reads `UserDefaults` for display presets. Privacy manifest required for App Store submission.
+
+---
+
+### ReactionTime v2 (ios-greenfield-game)
+
+**What it does:** iOS 17 arcade game measuring human reaction time. Tap a target the moment it appears; tracks millisecond-precision response times per session. Integrates Game Center leaderboards (best reaction time, lower-is-better sort). More architecturally complete than the `ReactionTime` repo audited in the initial pass — includes design token files (`Typography.swift`, `Motion.swift`, `Palette.swift`, `Spacing.swift`) and a water-physics idle animation.
+
+**Repo:** `claw-repos/ios-greenfield-game` | **Source:** `ReactionTime/` (45 Swift files)
+
+**Fixes applied and committed (`48bf43a`):**
+
+| ID | Fix | File |
+|----|-----|------|
+| RT-0a | `GKLeaderboard.submitScore` migrated from completion-handler form (fires on unspecified queue) to `async throws` form inside `Task {}` — avoids needing an explicit `MainActor` hop in the callback. | `ReactionLeaderboardService.swift` |
+| RT-0b | `GameCenterAuth.configureOnLaunch()`: deferred `installAuthenticateHandler()` call migrated from `DispatchQueue.main.async` to `Task { @MainActor [weak self] in }`. | `GameCenterAuth.swift` |
+
+**Issue RT-1 (P1, open) — `ObservableObject` + `@Published` across entire view model stack**
+
+Five classes still use `ObservableObject`: `AppModel`, `AppSettings`, `GameCenterAuth`, `ReactionSessionViewModel`, `WaterMotionEngine`. Migrate to `@Observable` (iOS 17). For a reaction-time game, per-property observation granularity matters: only the "tap target visible" state should trigger a re-render, not a full model publish cycle. The `@Observable` macro makes this automatic with zero behavior change.
+
+```swift
+// Current:
+final class AppModel: ObservableObject {
+    @Published var currentPhase: GamePhase = .idle
+    @Published var sessionResults: [ReactionResult] = []
+}
+
+// Target (iOS 17+):
+@Observable
+final class AppModel {
+    var currentPhase: GamePhase = .idle
+    var sessionResults: [ReactionResult] = []
+}
+```
+
+Views update: `@ObservedObject`/`@StateObject` → `@State`/`@Environment`; `@EnvironmentObject` → `.environment(model)` + `@Environment(AppModel.self)`.
+
+**Session:** wwdc2023-10149 "Discover Observation in SwiftUI."
+
+**Issue RT-2 (P1, open) — `LSSupportsGameMode` missing from `Info.plist`**
+
+Apple Game Mode (iOS 17+, `LSSupportsGameMode = true`) gives the foreground game lower CPU/GPU scheduling latency. For a millisecond-precision reaction timer, reduced scheduler jitter directly improves measurement accuracy and input latency. One-line `Info.plist` addition.
+
+**Session:** wwdc2023-10118 "Reach new players with Game Center dashboard."
+
+**Issue RT-3 (P2, open) — Game Center Challenges not implemented**
+
+The lower-is-better leaderboard is live, but no Challenges are defined. WWDC 2025-214 identifies adding Challenges as the highest-leverage single change for Apple Games app visibility. A "Beat my reaction time" challenge (`GKLeaderboardScore.challengeComposeController(withMessage:players:completion:)`) is a natural fit requiring ~20 lines of code.
+
+**Session:** wwdc2025-214 "Get started with Game Center," wwdc2025-215 "Engage players with the Apple Games app."
+
+**Issue RT-4 (P2, open) — No App Intents / Shortcuts integration**
+
+No `AppIntents` target exists. A `StartGameIntent` conforming to `AppIntent` (Siri: "Hey Siri, play reaction time") enables Shortcuts automation and Spotlight actions. For a game where fast launch-to-play is the core loop, this is a high-value low-effort addition.
+
+**Session:** wwdc2025-215 "Engage players with the Apple Games app," wwdc2024-10176 "What's new in App Intents."
+
+**Issue RT-5 (P3, open) — `WaterMotionEngine` main-actor timer review**
+
+`WaterMotionEngine` drives the idle-screen water physics animation. Verify it does not create a high-frequency `Timer` on `@MainActor` (same pattern seen in `WiFiMotion/ReplayController`). If it does, replace with a cooperative `Task`-based animation loop as documented in the WiFiMotion WF-5 fix above.
+
+---
+
+*End of audit. Initial fleet: 17 apps. Expanded fleet: +4 apps (GlitchVideoApp, WiFiMotion, ClawDisplay, ReactionTime v2). Total: 21 apps. All session citations from wwdc-mcp-server index (122 sessions, WWDC 2025).*
