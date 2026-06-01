@@ -8,14 +8,14 @@
 
 | App | Purpose | Framework | Platform Target | Priority Issues |
 |-----|---------|-----------|-----------------|-----------------|
-| SlideTac | iMessage sliding-piece board game | SwiftUI + GameKit + AdMob | iOS 17 / macOS 14 | ObservableObject in AppModel, no Game Center Challenges/Activities, StoreKit misses new `currentEntitlements(productID:)` API |
+| SlideTac | iMessage sliding-piece board game | SwiftUI + GameKit + AdMob | iOS 17 / macOS 14 | P1 applied (pending commit): `LSSupportsGameMode` added, `currentEntitlements(productID:)` #available guard, `@MainActor` on MessagesViewController; P2 open: no Game Center Challenges/Activities |
 | EphemeralVoice | Burn-after-listen voice messaging | SwiftUI + AVAudioEngine + Supabase | iOS 17 | AVAudioEngine instead of SpeechAnalyzer, no App Intents, RLS not applied |
 | ScreenshotNotes (SnapNotes) | Screenshot OCR + auto-organization | SwiftUI + Vision + SwiftData | iOS 17 | AppState god object (900 LOC), SwiftData lacks inheritance model, no Foundation Models integration |
-| LocalizeShots | macOS App Store screenshot automation | SwiftUI + SPM | macOS 14 | No Xcode localization code-along alignment, ASC JWT auth fragile, no `wwdc2025-225` adoption |
-| SafeFrameCamera | Multi-platform safe-zone framing camera | SwiftUI + AVFoundation + Foundation Models | iOS 17 / macOS 14 | Already uses iOS 26 APIs correctly but Camera Control (wwdc2025-253) not wired, cinematic video gap |
+| LocalizeShots | macOS App Store screenshot automation | SwiftUI + SPM | macOS 14 | P1 applied (pending commit): `SimctlDriver.boot()` now has 120s `withThrowingTaskGroup` timeout; P2 open: ASC JWT auth fragile, no `wwdc2025-225` adoption |
+| SafeFrameCamera | Multi-platform safe-zone framing camera | SwiftUI + AVFoundation + Foundation Models | iOS 17 / macOS 14 | P1 applied (pending commit): `LanguageModelSession` lifted to `@State` in `AIFramingCoachCard`; P2 open: Camera Control (wwdc2025-253) not wired, cinematic video gap |
 | sleep-coach | HealthKit sleep coaching | SwiftUI + HealthKit | macOS 13 (iOS via Xcode) | `ObservableObject` not migrated to `@Observable`, no App Intents, HKObserverQuery callback crosses actor boundary |
 | EmotionGuesser | GameKit turn-based facial emotion game | SwiftUI + GameKit + Vision | iOS 17 | Uses `@Observable` correctly, no Challenges/Activities (wwdc2025-214), missing Apple Games app integration |
-| ReactionTime v2 (ios-greenfield-game) | Reaction-time arcade game | SwiftUI + GameKit | iOS 17 | P0 fixed (48bf43a): async leaderboard submit, GCD→Task in GameCenterAuth; P1 open: `@Observable` migration (5 classes), `LSSupportsGameMode` missing |
+| ReactionTime v2 (ios-greenfield-game) | Reaction-time arcade game | SwiftUI + GameKit | iOS 17 | P0 fixed (48bf43a): async leaderboard submit, GCD→Task in GameCenterAuth; P1 applied (pending commit): `LSSupportsGameMode` added; P2 open: `@Observable` migration (5 classes) |
 | GravatarNativeOptimizer | Gravatar profile optimizer + NFC writer | SwiftUI + AVFoundation + CoreImage | macOS/iOS | Custom OAuth vs. ASWebAuthenticationSession, no `@Observable` |
 | ClawBar | macOS menu bar item manager | SwiftUI + AppKit | macOS 13 | Timer-based pasteboard polling (0.5 s), Carbon hotkey API, no menu bar Extra improvements from UIKit 2025 |
 | ClawBoard | macOS clipboard history palette | SwiftUI + AppKit | macOS | Same pasteboard polling pattern as ClawBar |
@@ -23,11 +23,11 @@
 | ClawTab | macOS window switcher | SwiftUI + AppKit | macOS | P0 fixed (dee04a6): CGWindowListCopyWindowInfo deprecated → NSWorkspace + AXUIElement in WindowListService + WindowManager; 4 CF cast warnings fixed |
 | ClawSentinel | macOS monitoring app (minimal) | SwiftUI | macOS | Only 1 source file found — skeleton only |
 | ClawExplorer | macOS file/project browser | SwiftUI + AppKit | macOS | No Quick Look integration, no Spotlight index |
-| ClawDisplay | External display manager | SwiftUI + AppKit + IOKit | macOS 13 | P0 fixed (89bf239): observer leak, wrong Settings URL, C callback GCD→Task; P3 fixed (779c325): `kIOMasterPortDefault` → `kIOMainPortDefault`; P1 open: duplicate `CGDisplayRegisterReconfigurationCallback` in `DisplayManager` |
+| ClawDisplay | External display manager | SwiftUI + AppKit + IOKit | macOS 13 | P0 fixed (89bf239): observer leak, wrong Settings URL, C callback GCD→Task; P3 fixed (779c325): `kIOMasterPortDefault` → `kIOMainPortDefault`; P1 verified-closed: duplicate `CGDisplayRegisterReconfigurationCallback` was a false positive — single registration confirmed |
 | InstantMemory | macOS clipboard manager | SwiftUI + AppKit | macOS | Very small (2 source files) — feature incomplete |
-| MartialArtsVideoApp | Martial arts video curriculum player | SwiftUI + AVFoundation + StoreKit | iOS | `nonisolated(unsafe)` on StoreKit task — actor isolation workaround, no Picture-in-Picture |
+| MartialArtsVideoApp | Martial arts video curriculum player | SwiftUI + AVFoundation + StoreKit | iOS | P1 fixed (prev session): `nonisolated(unsafe)` removed, `Task.detached` → `Task`; P2 open: no Picture-in-Picture |
 | GlitchVideoApp | Real-time glitch-effect video recorder | SwiftUI + AVFoundation + Metal | iOS 17 | P2: `commandBuffer.waitUntilCompleted()` may block `sessionQueue`; no Camera Control (WWDC25-253); missing `PrivacyInfo.xcprivacy` |
-| WiFiMotion (wifi-sentinel) | Home WiFi motion detector | SwiftUI + AppKit + CoreWLAN | macOS 13 | P0 fixed (d1f0cc0): `scanCoreWLAN()` + `scanUsingAirportCLI()` → `nonisolated`; `performScan()` + `calibrateRoom()` use `Task.detached(.background)` — eliminates 1–4s main actor stalls; P1 open: `@Observable` requires macOS 14 but target is 13 |
+| WiFiMotion (wifi-sentinel) | Home WiFi motion detector | SwiftUI + AppKit + CoreWLAN | macOS 14 | P0 fixed (d1f0cc0): `scanCoreWLAN()` + `scanUsingAirportCLI()` → `nonisolated`; P1 fixed (prev session): `Package.swift` raised to `.macOS(.v14)` — unblocks `@Observable` build errors fleet-wide |
 
 ---
 
