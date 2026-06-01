@@ -23,11 +23,11 @@
 | ClawTab | macOS window switcher | SwiftUI + AppKit | macOS | P0 fixed (dee04a6): CGWindowListCopyWindowInfo deprecated → NSWorkspace + AXUIElement in WindowListService + WindowManager; 4 CF cast warnings fixed |
 | ClawSentinel | macOS monitoring app (minimal) | SwiftUI | macOS | Only 1 source file found — skeleton only |
 | ClawExplorer | macOS file/project browser | SwiftUI + AppKit | macOS | No Quick Look integration, no Spotlight index |
-| ClawDisplay | External display manager | SwiftUI + AppKit + IOKit | macOS 13 | P0 fixed (89bf239): observer leak, wrong Settings URL, C callback GCD→Task; P1 open: duplicate `CGDisplayRegisterReconfigurationCallback` in `DisplayManager` |
+| ClawDisplay | External display manager | SwiftUI + AppKit + IOKit | macOS 13 | P0 fixed (89bf239): observer leak, wrong Settings URL, C callback GCD→Task; P3 fixed (779c325): `kIOMasterPortDefault` → `kIOMainPortDefault`; P1 open: duplicate `CGDisplayRegisterReconfigurationCallback` in `DisplayManager` |
 | InstantMemory | macOS clipboard manager | SwiftUI + AppKit | macOS | Very small (2 source files) — feature incomplete |
 | MartialArtsVideoApp | Martial arts video curriculum player | SwiftUI + AVFoundation + StoreKit | iOS | `nonisolated(unsafe)` on StoreKit task — actor isolation workaround, no Picture-in-Picture |
 | GlitchVideoApp | Real-time glitch-effect video recorder | SwiftUI + AVFoundation + Metal | iOS 17 | P2: `commandBuffer.waitUntilCompleted()` may block `sessionQueue`; no Camera Control (WWDC25-253); missing `PrivacyInfo.xcprivacy` |
-| WiFiMotion (wifi-sentinel) | Home WiFi motion detector | SwiftUI + AppKit + CoreWLAN | macOS 13 | P0: `scanCoreWLAN()` blocks `@MainActor` 1–4s per scan; `ObservableObject` throughout; git HEAD corrupted (5 fixes on disk, uncommitted) |
+| WiFiMotion (wifi-sentinel) | Home WiFi motion detector | SwiftUI + AppKit + CoreWLAN | macOS 13 | P0 fixed (d1f0cc0): `scanCoreWLAN()` + `scanUsingAirportCLI()` → `nonisolated`; `performScan()` + `calibrateRoom()` use `Task.detached(.background)` — eliminates 1–4s main actor stalls; P1 open: `@Observable` requires macOS 14 but target is 13 |
 
 ---
 
