@@ -19,7 +19,7 @@
 | GravatarNativeOptimizer | Gravatar profile optimizer + NFC writer | SwiftUI + AVFoundation + CoreImage | macOS/iOS | Custom OAuth vs. ASWebAuthenticationSession, no `@Observable` |
 | ClawBar | macOS menu bar item manager | SwiftUI + AppKit | macOS 13 | Timer-based pasteboard polling (0.5 s), Carbon hotkey API, no menu bar Extra improvements from UIKit 2025 |
 | ClawBoard | macOS clipboard history palette | SwiftUI + AppKit | macOS | Same pasteboard polling pattern as ClawBar |
-| ClawSnap | macOS window tiling | SwiftUI + AppKit | macOS | AX API dependency, no Stage Manager awareness |
+| ClawSnap | macOS window tiling | SwiftUI + AppKit | macOS | P0 fixed (86d9be5): 2 data races in SnapZoneDetector (GCD→Task @MainActor), 3 AX unsafe force casts → safe casts; P1 open: no Stage Manager awareness |
 | ClawTab | macOS window switcher | SwiftUI + AppKit | macOS | AX window enumeration on main thread risk |
 | ClawSentinel | macOS monitoring app (minimal) | SwiftUI | macOS | Only 1 source file found — skeleton only |
 | ClawExplorer | macOS file/project browser | SwiftUI + AppKit | macOS | No Quick Look integration, no Spotlight index |
@@ -480,7 +480,9 @@ Package.swift declares `.macOS(.v13)` for the test target, but the iOS app targe
 
 **Tech stack:** SwiftUI + AppKit + `@Observable`.
 
-**Top issues:**
+**Concurrency audit (2026-05-31 deep pass):** `HotkeyManager.swift` dispatches via `DispatchQueue.main.async { manager.onHotkeyPressed?() }` inside a `@convention(c)` CGEvent tap callback. This is **correct and required** — Swift structured concurrency (`Task`, `async/await`) cannot be used inside C-convention functions; GCD is the only valid dispatch mechanism in this context. `ClipboardStore.swift` uses `private let queue = DispatchQueue(label: "...", qos: .utility)` with `queue.sync { }` for file I/O serialization — a correct serial-queue pattern, not a data race. **No GCD data races found; all concurrency patterns verified intentional.**
+
+**Open issues:**
 - Same `Timer`-based pasteboard polling as ClawBar (identical anti-pattern, different target)
 - `BoardStore` and `ClipboardMonitor` likely share 80% of their logic with ClawBar's equivalent classes — a shared SPM library would DRY this
 - No rich media support (images, files) — only string clips
@@ -493,10 +495,22 @@ Package.swift declares `.macOS(.v13)` for the test target, but the iOS app targe
 
 **Tech stack:** SwiftUI + AppKit + AXUIElement + `@Observable`.
 
-**Top issues:**
-- No awareness of Stage Manager state — snapping windows while Stage Manager is active can produce unexpected layouts; the `NSWorkspace` Stage Manager API should be checked before applying tiling
+**Fixes applied and committed (`86d9be5`):**
+
+| ID | Fix | File |
+|----|-----|------|
+| CS-0 | `stopMonitoring()`: `DispatchQueue.main.async { self?.currentSnapZone = nil; self?.dragScreen = nil }` → `Task { @MainActor [weak self] in }` — eliminates data race: `@Observable SnapZoneDetector` (not `@MainActor`) was writing tracked state from background `updateQueue` via GCD | `SnapZoneDetector.swift` |
+| CS-1 | `monitorDragPosition()`: `DispatchQueue.main.async { self?.dragScreen = screen; self?.currentSnapZone = detectedZone }` → `Task { @MainActor [weak self] in }` — same data race on repeated poll cycle | `SnapZoneDetector.swift` |
+| CS-2 | `getFocusedWindow()`: `focusedWindow as! AXUIElement?` → `focusedWindow as? AXUIElement` — force cast to Optional crashes on type mismatch instead of returning nil; safe cast is correct for AX attribute values | `WindowController.swift` |
+| CS-3 | `getWindowFrame()`: `position as! AXValue?` → `position as? AXValue` | `WindowController.swift` |
+| CS-4 | `getWindowFrame()`: `size as! AXValue?` → `size as? AXValue` | `WindowController.swift` |
+
+**Note on `SnapZoneDetector` concurrency model:** The class is `@Observable` but deliberately NOT `@MainActor` (polling runs on `updateQueue`). The correct fix is `Task { @MainActor [weak self] in }` for state writes — NOT adding `@MainActor` to the class, which would block the background polling. The CGEvent tap callback in `HotkeyManager` (if present) must remain on GCD — see ClawBoard note above.
+
+**Open issues:**
+- No awareness of Stage Manager state — snapping windows while Stage Manager is active can produce unexpected layouts; `NSWorkspace` Stage Manager API should be checked before applying tiling
 - `ScreenGeometry` calculations are tested well (`ScreenGeometryTests.swift`) — one of the more test-complete Claw tools
-- AX window move/resize is synchronous — could block main thread under slow window server response
+- AX window move/resize is synchronous — could block actor under slow window server response
 
 ---
 
@@ -787,11 +801,26 @@ isCallbackRegistered = true
 CGDisplayRegisterReconfigurationCallback(displayReconfigCallback, nil)
 ```
 
-**Issue CD-4 (P2, open) — `@Observable` migration audit**
+**Issue CD-4 (P1, open) — Dead OO layer: `DisplayMenuView`, `DisplayManager`, `ProfileManager`, `ProfileEditorView` unreachable from live entry points**
 
-Verify: `grep -rn "ObservableObject" claw-repos/ClawDisplay/Sources/`. Any `ObservableObject` view models should migrate to `@Observable` (macOS 14+).
+Confirmed via grep (2026-05-31): the three live entry points — `ClawDisplayApp.swift`, `MenuBarView.swift`, `DisplayService.swift` — have **zero references** to the old OO layer. These files are dead:
 
-**Issue CD-5 (P3, open) — Missing `PrivacyInfo.xcprivacy`**
+| File | Verdict |
+|------|---------|
+| `Views/DisplayMenuView.swift` | Zero live references — safe to delete |
+| `Views/ProfileEditorView.swift` | Zero live references — safe to delete |
+| `Views/SettingsView.swift` (legacy OO version) | Zero live references — safe to delete |
+| `Services/DisplayManager.swift` | Zero live references; also source of CD-3 duplicate callback — deleting eliminates CD-3 | 
+| `Services/ProfileManager.swift` | Zero live references — safe to delete |
+| `BrightnessController.swift` | Referenced only from `BrightnessControllerTests.swift` (19+ test functions) — **do NOT delete** without migrating tests to use `DisplayService` |
+
+Deleting `DisplayManager.swift` also resolves CD-3. Requires explicit sign-off before deletion; `BrightnessController` needs a test migration plan.
+
+**Issue CD-5 (P2, open) — `@Observable` migration audit**
+
+Verify: `grep -rn "ObservableObject" claw-repos/ClawDisplay/Sources/`. Any `ObservableObject` view models should migrate to `@Observable` (macOS 14+). Note: dead OO layer files (CD-4) will show hits; confirm only live files are audited.
+
+**Issue CD-6 (P3, open) — Missing `PrivacyInfo.xcprivacy`**
 
 ClawDisplay reads `UserDefaults` for display presets. Privacy manifest required for App Store submission.
 
@@ -857,4 +886,27 @@ No `AppIntents` target exists. A `StartGameIntent` conforming to `AppIntent` (Si
 
 ---
 
-*End of audit. Initial fleet: 17 apps. Expanded fleet: +4 apps (GlitchVideoApp, WiFiMotion, ClawDisplay, ReactionTime v2). Total: 21 apps. All session citations from wwdc-mcp-server index (122 sessions, WWDC 2025).*
+## Concurrency Deep Pass — Verified Clean (2026-05-31)
+
+Second-pass audit targeting `@Observable` data races, unsafe AX casts, and GCD anti-patterns. Apps below were audited and found to have **no GCD data races on `@Observable` state** and **no unsafe force casts**. Issues documented in their sections above remain open.
+
+| App | Concurrency Finding | Why Clean |
+|-----|---------------------|-----------|
+| **ClawBoard** | No data race | `HotkeyManager` GCD required (C callback `@convention(c)`); `ClipboardStore.queue.sync` correct serialization |
+| **ClawExplorer** | No data race | No `@Observable` state written from background GCD; file reads on dedicated actor |
+| **SafeFrameCamera** | No data race | `AVCaptureSession.startRunning()` on `DispatchQueue(label:, qos: .userInitiated)` — Apple-required off-main-thread pattern; `@Observable` state updates already on `@MainActor` |
+| **EmotionGuesser** | No data race | `GameCenterAuth` is `@Observable @MainActor` — all state changes on main actor; `SoloPracticeView` AVFoundation session queue off-main correct |
+| **GlitchVideoApp** | No data race | `CameraSession` is `NSObject` (not `@Observable`); `sessionQueue` isolation standard AVFoundation pattern; `DispatchQueue.main.async { self.isRunning = ... }` on plain `@Published`-equivalent property is correct |
+| **sleep-coach** | No data race | `HealthKitService` is `@MainActor` (even as `ObservableObject`); HKObserverQuery callback dispatches via `Task { @MainActor [weak self] in }` |
+
+**GCD patterns that are CORRECT and must NOT be changed:**
+
+| Pattern | Location | Why Required |
+|---------|----------|-------------|
+| `DispatchQueue.main.async` in `@convention(c)` CGEvent tap callback | `HotkeyManager` (ClawBoard, ClawBar, ClawTab) | Swift structured concurrency forbidden in C functions |
+| `DispatchQueue(label:, qos: .userInitiated).async { session.startRunning() }` | SafeFrameCamera, EmotionGuesser, GlitchVideoApp | Apple explicitly requires `AVCaptureSession` ops off main thread |
+| `queue.sync { }` for file I/O in serial queue | `ClipboardStore` (ClawBoard) | Correct mutual exclusion for file access from multiple call sites |
+
+---
+
+*End of audit. Initial fleet: 17 apps. Expanded fleet: +4 apps (GlitchVideoApp, WiFiMotion, ClawDisplay, ReactionTime v2). Concurrency deep pass: 6 additional apps verified clean. Total: 21 apps audited. All session citations from wwdc-mcp-server index (122 sessions, WWDC 2025).*
