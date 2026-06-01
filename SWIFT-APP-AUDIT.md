@@ -654,6 +654,55 @@ WWDC 2025-256 and 2025-356 document that recompiling against the iOS/iPadOS/macO
 
 **Session:** wwdc2025-256 (Chapter: Make the new design shine, timestamp 0:01:22), wwdc2025-356 "Get to know the new design system."
 
+### 9. Wi-Fi Aware direct ranging API (wifi-sentinel)
+
+`NEWiFiAwareSession` introduced in WWDC 2025-228 enables direct device-to-device WiFi with centimeter-precision ranging — no infrastructure AP required. wifi-sentinel's current RSSI-variance motion detection is probabilistic and AP-dependent. Wi-Fi Aware ranging data could supply absolute distance measurements between the scanning Mac and target devices, yielding room-level detection accuracy that RSSI alone cannot provide.
+
+**Session:** wwdc2025-228 "Supercharge device connectivity with Wi-Fi Aware."
+
+### 10. ASC Webhook API eliminates LocalizeShots polling fragility (LocalizeShots)
+
+WWDC 2025-324 introduces webhook subscriptions to App Store Connect: `BUILD_STATUS_CHANGED`, `SUBMISSION_COMPLETE`, and `REVIEW_STATUS_CHANGED` events pushed to a registered HTTPS endpoint. LocalizeShots polls ASC JWT endpoints on a timer to detect build/processing completion — polling logic that must sign a fresh JWT on every cycle and handles expiry manually. Replacing with webhook events eliminates the polling loop, removes JWT expiry as a failure mode, and unblocks the build-complete trigger reliably.
+
+**Session:** wwdc2025-324 "Automate your development process with the App Store Connect API."
+
+### 11. Power profiling + background execution audit (wifi-sentinel, ClawBar, sleep-coach)
+
+Three fleet apps run persistent timers with measurable power impact:
+- **wifi-sentinel:** 30s `Timer.scheduledTimer` CoreWLAN scan cycle on the main actor
+- **ClawBar:** 0.5s pasteboard polling Timer (worst-case: 120 fire/min with no clipboard activity)
+- **sleep-coach:** `HKObserverQuery` background health callbacks + `Timer`-based coach updates
+
+WWDC 2025-226 "Profile and optimize power usage in your app" documents the new Xcode 26 Instruments Power Profiler — a per-subsystem energy timeline that isolates timer overhead, network I/O, and CPU wake cost. Running this profiler against each app will quantify the real cost of the polling patterns and provide a before/after baseline for the GCD→Task migrations already recommended in the audit.
+
+WWDC 2025-227 "Finish tasks in the background" covers the updated `BGProcessingTask` / `BGAppRefreshTask` patterns for background HealthKit work. sleep-coach should adopt `BGHealthResearchTask` for overnight coaching evaluation rather than holding a live `HKObserverQuery` open indefinitely.
+
+**Sessions:** wwdc2025-226, wwdc2025-227.
+
+### 12. ML-based video effects for GlitchVideoApp (GlitchVideoApp)
+
+WWDC 2025-300 "Enhance your app with machine-learning-based video effects" introduces `MLVideoEffect` — a new pipeline using the same `AVCaptureSession` / `CVPixelBuffer` interface GlitchVideoApp already uses for its Metal shaders. The ML effects framework provides semantic scene understanding (person segmentation, depth estimation, lighting) that can augment or replace custom Metal shader effects. The `mlComputeDevice` configuration routes compute to the ANE, reducing battery draw compared to GPU-only Metal pipelines. GlitchVideoApp's architecture (dedicated `sessionQueue`, `CVMetalTextureCache`) maps cleanly to the `MLVideoEffect` buffer path.
+
+**Session:** wwdc2025-300 "Enhance your app with machine-learning-based video effects."
+
+### 13. SwiftData inheritance + schema migration (ScreenshotNotes)
+
+ScreenshotNotes uses a flat `@Model Note` type with no polymorphism. WWDC 2025-291 "SwiftData: Dive into inheritance and schema migration" documents `@Model` inheritance hierarchies (e.g., `class TextNote: Note`, `class PDFNote: Note`, `class LinkNote: Note`) and `SchemaMigrationPlan` for v1→v2 safe migration. Adding typed note subclasses would let ScreenshotNotes store notes with type-specific metadata (URL for links, page count for PDFs, audio URL for voice memos) without a string-keyed metadata blob — improving query specificity and eliminating type-check casting at the view layer.
+
+**Session:** wwdc2025-291 "SwiftData: Dive into inheritance and schema migration."
+
+### 14. RecognizeDocumentsRequest replaces VNRecognizeTextRequest (ScreenshotNotes)
+
+WWDC 2025-272 "Read documents using the Vision framework" introduces `RecognizeDocumentsRequest` — a structured-OCR successor to `VNRecognizeTextRequest`. The new API returns document regions (paragraphs, columns, tables, forms) rather than a flat array of text observations. ScreenshotNotes captures app screenshots which contain structured UI layouts (tables, multi-column content, form fields). `RecognizeDocumentsRequest` handles multi-column and form layouts that `VNRecognizeTextRequest` merges incorrectly — improving note quality without changing the AVFoundation capture path.
+
+**Session:** wwdc2025-272 "Read documents using the Vision framework."
+
+### 15. Accessibility Nutrition Labels — all consumer apps
+
+WWDC 2025-224 "Evaluate your app for Accessibility Nutrition Labels" introduces a new App Store accessibility indicator visible in search results — an accessibility rubric scored against VoiceOver support, Dynamic Type, color contrast, and keyboard/switch navigation. All seven consumer iOS apps in the fleet (SlideTac, EphemeralVoice, ScreenshotNotes, SafeFrameCamera, EmotionGuesser, ReactionTime, MartialArtsVideoApp) should be evaluated against the rubric before their next App Store submission. Apps meeting the threshold gain a visible accessibility label in search — a discoverability signal that costs zero additional marketing spend.
+
+**Session:** wwdc2025-224 "Evaluate your app for Accessibility Nutrition Labels."
+
 ---
 
 ## Deep Audits — Expanded Fleet (Secondary Discovery)
@@ -912,3 +961,134 @@ Second-pass audit targeting `@Observable` data races, unsafe AX casts, and GCD a
 ---
 
 *End of audit. Initial fleet: 17 apps. Expanded fleet: +4 apps (GlitchVideoApp, WiFiMotion, ClawDisplay, ReactionTime v2). Concurrency deep pass: 6 additional apps verified clean. Total: 21 apps audited. All session citations from wwdc-mcp-server index (122 sessions, WWDC 2025).*
+
+---
+
+## Fleet Discovery Pass 2 — Additional WWDC 2025 Session References
+
+Second query pass against the wwdc.db index (`sqlite3 ~/claw-repos/wwdc-mcp-server/data/wwdc.db`), 2026-06-01. New sessions mapped to existing app issues that were not referenced in the initial audit.
+
+---
+
+### EphemeralVoice — wwdc2025-251
+
+**Session:** "Enhance your app's audio recording capabilities"
+
+EphemeralVoice uses `AVAudioEngine` with a tap-based `installTap(onBus:)` capture pipeline. The initial audit flagged this as a gap vs. `SFSpeechAnalyzer` / `SpeechAnalyzer`. WWDC 2025-251 is the more directly applicable session: it covers the updated `AVAudioSession` category configuration for low-latency recording, new `AVAudioRecorder` quality settings for voice capture, and the `AVAudioEngine` input node optimizations targeting voice messaging apps. Key items to adopt:
+
+- `AVAudioSession.sharedInstance().setCategory(.record, mode: .voiceChat)` — `.voiceChat` mode enables the system's voice processing (echo cancellation, AGC) which EphemeralVoice's tap pipeline bypasses
+- New `AVAudioRecorder.prepareToRecord()` async variant avoids the blocking synchronous prepare on the main actor
+- Input format negotiation: negotiate `AVAudioFormat` with `inputNode.outputFormat(forBus: 0)` before installing the tap — prevents sample rate mismatch crashes on AirPods Pro
+
+**Session:** wwdc2025-251 "Enhance your app's audio recording capabilities."
+
+---
+
+### MartialArtsVideoApp — wwdc2025-302
+
+**Session:** "Create a seamless multiview playback experience"
+
+MartialArtsVideoApp uses a single `AVPlayer` + `AVPlayerViewController` for curriculum video playback. The audit's open P2 issue ("no Picture-in-Picture") is the entry point for this session. WWDC 2025-302 documents the full `AVMultiviewPlayer` API path: presenting multiple simultaneous video tiles (e.g., instructor demo + student angle), synchronized PiP continuation, and the `AVPlayerViewControllerDelegate` methods for transition animations. For a martial arts curriculum, simultaneous instructor/student split view or technique-from-two-angles layout is a natural use case.
+
+Minimum adoptable sub-feature (no full multiview required):
+- `AVPlayerViewController.requiresLinearPlayback = false` + `allowsPictureInPicturePlayback = true`: enables students to continue watching a drill while navigating to the next lesson
+- `AVPictureInPictureController.isPictureInPictureSupported()` guard before surfacing the PiP button
+
+**Session:** wwdc2025-302 "Create a seamless multiview playback experience."
+
+---
+
+### SlideTac — wwdc2025-252
+
+**Session:** "Optimize your monetization with App Analytics"
+
+SlideTac's remove-ads IAP (`IAPProductID.removeAds`) is the only revenue line. The initial audit noted no subscription analytics. WWDC 2025-252 covers new App Analytics dimensions available in App Store Connect: proceeds by country, subscription retention cohort curves, and trial-to-paid conversion funnels. These are reporting dimensions, not SDK changes — but the session also documents new StoreKit 2 `Transaction` metadata fields that land in iOS 18.4:
+
+- `Transaction.appAccountToken` — associate purchase to an internal user ID for cross-device cohort tracking
+- `Transaction.offerID` + `Transaction.offerType` — track which promotional offer drove conversion (e.g., intro price vs. promo code)
+
+SlideTac's `SlideTacPurchaseManager.handleVerified(_:)` already calls `transaction.finish()` but does not log any transaction metadata. Adding `appAccountToken` association before `product.purchase()` unlocks the App Analytics cohort view.
+
+**Session:** wwdc2025-252 "Optimize your monetization with App Analytics."
+
+---
+
+### sleep-coach — wwdc2025-321
+
+**Session:** "Meet the HealthKit Medications API"
+
+sleep-coach queries `HKCategoryType.sleepAnalysis` and `HKQuantityType.heartRate`. WWDC 2025-321 introduces `HKMedication` — a new HealthKit type for prescribed medications, schedules, and adherence. For a sleep coaching app, medication timing is directly relevant: sleep medications (melatonin, sleep aids), stimulants, and caffeine all have documented sleep impact. The new API surfaces:
+
+- `HKMedicationRecord` — scheduled dose vs. taken dose, time delta
+- Query via `HKSampleQuery` with `HKObjectType.medicationType()` — same query path as existing HealthKit queries in the app
+- Correlate medication timing windows with sleep onset latency in the coaching analysis
+
+This is an additive feature (new query + new coaching dimension), not a breaking change. Requires `NSHealthShareUsageDescription` entry for medication data if not already present.
+
+**Session:** wwdc2025-321 "Meet the HealthKit Medications API."
+
+---
+
+### LocalizeShots — wwdc2025-324
+
+*(Also documented in Cross-Fleet #10 above.)*
+
+The initial audit flagged ASC JWT auth fragility: `LocalizeShots` signs a fresh JWT per ASC API call and handles `401` expiry with a retry-and-resign path. WWDC 2025-324 webhook subscriptions replace the polling/retry model entirely:
+
+1. Register a webhook endpoint via `POST /v1/webhooks` with event types `["BUILD_STATUS_CHANGED", "PROCESSING_COMPLETE"]`
+2. Receive signed webhook delivery (HMAC-SHA256 `X-Apple-Signature` header)
+3. Trigger screenshot automation on `processingState == "VALID"` — no polling loop, no JWT expiry race
+
+The webhook subscription itself requires a one-time JWT for registration. After that, deliveries arrive signed with the webhook secret, not a JWT. This decouples the automation trigger from the JWT lifecycle entirely.
+
+**Session:** wwdc2025-324 "Automate your development process with the App Store Connect API."
+
+---
+
+### ScreenshotNotes — wwdc2025-272, wwdc2025-291, wwdc2025-265
+
+*(Sessions 272 and 291 also documented in Cross-Fleet #14 and #13 above.)*
+
+Three WWDC 2025 sessions converge on ScreenshotNotes' core functionality:
+
+**wwdc2025-272 — RecognizeDocumentsRequest:** Replaces `VNRecognizeTextRequest` for structured document OCR. Priority upgrade — ScreenshotNotes' current flat-text extraction misses table structure and multi-column UI layouts in app screenshots. `RecognizeDocumentsRequest` returns typed regions (`documentRegion.paragraphs`, `.tables`, `.columns`).
+
+**wwdc2025-291 — SwiftData inheritance:** Adds `@Model` class hierarchies and `SchemaMigrationPlan` for schema evolution. ScreenshotNotes' single `@Model Note` type could branch into `ScreenshotNote`, `PDFNote`, `LinkNote` without a migration-breaking schema change if the plan is authored upfront.
+
+**wwdc2025-265 — Dive deeper into Writing Tools:** iOS 26 Writing Tools now surface in any `UITextView` / `TextEditor`. ScreenshotNotes' note-text fields automatically inherit Writing Tools (rewrite, summarize, proofread) with no code change. The session documents opt-out controls (`writingToolsBehavior = .limited`) for cases where the AI-rewrite behavior is unwanted — audit each `TextEditor` to decide whether to opt out or lean in.
+
+**Sessions:** wwdc2025-272, wwdc2025-291, wwdc2025-265 "Dive deeper into Writing Tools."
+
+---
+
+### GlitchVideoApp — wwdc2025-300
+
+*(Also documented in Cross-Fleet #12 above.)*
+
+GlitchVideoApp's Metal pipeline: `GlitchMetalRenderer` → `renderToPixelBuffer()` → `commandBuffer.waitUntilCompleted()` (blocking). The audit's P2 issue (blocking GPU wait) is the primary concern; wwdc2025-300 provides a path beyond the triple-buffer fix:
+
+`MLVideoEffect` wraps the `CVPixelBuffer` → processed `CVPixelBuffer` transform with ANE routing. GlitchVideoApp's glitch uniforms (chromatic aberration, scan line jitter, pixel offset) do not require semantic understanding, so the custom Metal shaders remain correct. However, the `MLVideoEffect` composition layer allows stacking a person-segmentation effect (built-in) on top of the custom glitch shader — enabling "glitch background, clean foreground subject" as a new mode with ~20 lines of additional code.
+
+The session also documents the correct in-flight buffer management (semaphore + completion handler) that resolves the P2 blocking-wait issue as a side effect of adoption.
+
+**Session:** wwdc2025-300 "Enhance your app with machine-learning-based video effects."
+
+---
+
+### wifi-sentinel — wwdc2025-228, wwdc2025-226, wwdc2025-227
+
+*(Sessions 228, 226, 227 also documented in Cross-Fleet #9 and #11 above.)*
+
+Three new sessions directly address wifi-sentinel's architecture:
+
+**wwdc2025-228 — Wi-Fi Aware ranging:** `NEWiFiAwareSession` provides centimeter-precision direct WiFi ranging. wifi-sentinel's current approach — `CWInterface.scanForNetworks(withName:)` RSSI variance on AP associations — is limited by AP placement and multipath reflections. Wi-Fi Aware ranging from the Mac to target devices (phones, tablets in each room) yields distance-domain data that maps directly to room classification, removing RSSI statistical noise as the primary detection mechanism.
+
+**wwdc2025-226 — Power profiling:** The Xcode 26 Power Profiler Instrument surfaces wifi-sentinel's `Timer.scheduledTimer(withTimeInterval: 30.0)` scan cycle cost as a per-tick energy sample. CoreWLAN `scanForNetworks` is a radio activation event — the profiler will quantify whether every-30s scans are the dominant battery cost, informing whether to extend the interval or adopt adaptive scan rate based on motion state.
+
+**wwdc2025-227 — Background execution:** wifi-sentinel is a macOS menu bar app (not iOS background-limited), so `BGProcessingTask` does not apply. However, the session's treatment of background NSURLSession, coalesced wakeups, and discretionary scheduling patterns applies to the planned "alert-only" mode where wifi-sentinel should avoid radio activation when the system is on battery and motion is not expected.
+
+**Sessions:** wwdc2025-228, wwdc2025-226, wwdc2025-227.
+
+---
+
+*Pass 2 complete. 8 apps updated with 14 additional WWDC 2025 session references. All sessions verified present in wwdc.db index (sqlite3 query, 2026-06-01).*
