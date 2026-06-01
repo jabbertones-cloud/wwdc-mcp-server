@@ -20,7 +20,7 @@
 | ClawBar | macOS menu bar item manager | SwiftUI + AppKit | macOS 13 | Timer-based pasteboard polling (0.5 s), Carbon hotkey API, no menu bar Extra improvements from UIKit 2025 |
 | ClawBoard | macOS clipboard history palette | SwiftUI + AppKit | macOS | Same pasteboard polling pattern as ClawBar |
 | ClawSnap | macOS window tiling | SwiftUI + AppKit | macOS | P0 fixed (86d9be5): 2 data races in SnapZoneDetector (GCD→Task @MainActor), 3 AX unsafe force casts → safe casts; P1 open: no Stage Manager awareness |
-| ClawTab | macOS window switcher | SwiftUI + AppKit | macOS | AX window enumeration on main thread risk |
+| ClawTab | macOS window switcher | SwiftUI + AppKit | macOS | P0 fixed (dee04a6): CGWindowListCopyWindowInfo deprecated → NSWorkspace + AXUIElement in WindowListService + WindowManager; 4 CF cast warnings fixed |
 | ClawSentinel | macOS monitoring app (minimal) | SwiftUI | macOS | Only 1 source file found — skeleton only |
 | ClawExplorer | macOS file/project browser | SwiftUI + AppKit | macOS | No Quick Look integration, no Spotlight index |
 | ClawDisplay | External display manager | SwiftUI + AppKit + IOKit | macOS 13 | P0 fixed (89bf239): observer leak, wrong Settings URL, C callback GCD→Task; P1 open: duplicate `CGDisplayRegisterReconfigurationCallback` in `DisplayManager` |
@@ -520,18 +520,20 @@ Package.swift declares `.macOS(.v13)` for the test target, but the iOS app targe
 
 **Tech stack:** SwiftUI + AppKit + AXUIElement + `@Observable`.
 
-**Fixes applied and committed (`92f708b`):**
+**Fixes applied and committed (`92f708b`, `dee04a6`):**
 
-| ID | Fix | File |
-|----|-----|------|
-| CT-0 | `AccessibilityHelper.requestAccessibilityPermission()`: `DispatchQueue.main.async { showAccessibilityAlert() }` → `Task { @MainActor in showAccessibilityAlert() }` | `AccessibilityHelper.swift` |
-| CT-1 | `WindowManager.quitApp()`: `DispatchQueue.main.asyncAfter(deadline: .now() + 0.5)` → `Task { try? await Task.sleep(for: .seconds(0.5)); await MainActor.run { ... } }` | `WindowManager.swift` |
-| CT-2 | `SettingsView` "Grant Access" button: same `asyncAfter` pattern → `Task + Task.sleep` | `SettingsView.swift` |
+| ID | Fix | File | Commit |
+|----|-----|------|--------|
+| CT-0 | `AccessibilityHelper.requestAccessibilityPermission()`: `DispatchQueue.main.async { showAccessibilityAlert() }` → `Task { @MainActor in showAccessibilityAlert() }` | `AccessibilityHelper.swift` | 92f708b |
+| CT-1 | `WindowManager.quitApp()`: `DispatchQueue.main.asyncAfter(deadline: .now() + 0.5)` → `Task { try? await Task.sleep(for: .seconds(0.5)); await MainActor.run { ... } }` | `WindowManager.swift` | 92f708b |
+| CT-2 | `SettingsView` "Grant Access" button: same `asyncAfter` pattern → `Task + Task.sleep` | `SettingsView.swift` | 92f708b |
+| CT-3 | `WindowListService.getAllWindows()`: `CGWindowListCopyWindowInfo` (deprecated macOS 15) → `NSWorkspace.shared.runningApplications` (`.regular` activation policy filter) + AXUIElement for window attributes. Also fixes 2× `as? AXValue` CF conditional cast errors (use `CFGetTypeID` guard + `as! AXValue`). | `Services/WindowListService.swift` | dee04a6 |
+| CT-4 | `WindowManager.fetchWindows()`: same deprecated API replacement + CF cast fix (2 occurrences). New private static helper `axValue(_:_:)` mirrors `WindowListService.copyAXAttribute`. `app.icon` populates the `icon` field (was previously derived from `kCGWindowNumber` dict). | `WindowManager.swift` | dee04a6 |
 
 **Open issues:**
-- `WindowListService` enumerates windows via `CGWindowListCopyWindowInfo` — deprecated macOS 15; replace with `SCShareableContent` (ScreenCaptureKit)
-- Thumbnail generation uses `CGWindowListCreateImage` — also deprecated macOS 15; replace with `SCScreenshotManager`
+- Thumbnail generation uses `CGWindowListCreateImage` (if present) — deprecated macOS 15; replace with `SCScreenshotManager`
 - `SwitcherOverlayView` key-down latency needs profiling with wwdc2025-306's SwiftUI instrument
+- Pre-existing Swift 6 warning in `quitApp()`: `[weak self]` capture in `Task` is flagged as `#SendableClosureCaptures` — not a runtime bug but will be a compile error in strict Swift 6 mode
 
 ---
 
