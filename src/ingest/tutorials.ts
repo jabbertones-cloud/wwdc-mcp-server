@@ -22,6 +22,7 @@ export const TUTORIAL_SEEDS: readonly string[] = [
   "swift-playgrounds",
   "visionos",
   "realitykit",
+  "wwdc26-journey",
   "wwdc25-journey",
   "wwdc24-journey",
   "swiftdata",
@@ -78,11 +79,15 @@ export async function ingestTutorials(
 ): Promise<{ ingested: number; errors: number }> {
   let ingested = 0;
   let errors = 0;
+  const maxPages = Math.max(1, parseInt(process.env.WWDC_TUTORIAL_MAX_PAGES ?? "250", 10));
   const ollamaOn = await checkOllama();
   const visited = new Set<string>();
+  const queued = new Set<string>();
+  const queue = [...seeds];
+  for (const seed of seeds) queued.add(seed);
 
-  async function walk(slug: string): Promise<void> {
-    if (visited.has(slug)) return;
+  async function processSlug(slug: string): Promise<void> {
+    if (visited.has(slug) || visited.size >= maxPages) return;
     visited.add(slug);
 
     const tut = await fetchTutorial(slug);
@@ -105,16 +110,17 @@ export async function ingestTutorials(
       const childMatch = ref.url.match(/^\/tutorials\/(.+)$/);
       if (!childMatch) continue;
       const child = childMatch[1];
-      if (!child || visited.has(child)) continue;
-      // Only follow if child JSON is reachable
-      await walk(child);
+      if (!child || visited.has(child) || queued.has(child) || visited.size + queue.length >= maxPages) continue;
+      queued.add(child);
+      queue.push(child);
     }
   }
 
-  for (const seed of seeds) {
-    try { await walk(seed); } catch { errors++; }
+  while (queue.length > 0 && visited.size < maxPages) {
+    const slug = queue.shift()!;
+    try { await processSlug(slug); } catch { errors++; }
   }
 
-  recordIngest(db, "tutorials", ingested, errors, `seeds: ${seeds.length}, visited: ${visited.size}`);
+  recordIngest(db, "tutorials", ingested, errors, `seeds: ${seeds.length}, visited: ${visited.size}, max_pages: ${maxPages}`);
   return { ingested, errors };
 }
