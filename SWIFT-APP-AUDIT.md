@@ -1,6 +1,40 @@
 # Swift App Fleet Audit
-> Powered by wwdc-mcp-server — WWDC 2025 sessions indexed (122 sessions, year: 2025)
-> Generated: 2026-05-31
+
+> Historical Apple-platform research plus a living reconciliation ledger.
+> Original fleet audit generated 2026-05-31 from the WWDC 2025 index.
+> **Do not treat historical recommendations below as current repo state without reconciling them against GitHub Research evidence and the app's current head.**
+
+## Living reconciliation contract — 2026-09-18
+
+This file is the Apple-authority side of the shared fleet memory. GitHub Research MCP owns repository/history evidence; this repo owns WWDC/HIG/Swift Evolution evidence. Consumer app repos own executable proof. Never collapse those evidence classes.
+
+Use these states for every historical finding:
+- `HISTORICAL` — observed in the May audit but not yet checked against current head.
+- `STILL_OPEN` — current immutable repo evidence still shows the condition.
+- `IMPLEMENTED` — current branch contains the remediation but no executed regression proof is attached.
+- `WITNESS_COMMITTED` — a regression witness exists on the current remediation branch.
+- `EXECUTED_GREEN` — the witness has an actual successful test/check result on that head.
+- `MERGED` — remediation is confirmed on the default branch.
+- `SUPERSEDED` — Apple guidance/API or app architecture changed enough that the old recommendation should not be applied literally.
+- `UNVERIFIED` — evidence is insufficient; never convert this to absence.
+
+### Cross-MCP handoff
+For an Apple-platform issue:
+1. WWDC MCP: identify the authoritative Apple session/HIG/Swift Evolution evidence, including year/session/proposal and relevant platform/version.
+2. GitHub Research MCP: locate current consumer symbol, immutable SHA, git-history working/broken states, test witness, and compatible donor implementations.
+3. App repo: reproduce, implement the smallest compatible fix, and commit a regression witness.
+4. Shared fleet memory: record the invariant once and update every affected consumer's proof state.
+5. Promotion: only executed tests/checks can move `WITNESS_COMMITTED -> EXECUTED_GREEN`; only default-branch evidence can move to `MERGED`.
+
+### First reconciled fleet pattern: IOS-SNAPSHOT-STOREKIT-001
+Invariant: deterministic Fastlane/XCUITest snapshot launches must not require a live App Store catalog request. Launch flags need to support the injection forms actually used by the fleet (environment, `-KEY [value]` arguments, and UserDefaults). Unverified StoreKit transactions must not be treated as successful purchase witnesses.
+
+Current cross-repo work has committed remediation/witnesses in SafeFrameCamera, EphemeralVoice, EmotionGuesser, MartialArtsVideoApp, CourtWatch, SlideTac.app, FleetProbe, and sleep-coach. These are **not** called executed-green here until CI/test evidence exists on their current heads.
+
+Architectural donor lesson: when the launch contract cannot be tested cleanly, prefer a Foundation-only routing seam; when a module lacks tests, add the smallest module/unit target rather than relying on documentation or UI tests alone.
+
+### Reconciliation warning for the May 2026 audit
+The sections below are valuable as Apple-research leads, not as a current backlog. They predate months of repo changes. Before implementing any listed quick win, compare the May evidence to the current app head and history. In particular, claims such as ObservableObject migration status, App Intents absence, StoreKit API usage, actor isolation, and framework adoption can drift rapidly.
 
 ---
 

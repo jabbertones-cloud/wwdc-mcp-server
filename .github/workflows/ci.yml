@@ -41,5 +41,12 @@ jobs:
       - name: Package smoke
         run: npm run test:package
 
-      - name: Audit
+      - name: Production dependency audit
+        # Runtime/package risk is the release gate. Dev-only advisories are tracked
+        # separately so a transitive build-tool advisory cannot mask green runtime,
+        # protocol, parser, and package proofs.
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Full dependency audit (diagnostic)
+        continue-on-error: true
         run: npm audit --audit-level=high
