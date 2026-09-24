@@ -173,6 +173,67 @@ export function migrate(db: DatabaseType): void {
       content_rowid='rowid',
       tokenize='porter'
     );
+
+    -- FTS5 external-content sync triggers ---------------------------------
+    -- Without these, upserts to the content tables never reach the FTS
+    -- index and search silently returns nothing. rebuildFts() repairs bulk
+    -- state; the triggers keep incremental ingest searchable.
+    CREATE TRIGGER IF NOT EXISTS sessions_fts_ai AFTER INSERT ON sessions BEGIN
+      INSERT INTO sessions_fts(rowid, id, title, description, transcript, topics)
+      VALUES (new.rowid, new.id, new.title, new.description, new.transcript, new.topics);
+    END;
+    CREATE TRIGGER IF NOT EXISTS sessions_fts_ad AFTER DELETE ON sessions BEGIN
+      INSERT INTO sessions_fts(sessions_fts, rowid, id, title, description, transcript, topics)
+      VALUES ('delete', old.rowid, old.id, old.title, old.description, old.transcript, old.topics);
+    END;
+    CREATE TRIGGER IF NOT EXISTS sessions_fts_au AFTER UPDATE ON sessions BEGIN
+      INSERT INTO sessions_fts(sessions_fts, rowid, id, title, description, transcript, topics)
+      VALUES ('delete', old.rowid, old.id, old.title, old.description, old.transcript, old.topics);
+      INSERT INTO sessions_fts(rowid, id, title, description, transcript, topics)
+      VALUES (new.rowid, new.id, new.title, new.description, new.transcript, new.topics);
+    END;
+    CREATE TRIGGER IF NOT EXISTS tutorials_fts_ai AFTER INSERT ON tutorials BEGIN
+      INSERT INTO tutorials_fts(rowid, id, title, category, body)
+      VALUES (new.rowid, new.id, new.title, new.category, new.body);
+    END;
+    CREATE TRIGGER IF NOT EXISTS tutorials_fts_ad AFTER DELETE ON tutorials BEGIN
+      INSERT INTO tutorials_fts(tutorials_fts, rowid, id, title, category, body)
+      VALUES ('delete', old.rowid, old.id, old.title, old.category, old.body);
+    END;
+    CREATE TRIGGER IF NOT EXISTS tutorials_fts_au AFTER UPDATE ON tutorials BEGIN
+      INSERT INTO tutorials_fts(tutorials_fts, rowid, id, title, category, body)
+      VALUES ('delete', old.rowid, old.id, old.title, old.category, old.body);
+      INSERT INTO tutorials_fts(rowid, id, title, category, body)
+      VALUES (new.rowid, new.id, new.title, new.category, new.body);
+    END;
+    CREATE TRIGGER IF NOT EXISTS hig_fts_ai AFTER INSERT ON hig_entries BEGIN
+      INSERT INTO hig_fts(rowid, id, title, summary, body)
+      VALUES (new.rowid, new.id, new.title, new.summary, new.body);
+    END;
+    CREATE TRIGGER IF NOT EXISTS hig_fts_ad AFTER DELETE ON hig_entries BEGIN
+      INSERT INTO hig_fts(hig_fts, rowid, id, title, summary, body)
+      VALUES ('delete', old.rowid, old.id, old.title, old.summary, old.body);
+    END;
+    CREATE TRIGGER IF NOT EXISTS hig_fts_au AFTER UPDATE ON hig_entries BEGIN
+      INSERT INTO hig_fts(hig_fts, rowid, id, title, summary, body)
+      VALUES ('delete', old.rowid, old.id, old.title, old.summary, old.body);
+      INSERT INTO hig_fts(rowid, id, title, summary, body)
+      VALUES (new.rowid, new.id, new.title, new.summary, new.body);
+    END;
+    CREATE TRIGGER IF NOT EXISTS evolution_fts_ai AFTER INSERT ON evolution BEGIN
+      INSERT INTO evolution_fts(rowid, id, title, body, status)
+      VALUES (new.rowid, new.id, new.title, new.body, new.status);
+    END;
+    CREATE TRIGGER IF NOT EXISTS evolution_fts_ad AFTER DELETE ON evolution BEGIN
+      INSERT INTO evolution_fts(evolution_fts, rowid, id, title, body, status)
+      VALUES ('delete', old.rowid, old.id, old.title, old.body, old.status);
+    END;
+    CREATE TRIGGER IF NOT EXISTS evolution_fts_au AFTER UPDATE ON evolution BEGIN
+      INSERT INTO evolution_fts(evolution_fts, rowid, id, title, body, status)
+      VALUES ('delete', old.rowid, old.id, old.title, old.body, old.status);
+      INSERT INTO evolution_fts(rowid, id, title, body, status)
+      VALUES (new.rowid, new.id, new.title, new.body, new.status);
+    END;
   `);
 }
 

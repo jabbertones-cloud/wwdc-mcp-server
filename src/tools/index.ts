@@ -50,9 +50,15 @@ const limitArg = z.number().int().min(1).max(MAX_LIMIT).default(DEFAULT_LIMIT);
 const offsetArg = z.number().int().min(0).default(0);
 const detailArg = z.enum(["compact", "standard", "detailed"]).default("standard").describe("How much judgment and context to include.");
 
-/** Quote an FTS5 query safely — keep phrases, escape quotes. */
+/** Quote an FTS5 query safely — quote each token (implicit AND), keep
+ *  user-supplied "phrases" intact, escape stray quotes. Previously the whole
+ *  query was wrapped in one phrase, so every multi-word search returned
+ *  nothing. */
 function ftsQuote(q: string): string {
-  return `"${q.replace(/"/g, '""')}"`;
+  const parts = q.match(/"[^"]*"|\S+/g) ?? [];
+  return parts
+    .map((p) => (p.startsWith('"') ? p : `"${p.replace(/"/g, '""')}"`))
+    .join(" ");
 }
 
 function documentationPathFromInput(input: string): { clean?: string; error?: string } {
