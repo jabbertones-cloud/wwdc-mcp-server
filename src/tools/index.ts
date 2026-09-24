@@ -54,7 +54,7 @@ const detailArg = z.enum(["compact", "standard", "detailed"]).default("standard"
  *  user-supplied "phrases" intact, escape stray quotes. Previously the whole
  *  query was wrapped in one phrase, so every multi-word search returned
  *  nothing. */
-function ftsQuote(q: string): string {
+export function ftsQuote(q: string): string {
   const parts = q.match(/"[^"]*"|\S+/g) ?? [];
   return parts
     .map((p) => (p.startsWith('"') ? p : `"${p.replace(/"/g, '""')}"`))
