@@ -102,25 +102,26 @@ const swiftAuditFocusArg = z.enum([
   "localization",
 ]).default("general");
 
-/**
- * Build an FTS5 query from a user query string.
- *
- * Strategy:
- *   - Normalize camelCase symbols (e.g. "LiquidGlass" → "Liquid Glass")
- *   - 1 word: exact token match
- *   - 2+ words: AND of all tokens (space-separated, no phrase wrapping)
- *     Phrase match requires adjacency in exact order — kills most topic searches.
- *     Implicit AND finds docs containing all terms anywhere in any order.
- */
-function ftsQuote(q: string): string {
-  // Expand camelCase: "LiquidGlass" → "Liquid Glass", "@Observable" stays
-  const expanded = q.replace(/([a-z])([A-Z])/g, "$1 $2").trim();
-  const words = expanded.match(/[A-Za-z0-9_@.#+]+/g) ?? [];
-  if (words.length === 1) {
-    return `"${words[0].replace(/"/g, '""')}"`;
+/** Build a safe FTS5 query: preserve explicit phrases, split camelCase, and quote each unquoted token (implicit AND). */
+export function ftsQuote(q: string): string {
+  const parts = q.match(/"[^"]*"|\S+/g) ?? [];
+  const out: string[] = [];
+  for (const part of parts) {
+    if (part.startsWith('"') && part.endsWith('"')) {
+      out.push(part);
+      continue;
+    }
+    const original = part.replace(/"/g, '""');
+    const expanded = part.replace(/([a-z])([A-Z])/g, "$1 $2");
+    const words = expanded.match(/[A-Za-z0-9_@.#+]+/g) ?? [];
+    if (words.length > 1) {
+      const expandedQuery = words.map((w) => `"${w.replace(/"/g, '""')}"`).join(" ");
+      out.push(`("${original}" OR (${expandedQuery}))`);
+    } else if (words.length === 1) {
+      out.push(`"${original}"`);
+    }
   }
-  // Multi-word: AND all tokens. No phrase wrapping.
-  return words.map((w) => `"${w.replace(/"/g, '""')}"`).join(" ");
+  return out.join(" ");
 }
 
 function documentationPathFromInput(input: string): { clean?: string; error?: string } {

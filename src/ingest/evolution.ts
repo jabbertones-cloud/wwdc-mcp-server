@@ -4,9 +4,11 @@
  */
 
 import type { Database as DatabaseType } from "better-sqlite3";
+import pLimit from "p-limit";
 import {
   SWIFT_EVOLUTION_INDEX_API,
   SWIFT_EVOLUTION_PROPOSALS,
+  REQUEST_CONCURRENCY,
 } from "../constants.js";
 import { httpGet } from "../services/http.js";
 import { upsertEvolution, recordIngest } from "../db/queries.js";
@@ -77,18 +79,26 @@ export async function ingestEvolution(
   let ingested = 0;
   let errors = 0;
   let files: GithubFile[] = [];
-  try { files = await listProposalFiles(); } catch { errors++; }
+  try {
+    files = await listProposalFiles();
+  } catch (e) {
+    // Never swallow the listing failure silently — without the file list the
+    // whole ingest is a no-op and used to look like a hang.
+    console.error(`[evolution] failed to list proposal files: ${(e as Error)?.message ?? e}`);
+    errors++;
+  }
 
   const ollamaOn = await checkOllama();
   const toProcess = limit ? files.slice(-limit) : files;
+  const gate = pLimit(REQUEST_CONCURRENCY);
 
-  for (const f of toProcess) {
+  await Promise.all(toProcess.map((f) => gate(async () => {
     try {
       const rawUrl = f.download_url ?? `${SWIFT_EVOLUTION_PROPOSALS}/${f.name}`;
       const { data } = await httpGet<string>(rawUrl, { transformResponse: (x) => x });
       const md = typeof data === "string" ? data : String(data);
       const proposal = parseProposal(md, f.name);
-      if (!proposal) { errors++; continue; }
+      if (!proposal) { errors++; return; }
       upsertEvolution(db, proposal);
       ingested++;
 
@@ -97,10 +107,10 @@ export async function ingestEvolution(
         if (vec) storeEmbedding(db, `evolution:${proposal.id}`, "evolution", vec);
       }
     } catch (error) {
-      if (errors < 5) console.error(`[ingest:evolution] ${f.name}:`, error instanceof Error ? error.message : error);
       errors++;
+      if (errors <= 5) console.error(`[evolution] failed ${f.name}: ${error instanceof Error ? error.message : String(error)}`);
     }
-  }
+  })));
   recordIngest(db, "evolution", ingested, errors, `total files: ${files.length}`);
   return { ingested, errors };
 }
