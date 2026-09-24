@@ -102,26 +102,24 @@ const swiftAuditFocusArg = z.enum([
   "localization",
 ]).default("general");
 
-/** Build a safe FTS5 query: preserve explicit phrases, split camelCase, and quote each unquoted token (implicit AND). */
+/** Build a safe FTS5 query: preserve explicit phrases and quote unquoted tokens (implicit AND).
+ * For a single camelCase symbol, also search its expanded words without changing
+ * multi-term FTS grammar. */
 export function ftsQuote(q: string): string {
   const parts = q.match(/"[^"]*"|\S+/g) ?? [];
-  const out: string[] = [];
-  for (const part of parts) {
-    if (part.startsWith('"') && part.endsWith('"')) {
-      out.push(part);
-      continue;
-    }
-    const original = part.replace(/"/g, '""');
-    const expanded = part.replace(/([a-z])([A-Z])/g, "$1 $2");
+  const quoted = (value: string) => `"${value.replace(/"/g, '""')}"`;
+  if (parts.length === 1 && !(parts[0].startsWith('"') && parts[0].endsWith('"'))) {
+    const original = parts[0];
+    const expanded = original.replace(/([a-z])([A-Z])/g, "$1 $2");
     const words = expanded.match(/[A-Za-z0-9_@.#+]+/g) ?? [];
-    if (words.length > 1) {
-      const expandedQuery = words.map((w) => `"${w.replace(/"/g, '""')}"`).join(" ");
-      out.push(`("${original}" OR (${expandedQuery}))`);
-    } else if (words.length === 1) {
-      out.push(`"${original}"`);
-    }
+    if (words.length > 1) return `(${quoted(original)} OR (${words.map(quoted).join(" ")}))`;
+    return words.length === 1 ? quoted(original) : "";
   }
-  return out.join(" ");
+  return parts.map((part) => {
+    if (part.startsWith('"') && part.endsWith('"')) return part;
+    const words = part.match(/[A-Za-z0-9_@.#+]+/g) ?? [];
+    return words.map(quoted).join(" ");
+  }).filter(Boolean).join(" ");
 }
 
 function documentationPathFromInput(input: string): { clean?: string; error?: string } {

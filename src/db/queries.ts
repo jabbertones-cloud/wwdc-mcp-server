@@ -32,6 +32,10 @@ const platformAliases: Record<string, string[]> = {
 
 function unquoteFtsLiteral(query: string): string {
   const trimmed = query.trim();
+  // ftsQuote may expand a camelCase token to ("Original" OR ("Original" "Words")).
+  // Recover the first exact token for platform-only routing.
+  const grouped = trimmed.match(/^\("((?:""|[^"])*)"\s+OR\s+\(/i);
+  if (grouped?.[1]) return grouped[1].replace(/""/g, '"');
   if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
     return trimmed.slice(1, -1).replace(/""/g, '"');
   }

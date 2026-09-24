@@ -202,8 +202,9 @@ async function main(): Promise<void> {
     env: {
       ...process.env as Record<string, string>,
       WWDC_MCP_DB: dbPath,
-      // Force Ollama off so the test is deterministic and network-free.
-      OLLAMA_BASE: "http://127.0.0.1:1", // unreachable
+      // Force embeddings off so the test is deterministic and network-free.
+      WWDC_SKIP_EMBEDDINGS: "1",
+      OLLAMA_BASE: "http://127.0.0.1:1", // legacy fallback, unreachable
     },
     stderr: "ignore",
   });
@@ -328,6 +329,7 @@ async function main(): Promise<void> {
       const r = await call("wwdc_search", { query: "macOS", kinds: ["session"], format: "json" });
       assert.ok(!r.isError, "wwdc_search platform-only query errored");
       const data = JSON.parse(textOf(r));
+      assert.ok(data.hits.length > 0, "platform-only query returns session hits");
       assert.ok(data.hits[0].platforms.includes("macOS"), "session platforms included");
       assert.equal(data.judgment.answer_readiness, "needs_follow_up");
       assert.ok(data.judgment.caveats.some((c: string) => c.includes("platform-only query")));
@@ -548,6 +550,7 @@ async function main(): Promise<void> {
         year_min: 2024,
         format: "json",
       });
+      if (r.isError) console.error("[mcp-e2e] apple_swift_pattern_find raw:", textOf(r));
       assert.ok(!r.isError, "apple_swift_pattern_find errored");
       const data = JSON.parse(textOf(r));
       assert.ok(data.patterns.length >= 1, "pattern results exist");
