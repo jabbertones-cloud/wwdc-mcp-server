@@ -2,7 +2,7 @@
 /**
  * MCP end-to-end test — spawns the built server over stdio, speaks the
  * real MCP protocol via @modelcontextprotocol/sdk Client, exercises every
- * one of the 15 registered tools, asserts on results.
+ * one of the registered tools, asserts on results.
  *
  * Runs against a seeded SQLite DB at /tmp so WAL/SMB limitations never apply.
  */
@@ -17,10 +17,12 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { openDb, migrate, rebuildFts } from "../src/db/schema.js";
 import {
   upsertSession, upsertTutorial, upsertHig, upsertEvolution,
-  upsertSampleCode, upsertPathway, recordIngest,
+  upsertSampleCode, upsertPathway, upsertAppleDoc, upsertSwiftBookChapter,
+  upsertAppStoreGuideline, recordIngest,
 } from "../src/db/queries.js";
 import type {
-  WwdcSession, HigEntry, SwiftEvolutionProposal, Pathway,
+  WwdcSession, HigEntry, SwiftEvolutionProposal, Pathway, AppleDocPage,
+  SwiftBookChapter, AppStoreGuidelineEntry,
 } from "../src/types.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -113,6 +115,23 @@ function seedDb(dbPath: string): void {
   };
   upsertEvolution(db, ev);
 
+  const doc: AppleDocPage = {
+    id: "swiftui/view",
+    title: "View",
+    role: "protocol",
+    symbolKind: "protocol",
+    modules: ["SwiftUI"],
+    platforms: ["iOS", "macOS", "watchOS", "visionOS"],
+    url: "https://developer.apple.com/documentation/swiftui/view",
+    abstract: "A type that represents part of your app's user interface.",
+    body: "Use views to compose declarative interfaces with state, modifiers, accessibility, buttons, and navigation.",
+    topicSections: ["Essentials", "Modifiers"],
+    references: ["swiftui/button", "swiftui/navigationstack"],
+    rawJson: "{}",
+    updatedAt: now,
+  };
+  upsertAppleDoc(db, doc);
+
   // Tutorial
   upsertTutorial(
     db, "swiftui",
@@ -136,7 +155,30 @@ function seedDb(dbPath: string): void {
   };
   upsertPathway(db, pw);
 
+  const swiftBook: SwiftBookChapter = {
+    id: "concurrency",
+    title: "Concurrency",
+    section: "Language Guide",
+    body: "Swift concurrency uses async functions, tasks, actors, and Sendable checking.",
+    url: "https://docs.swift.org/swift-book/documentation/the-swift-programming-language/concurrency/",
+    updatedAt: now,
+  };
+  upsertSwiftBookChapter(db, swiftBook);
+
+  const guideline: AppStoreGuidelineEntry = {
+    id: "business-3-1-1",
+    sectionNumber: "3.1.1",
+    title: "In-App Purchase",
+    body: "If you want to unlock features or functionality within your app, you must use in-app purchase.",
+    url: "https://developer.apple.com/app-store/review/guidelines/#in-app-purchase",
+    updatedAt: now,
+  };
+  upsertAppStoreGuideline(db, guideline);
+
   recordIngest(db, "wwdc", 2, 0, "seeded");
+  recordIngest(db, "docs", 1, 0, "seeded");
+  recordIngest(db, "swiftbook", 1, 0, "seeded");
+  recordIngest(db, "appstore", 1, 0, "seeded");
   rebuildFts(db);
   db.close();
 }
@@ -160,8 +202,9 @@ async function main(): Promise<void> {
     env: {
       ...process.env as Record<string, string>,
       WWDC_MCP_DB: dbPath,
-      // Force Ollama off so the test is deterministic and network-free.
-      OLLAMA_BASE: "http://127.0.0.1:1", // unreachable
+      // Force embeddings off so the test is deterministic and network-free.
+      WWDC_SKIP_EMBEDDINGS: "1",
+      OLLAMA_BASE: "http://127.0.0.1:1", // legacy fallback, unreachable
     },
     stderr: "ignore",
   });
@@ -170,7 +213,7 @@ async function main(): Promise<void> {
   await client.connect(transport);
 
   try {
-    // 0) listTools must return all 15
+    // 0) listTools must return all tools
     const listed = await client.listTools();
     const names = new Set(listed.tools.map((t) => t.name));
     const expected = [
@@ -184,11 +227,41 @@ async function main(): Promise<void> {
       "wwdc_list_session_code",
       "wwdc_sample_code_grep",
       "apple_doc_lookup",
+      "apple_doc_get",
       "apple_tutorial_get",
       "apple_hig_search",
       "apple_swift_evolution_get",
       "apple_swift_evolution_list",
+      "apple_swift_pattern_find",
+      "swift_app_audit",
+      "apple_swift_book_get",
+      "appstore_guidelines_search",
+      "wwdc_find_api_introduction",
+      "wwdc_what_changed",
+      "wwdc_related_sessions",
+      "apple_hig_list",
+      "apple_swift_evolution_filter",
+      "wwdc_session_transcript_full",
+      "wwdc_topics_by_year",
+      "wwdc_sample_code_list",
+      "wwdc_list_sessions",
+      "wwdc_speaker_search",
+      "wwdc_transcript_search",
+      "apple_doc_list_framework",
+      "appstore_guideline_get",
       "wwdc_ingest_status",
+      "apple_api_deprecation",
+      "apple_api_availability",
+      "apple_release_notes_search",
+      "apple_what_replaced",
+      "apple_search_all",
+      "wwdc_sessions_for_api",
+      "swift_forum_search",
+      "apple_forum_search",
+      "wwdc_session_summary",
+      "apple_cross_references",
+      "wwdc_export_status",
+      "wwdc_security_manifest",
     ];
     for (const name of expected) assert.ok(names.has(name), `missing tool: ${name}`);
     assert.equal(names.size, expected.length, `unexpected tool count: ${names.size}`);
@@ -256,10 +329,18 @@ async function main(): Promise<void> {
       const r = await call("wwdc_search", { query: "macOS", kinds: ["session"], format: "json" });
       assert.ok(!r.isError, "wwdc_search platform-only query errored");
       const data = JSON.parse(textOf(r));
+      assert.ok(data.hits.length > 0, "platform-only query returns session hits");
       assert.ok(data.hits[0].platforms.includes("macOS"), "session platforms included");
       assert.equal(data.judgment.answer_readiness, "needs_follow_up");
       assert.ok(data.judgment.caveats.some((c: string) => c.includes("platform-only query")));
       assert.ok(data.hits[0].judgment.reasons.includes("query appears in platform metadata"));
+    }
+    // 1f) wwdc_search — indexed Apple docs
+    {
+      const r = await call("wwdc_search", { query: "declarative interfaces", kinds: ["doc"], format: "json" });
+      assert.ok(!r.isError, "wwdc_search doc query errored");
+      const data = JSON.parse(textOf(r));
+      assert.ok(data.hits.find((h: any) => h.id === "swiftui/view"), "SwiftUI View doc present");
     }
 
     // 2) wwdc_list_years
@@ -404,6 +485,16 @@ async function main(): Promise<void> {
       assert.match(textOf(r), /developer\.apple\.com/);
     }
 
+    // 10c) apple_doc_get — local indexed docs
+    {
+      const r = await call("apple_doc_get", { path: "swiftui/view", format: "json" });
+      assert.ok(!r.isError, "apple_doc_get errored");
+      const data = JSON.parse(textOf(r));
+      assert.equal(data.id, "swiftui/view");
+      assert.equal(data.title, "View");
+      assert.ok(data.modules.includes("SwiftUI"));
+    }
+
     // 11) apple_tutorial_get
     {
       const r = await call("apple_tutorial_get", { id: "swiftui", format: "json" });
@@ -450,14 +541,126 @@ async function main(): Promise<void> {
       assert.ok(data.rows.every((r: any) => r.status === "Implemented"));
     }
 
-    // 15) wwdc_ingest_status
+    // 14c) apple_swift_pattern_find
+    {
+      const r = await call("apple_swift_pattern_find", {
+        query: "SwiftUI declarative interfaces",
+        platforms: ["macOS"],
+        frameworks: ["SwiftUI"],
+        year_min: 2024,
+        format: "json",
+      });
+      if (r.isError) console.error("[mcp-e2e] apple_swift_pattern_find raw:", textOf(r));
+      assert.ok(!r.isError, "apple_swift_pattern_find errored");
+      const data = JSON.parse(textOf(r));
+      assert.ok(data.patterns.length >= 1, "pattern results exist");
+      assert.ok(data.patterns.some((p: any) => p.sourceKinds.includes("session") || p.sourceKinds.includes("doc")), "pattern has source evidence");
+      assert.ok(data.source_coverage.docs >= 1, "pattern includes docs coverage");
+    }
+
+    // 14d) apple_swift_book_get
+    {
+      const r = await call("apple_swift_book_get", { chapter: "concurrency", format: "json" });
+      assert.ok(!r.isError, "apple_swift_book_get errored");
+      const data = JSON.parse(textOf(r));
+      assert.equal(data.id, "concurrency");
+      assert.ok(data.body.includes("async functions"), "Swift book body returned");
+    }
+
+    // 14e) appstore_guidelines_search
+    {
+      const r = await call("appstore_guidelines_search", { query: "in-app purchase", format: "json" });
+      assert.ok(!r.isError, "appstore_guidelines_search errored");
+      const data = JSON.parse(textOf(r));
+      assert.ok(data.hits.some((h: any) => h.id === "business-3-1-1"), "App Store guideline hit returned");
+    }
+
+    // 14f) apple_search_all should query joined FTS tables without ambiguous columns
+    {
+      const r = await call("apple_search_all", { query: "SwiftUI", format: "json" });
+      assert.ok(!r.isError, "apple_search_all errored");
+      const data = JSON.parse(textOf(r));
+      assert.ok(Array.isArray(data.rows), "apple_search_all returns rows array");
+      assert.ok(!textOf(r).includes("ambiguous column name"), "apple_search_all does not expose SQL ambiguity");
+    }
+
+    // 15) swift_app_audit
+    {
+      const r = await call("swift_app_audit", {
+        focus: "navigation",
+        platforms: ["macOS"],
+        frameworks: ["SwiftUI"],
+        feature: "buttons",
+        year_min: 2024,
+        format: "json",
+      });
+      assert.ok(!r.isError, "swift_app_audit errored");
+      const data = JSON.parse(textOf(r));
+      assert.equal(data.focus, "navigation");
+      assert.ok(data.results.sessions.find((h: any) => h.id === "wwdc2024-10150"), "audit includes SwiftUI session");
+      assert.ok(data.results.hig.find((h: any) => h.id === "buttons"), "audit includes HIG button guidance");
+      assert.ok(data.results.docs.find((h: any) => h.id === "swiftui/view"), "audit includes indexed docs");
+      assert.ok(data.validation.some((step: string) => step.includes("HIG")), "audit includes validation checklist");
+      assert.ok(data.source_coverage.sessions >= 1, "audit includes source coverage");
+      assert.ok(Array.isArray(data.doc_hints), "audit includes direct doc hints");
+      assert.ok(Array.isArray(data.pathway_hints), "audit includes archetype pathway hints");
+      assert.ok(Array.isArray(data.diagnostics.weak_hig_hits), "audit includes weak-hit diagnostics");
+      assert.ok(["ready_for_code_review", "seed_context_only"].includes(data.summary.readiness));
+    }
+
+    // 15b) swift_app_audit surfaces concrete macOS archetype docs/pathways
+    {
+      const r = await call("swift_app_audit", {
+        focus: "macos",
+        platforms: ["macOS"],
+        frameworks: ["AppKit", "NSScreen"],
+        feature: "display brightness external monitors",
+        year_min: 2024,
+        format: "json",
+      });
+      assert.ok(!r.isError, "swift_app_audit display archetype errored");
+      const data = JSON.parse(textOf(r));
+      assert.ok(data.doc_hints.some((h: any) => h.id === "nsscreen"), "display archetype hints NSScreen docs");
+      assert.ok(data.pathway_hints.some((p: any) => p.id === "macos-display-monitor-tools"), "display archetype hints pathway");
+      assert.ok(data.validation.some((step: string) => step.includes("display")), "display archetype adds validation");
+    }
+
+    // 15c) swift_app_audit surfaces LocalizeShots/App Store screenshot archetype validation
+    {
+      const r = await call("swift_app_audit", {
+        focus: "app-store",
+        platforms: ["macOS"],
+        frameworks: ["SwiftUI", "ScreenCaptureKit", "StoreKit"],
+        feature: "LocalizeShots localized App Store screenshot capture and subscription review screenshots",
+        year_min: 2024,
+        format: "json",
+      });
+      assert.ok(!r.isError, "swift_app_audit LocalizeShots archetype errored");
+      const data = JSON.parse(textOf(r));
+      assert.ok(data.pathway_hints.some((p: any) => p.id === "app-store-localized-screenshot-workflows"), "LocalizeShots archetype hints pathway");
+      assert.ok(data.doc_hints.some((h: any) => h.id === "screencapturekit"), "LocalizeShots archetype hints ScreenCaptureKit docs");
+      assert.ok(data.validation.some((step: string) => step.includes("subscription review screenshots")), "LocalizeShots archetype adds subscription screenshot validation");
+    }
+
+    // 16) wwdc_ingest_status
     {
       const r = await call("wwdc_ingest_status", { format: "json" });
       const data = JSON.parse(textOf(r));
       assert.ok(data.status.find((s: any) => s.source === "wwdc"));
     }
 
-    console.log("[mcp-e2e] all 15 tools exercised; assertions pass");
+    // 17) wwdc_security_manifest
+    {
+      const r = await call("wwdc_security_manifest", { format: "json" });
+      assert.ok(!r.isError, "wwdc_security_manifest errored");
+      const data = JSON.parse(textOf(r));
+      assert.equal(data.tool_count, expected.length);
+      assert.ok(data.tools.includes("wwdc_security_manifest"), "manifest includes itself");
+      assert.match(data.tool_manifest_hash, /^[a-f0-9]{64}$/);
+      assert.deepEqual(data.controls.destructive_tools, []);
+    }
+
+    console.log(`[mcp-e2e] all ${expected.length} tools exercised; assertions pass`);
   } finally {
     await client.close();
     if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);

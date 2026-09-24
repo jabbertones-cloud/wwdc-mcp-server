@@ -8,24 +8,26 @@
 
 | App | Purpose | Framework | Platform Target | Priority Issues |
 |-----|---------|-----------|-----------------|-----------------|
-| SlideTac | iMessage sliding-piece board game | SwiftUI + GameKit + AdMob | iOS 17 / macOS 14 | ObservableObject in AppModel, no Game Center Challenges/Activities, StoreKit misses new `currentEntitlements(productID:)` API |
+| SlideTac | iMessage sliding-piece board game | SwiftUI + GameKit + AdMob | iOS 17 / macOS 14 | P1 applied (pending commit): `LSSupportsGameMode` added, `currentEntitlements(productID:)` #available guard, `@MainActor` on MessagesViewController; P2 open: no Game Center Challenges/Activities |
 | EphemeralVoice | Burn-after-listen voice messaging | SwiftUI + AVAudioEngine + Supabase | iOS 17 | AVAudioEngine instead of SpeechAnalyzer, no App Intents, RLS not applied |
 | ScreenshotNotes (SnapNotes) | Screenshot OCR + auto-organization | SwiftUI + Vision + SwiftData | iOS 17 | AppState god object (900 LOC), SwiftData lacks inheritance model, no Foundation Models integration |
-| LocalizeShots | macOS App Store screenshot automation | SwiftUI + SPM | macOS 14 | No Xcode localization code-along alignment, ASC JWT auth fragile, no `wwdc2025-225` adoption |
-| SafeFrameCamera | Multi-platform safe-zone framing camera | SwiftUI + AVFoundation + Foundation Models | iOS 17 / macOS 14 | Already uses iOS 26 APIs correctly but Camera Control (wwdc2025-253) not wired, cinematic video gap |
+| LocalizeShots | macOS App Store screenshot automation | SwiftUI + SPM | macOS 14 | P1 applied (pending commit): `SimctlDriver.boot()` now has 120s `withThrowingTaskGroup` timeout; P2 open: ASC JWT auth fragile, no `wwdc2025-225` adoption |
+| SafeFrameCamera | Multi-platform safe-zone framing camera | SwiftUI + AVFoundation + Foundation Models | iOS 17 / macOS 14 | P1 applied (pending commit): `LanguageModelSession` lifted to `@State` in `AIFramingCoachCard`; P2 open: Camera Control (wwdc2025-253) not wired, cinematic video gap |
 | sleep-coach | HealthKit sleep coaching | SwiftUI + HealthKit | macOS 13 (iOS via Xcode) | `ObservableObject` not migrated to `@Observable`, no App Intents, HKObserverQuery callback crosses actor boundary |
 | EmotionGuesser | GameKit turn-based facial emotion game | SwiftUI + GameKit + Vision | iOS 17 | Uses `@Observable` correctly, no Challenges/Activities (wwdc2025-214), missing Apple Games app integration |
-| ReactionTime (ios-greenfield-game) | Reaction-time arcade game | SwiftUI + GameKit | iOS (unspecified) | `ObservableObject`/Combine throughout — not migrated to `@Observable`, no Game Mode key |
+| ReactionTime v2 (ios-greenfield-game) | Reaction-time arcade game | SwiftUI + GameKit | iOS 17 | P0 fixed (48bf43a): async leaderboard submit, GCD→Task in GameCenterAuth; P1 applied (pending commit): `LSSupportsGameMode` added; P2 open: `@Observable` migration (5 classes) |
 | GravatarNativeOptimizer | Gravatar profile optimizer + NFC writer | SwiftUI + AVFoundation + CoreImage | macOS/iOS | Custom OAuth vs. ASWebAuthenticationSession, no `@Observable` |
 | ClawBar | macOS menu bar item manager | SwiftUI + AppKit | macOS 13 | Timer-based pasteboard polling (0.5 s), Carbon hotkey API, no menu bar Extra improvements from UIKit 2025 |
 | ClawBoard | macOS clipboard history palette | SwiftUI + AppKit | macOS | Same pasteboard polling pattern as ClawBar |
-| ClawSnap | macOS window tiling | SwiftUI + AppKit | macOS | AX API dependency, no Stage Manager awareness |
-| ClawTab | macOS window switcher | SwiftUI + AppKit | macOS | AX window enumeration on main thread risk |
+| ClawSnap | macOS window tiling | SwiftUI + AppKit | macOS | P0 fixed (86d9be5): 2 data races in SnapZoneDetector (GCD→Task @MainActor), 3 AX unsafe force casts → safe casts; P1 open: no Stage Manager awareness |
+| ClawTab | macOS window switcher | SwiftUI + AppKit | macOS | P0 fixed (dee04a6): CGWindowListCopyWindowInfo deprecated → NSWorkspace + AXUIElement in WindowListService + WindowManager; 4 CF cast warnings fixed |
 | ClawSentinel | macOS monitoring app (minimal) | SwiftUI | macOS | Only 1 source file found — skeleton only |
 | ClawExplorer | macOS file/project browser | SwiftUI + AppKit | macOS | No Quick Look integration, no Spotlight index |
-| ClawDisplay | (not found at listed path) | — | — | Path mismatch: `/Users/scottmanthey/craw-repos/ClawDisplay` (typo: `craw` vs `claw`) |
+| ClawDisplay | External display manager | SwiftUI + AppKit + IOKit | macOS 13 | P0 fixed (89bf239): observer leak, wrong Settings URL, C callback GCD→Task; P3 fixed (779c325): `kIOMasterPortDefault` → `kIOMainPortDefault`; P1 verified-closed: duplicate `CGDisplayRegisterReconfigurationCallback` was a false positive — single registration confirmed |
 | InstantMemory | macOS clipboard manager | SwiftUI + AppKit | macOS | Very small (2 source files) — feature incomplete |
-| MartialArtsVideoApp | Martial arts video curriculum player | SwiftUI + AVFoundation + StoreKit | iOS | `nonisolated(unsafe)` on StoreKit task — actor isolation workaround, no Picture-in-Picture |
+| MartialArtsVideoApp | Martial arts video curriculum player | SwiftUI + AVFoundation + StoreKit | iOS | P1 fixed (prev session): `nonisolated(unsafe)` removed, `Task.detached` → `Task`; P2 open: no Picture-in-Picture |
+| GlitchVideoApp | Real-time glitch-effect video recorder | SwiftUI + AVFoundation + Metal | iOS 17 | P2: `commandBuffer.waitUntilCompleted()` may block `sessionQueue`; no Camera Control (WWDC25-253); missing `PrivacyInfo.xcprivacy` |
+| WiFiMotion (wifi-sentinel) | Home WiFi motion detector | SwiftUI + AppKit + CoreWLAN | macOS 14 | P0 fixed (d1f0cc0): `scanCoreWLAN()` + `scanUsingAirportCLI()` → `nonisolated`; P1 fixed (prev session): `Package.swift` raised to `.macOS(.v14)` — unblocks `@Observable` build errors fleet-wide |
 
 ---
 
@@ -456,11 +458,17 @@ Package.swift declares `.macOS(.v13)` for the test target, but the iOS app targe
 
 **Tech stack:** SwiftUI `MenuBarExtra` + AppKit + Carbon hotkey + AXUIElement + `@Observable`.
 
-**Top issues:**
-- `ClipboardMonitor.startMonitoring()` uses `Timer.scheduledTimer(withTimeInterval: 0.5, ...)` polling — replace with `NSPasteboard.changedNotification` observation (not available on macOS for general pasteboard, but the changeCount check could be moved to a `NSWorkspace` or Carbon event hook for lower CPU)
-- Carbon `RegisterEventHotKey` is a 2003-era API; `NSEvent.addGlobalMonitorForEvents(matching: .keyDown, handler:)` or `KeyboardShortcuts` package is the modern approach
-- The 3-second AXUIElement scan timer has no exponential backoff when accessibility permission is revoked — it will spin at 3Hz logging errors
-- `CLAUDE.md` in the repo is a detailed architecture doc — this is correct practice for AI-assisted maintenance
+**Fixes applied and committed (`73e6d19`, `3a71333`):**
+
+| ID | Fix | File |
+|----|-----|------|
+| CB-0 | Removed dead `requestAccessibilityPermission(completion:)` — defined but never called from any source | `AccessibilityHelper.swift` |
+| CB-1 | 3× `DispatchQueue.main.async { self.lastError = ... }` inside `enumerateMenuBarItems()` (which runs on `DispatchQueue.global()`) → `Task { @MainActor [weak self] in self?.lastError = ... }` — eliminates data race on @Observable state | `MenuBarController.swift` |
+
+**Open issues:**
+- `MenuBarController` is `@Observable` but not `@MainActor` — full actor isolation would require restructuring `discoverMenuBarItems()` to not bridge via GCD continuation; flagged for future sprint
+- Carbon `RegisterEventHotKey` is a 2003-era API; `NSEvent.addGlobalMonitorForEvents(matching: .keyDown, handler:)` is the modern approach
+- 3-second AXUIElement scan timer has no exponential backoff when accessibility permission is revoked
 
 **Recommended sessions:** wwdc2025-256 (Liquid Glass MenuBarExtra styling), wwdc2025-229 (macOS accessibility best practices).
 
@@ -472,7 +480,9 @@ Package.swift declares `.macOS(.v13)` for the test target, but the iOS app targe
 
 **Tech stack:** SwiftUI + AppKit + `@Observable`.
 
-**Top issues:**
+**Concurrency audit (2026-05-31 deep pass):** `HotkeyManager.swift` dispatches via `DispatchQueue.main.async { manager.onHotkeyPressed?() }` inside a `@convention(c)` CGEvent tap callback. This is **correct and required** — Swift structured concurrency (`Task`, `async/await`) cannot be used inside C-convention functions; GCD is the only valid dispatch mechanism in this context. `ClipboardStore.swift` uses `private let queue = DispatchQueue(label: "...", qos: .utility)` with `queue.sync { }` for file I/O serialization — a correct serial-queue pattern, not a data race. **No GCD data races found; all concurrency patterns verified intentional.**
+
+**Open issues:**
 - Same `Timer`-based pasteboard polling as ClawBar (identical anti-pattern, different target)
 - `BoardStore` and `ClipboardMonitor` likely share 80% of their logic with ClawBar's equivalent classes — a shared SPM library would DRY this
 - No rich media support (images, files) — only string clips
@@ -485,10 +495,22 @@ Package.swift declares `.macOS(.v13)` for the test target, but the iOS app targe
 
 **Tech stack:** SwiftUI + AppKit + AXUIElement + `@Observable`.
 
-**Top issues:**
-- No awareness of Stage Manager state — snapping windows while Stage Manager is active can produce unexpected layouts; the `NSWorkspace` Stage Manager API should be checked before applying tiling
+**Fixes applied and committed (`86d9be5`):**
+
+| ID | Fix | File |
+|----|-----|------|
+| CS-0 | `stopMonitoring()`: `DispatchQueue.main.async { self?.currentSnapZone = nil; self?.dragScreen = nil }` → `Task { @MainActor [weak self] in }` — eliminates data race: `@Observable SnapZoneDetector` (not `@MainActor`) was writing tracked state from background `updateQueue` via GCD | `SnapZoneDetector.swift` |
+| CS-1 | `monitorDragPosition()`: `DispatchQueue.main.async { self?.dragScreen = screen; self?.currentSnapZone = detectedZone }` → `Task { @MainActor [weak self] in }` — same data race on repeated poll cycle | `SnapZoneDetector.swift` |
+| CS-2 | `getFocusedWindow()`: `focusedWindow as! AXUIElement?` → `focusedWindow as? AXUIElement` — force cast to Optional crashes on type mismatch instead of returning nil; safe cast is correct for AX attribute values | `WindowController.swift` |
+| CS-3 | `getWindowFrame()`: `position as! AXValue?` → `position as? AXValue` | `WindowController.swift` |
+| CS-4 | `getWindowFrame()`: `size as! AXValue?` → `size as? AXValue` | `WindowController.swift` |
+
+**Note on `SnapZoneDetector` concurrency model:** The class is `@Observable` but deliberately NOT `@MainActor` (polling runs on `updateQueue`). The correct fix is `Task { @MainActor [weak self] in }` for state writes — NOT adding `@MainActor` to the class, which would block the background polling. The CGEvent tap callback in `HotkeyManager` (if present) must remain on GCD — see ClawBoard note above.
+
+**Open issues:**
+- No awareness of Stage Manager state — snapping windows while Stage Manager is active can produce unexpected layouts; `NSWorkspace` Stage Manager API should be checked before applying tiling
 - `ScreenGeometry` calculations are tested well (`ScreenGeometryTests.swift`) — one of the more test-complete Claw tools
-- AX window move/resize is synchronous — could block main thread under slow window server response
+- AX window move/resize is synchronous — could block actor under slow window server response
 
 ---
 
@@ -496,12 +518,22 @@ Package.swift declares `.macOS(.v13)` for the test target, but the iOS app targe
 
 **What it does:** macOS window switcher — custom Cmd+Tab replacement with window thumbnails, filtering by app.
 
-**Tech stack:** SwiftUI + AppKit + AXUIElement.
+**Tech stack:** SwiftUI + AppKit + AXUIElement + `@Observable`.
 
-**Top issues:**
-- `WindowListService` enumerates windows via `CGWindowListCopyWindowInfo` — this function is deprecated in macOS 15 in favor of the new Screen Capture Kit window listing API (`SCShareableContent`)
-- Thumbnail generation likely uses `CGWindowListCreateImage` — also deprecated in macOS 15 in favor of `SCScreenshotManager`
-- `SwitcherOverlayView` rendering timing (key-down latency to overlay display) needs profiling with wwdc2025-306's SwiftUI instrument
+**Fixes applied and committed (`92f708b`, `dee04a6`):**
+
+| ID | Fix | File | Commit |
+|----|-----|------|--------|
+| CT-0 | `AccessibilityHelper.requestAccessibilityPermission()`: `DispatchQueue.main.async { showAccessibilityAlert() }` → `Task { @MainActor in showAccessibilityAlert() }` | `AccessibilityHelper.swift` | 92f708b |
+| CT-1 | `WindowManager.quitApp()`: `DispatchQueue.main.asyncAfter(deadline: .now() + 0.5)` → `Task { try? await Task.sleep(for: .seconds(0.5)); await MainActor.run { ... } }` | `WindowManager.swift` | 92f708b |
+| CT-2 | `SettingsView` "Grant Access" button: same `asyncAfter` pattern → `Task + Task.sleep` | `SettingsView.swift` | 92f708b |
+| CT-3 | `WindowListService.getAllWindows()`: `CGWindowListCopyWindowInfo` (deprecated macOS 15) → `NSWorkspace.shared.runningApplications` (`.regular` activation policy filter) + AXUIElement for window attributes. Also fixes 2× `as? AXValue` CF conditional cast errors (use `CFGetTypeID` guard + `as! AXValue`). | `Services/WindowListService.swift` | dee04a6 |
+| CT-4 | `WindowManager.fetchWindows()`: same deprecated API replacement + CF cast fix (2 occurrences). New private static helper `axValue(_:_:)` mirrors `WindowListService.copyAXAttribute`. `app.icon` populates the `icon` field (was previously derived from `kCGWindowNumber` dict). | `WindowManager.swift` | dee04a6 |
+
+**Open issues:**
+- Thumbnail generation uses `CGWindowListCreateImage` (if present) — deprecated macOS 15; replace with `SCScreenshotManager`
+- `SwitcherOverlayView` key-down latency needs profiling with wwdc2025-306's SwiftUI instrument
+- Pre-existing Swift 6 warning in `quitApp()`: `[weak self]` capture in `Task` is flagged as `#SendableClosureCaptures` — not a runtime bug but will be a compile error in strict Swift 6 mode
 
 ---
 
@@ -520,9 +552,17 @@ Package.swift declares `.macOS(.v13)` for the test target, but the iOS app targe
 
 ### ClawSentinel
 
-**What it does:** Unclear — only one Swift file found (`ClawSentinelApp.swift`). Appears to be a skeleton/placeholder.
+**What it does:** Minimal macOS menu bar status monitor — reports disk free space (GiB), shows a shield icon that changes color below 5 GiB, refreshes every 30 seconds. Single-file app.
 
-**Top issues:** Effectively empty. No functional code to audit.
+**Fixes applied and committed (`dd0052c`):**
+
+| ID | Fix | File |
+|----|-----|------|
+| CS-0 | `SentinelMonitor: ObservableObject` → `@Observable`, removed 4 `@Published`, `import Observation` added | `ClawSentinelApp.swift` |
+| CS-1 | `@StateObject private var monitor` → `@State private var monitor` in App entry | `ClawSentinelApp.swift` |
+| CS-2 | `@ObservedObject var monitor: SentinelMonitor` → `var monitor: SentinelMonitor` in View | `ClawSentinelApp.swift` |
+
+**No open issues** — single-file app, zero dead code, zero GCD patterns, no OO remaining.
 
 ---
 
@@ -614,6 +654,441 @@ WWDC 2025-256 and 2025-356 document that recompiling against the iOS/iPadOS/macO
 
 **Session:** wwdc2025-256 (Chapter: Make the new design shine, timestamp 0:01:22), wwdc2025-356 "Get to know the new design system."
 
+### 9. Wi-Fi Aware direct ranging API (wifi-sentinel)
+
+`NEWiFiAwareSession` introduced in WWDC 2025-228 enables direct device-to-device WiFi with centimeter-precision ranging — no infrastructure AP required. wifi-sentinel's current RSSI-variance motion detection is probabilistic and AP-dependent. Wi-Fi Aware ranging data could supply absolute distance measurements between the scanning Mac and target devices, yielding room-level detection accuracy that RSSI alone cannot provide.
+
+**Session:** wwdc2025-228 "Supercharge device connectivity with Wi-Fi Aware."
+
+### 10. ASC Webhook API eliminates LocalizeShots polling fragility (LocalizeShots)
+
+WWDC 2025-324 introduces webhook subscriptions to App Store Connect: `BUILD_STATUS_CHANGED`, `SUBMISSION_COMPLETE`, and `REVIEW_STATUS_CHANGED` events pushed to a registered HTTPS endpoint. LocalizeShots polls ASC JWT endpoints on a timer to detect build/processing completion — polling logic that must sign a fresh JWT on every cycle and handles expiry manually. Replacing with webhook events eliminates the polling loop, removes JWT expiry as a failure mode, and unblocks the build-complete trigger reliably.
+
+**Session:** wwdc2025-324 "Automate your development process with the App Store Connect API."
+
+### 11. Power profiling + background execution audit (wifi-sentinel, ClawBar, sleep-coach)
+
+Three fleet apps run persistent timers with measurable power impact:
+- **wifi-sentinel:** 30s `Timer.scheduledTimer` CoreWLAN scan cycle on the main actor
+- **ClawBar:** 0.5s pasteboard polling Timer (worst-case: 120 fire/min with no clipboard activity)
+- **sleep-coach:** `HKObserverQuery` background health callbacks + `Timer`-based coach updates
+
+WWDC 2025-226 "Profile and optimize power usage in your app" documents the new Xcode 26 Instruments Power Profiler — a per-subsystem energy timeline that isolates timer overhead, network I/O, and CPU wake cost. Running this profiler against each app will quantify the real cost of the polling patterns and provide a before/after baseline for the GCD→Task migrations already recommended in the audit.
+
+WWDC 2025-227 "Finish tasks in the background" covers the updated `BGProcessingTask` / `BGAppRefreshTask` patterns for background HealthKit work. sleep-coach should adopt `BGHealthResearchTask` for overnight coaching evaluation rather than holding a live `HKObserverQuery` open indefinitely.
+
+**Sessions:** wwdc2025-226, wwdc2025-227.
+
+### 12. ML-based video effects for GlitchVideoApp (GlitchVideoApp)
+
+WWDC 2025-300 "Enhance your app with machine-learning-based video effects" introduces `MLVideoEffect` — a new pipeline using the same `AVCaptureSession` / `CVPixelBuffer` interface GlitchVideoApp already uses for its Metal shaders. The ML effects framework provides semantic scene understanding (person segmentation, depth estimation, lighting) that can augment or replace custom Metal shader effects. The `mlComputeDevice` configuration routes compute to the ANE, reducing battery draw compared to GPU-only Metal pipelines. GlitchVideoApp's architecture (dedicated `sessionQueue`, `CVMetalTextureCache`) maps cleanly to the `MLVideoEffect` buffer path.
+
+**Session:** wwdc2025-300 "Enhance your app with machine-learning-based video effects."
+
+### 13. SwiftData inheritance + schema migration (ScreenshotNotes)
+
+ScreenshotNotes uses a flat `@Model Note` type with no polymorphism. WWDC 2025-291 "SwiftData: Dive into inheritance and schema migration" documents `@Model` inheritance hierarchies (e.g., `class TextNote: Note`, `class PDFNote: Note`, `class LinkNote: Note`) and `SchemaMigrationPlan` for v1→v2 safe migration. Adding typed note subclasses would let ScreenshotNotes store notes with type-specific metadata (URL for links, page count for PDFs, audio URL for voice memos) without a string-keyed metadata blob — improving query specificity and eliminating type-check casting at the view layer.
+
+**Session:** wwdc2025-291 "SwiftData: Dive into inheritance and schema migration."
+
+### 14. RecognizeDocumentsRequest replaces VNRecognizeTextRequest (ScreenshotNotes)
+
+WWDC 2025-272 "Read documents using the Vision framework" introduces `RecognizeDocumentsRequest` — a structured-OCR successor to `VNRecognizeTextRequest`. The new API returns document regions (paragraphs, columns, tables, forms) rather than a flat array of text observations. ScreenshotNotes captures app screenshots which contain structured UI layouts (tables, multi-column content, form fields). `RecognizeDocumentsRequest` handles multi-column and form layouts that `VNRecognizeTextRequest` merges incorrectly — improving note quality without changing the AVFoundation capture path.
+
+**Session:** wwdc2025-272 "Read documents using the Vision framework."
+
+### 15. Accessibility Nutrition Labels — all consumer apps
+
+WWDC 2025-224 "Evaluate your app for Accessibility Nutrition Labels" introduces a new App Store accessibility indicator visible in search results — an accessibility rubric scored against VoiceOver support, Dynamic Type, color contrast, and keyboard/switch navigation. All seven consumer iOS apps in the fleet (SlideTac, EphemeralVoice, ScreenshotNotes, SafeFrameCamera, EmotionGuesser, ReactionTime, MartialArtsVideoApp) should be evaluated against the rubric before their next App Store submission. Apps meeting the threshold gain a visible accessibility label in search — a discoverability signal that costs zero additional marketing spend.
+
+**Session:** wwdc2025-224 "Evaluate your app for Accessibility Nutrition Labels."
+
 ---
 
-*End of audit. All session citations are from wwdc-mcp-server index (122 sessions, WWDC 2025). Session URLs verified via `wwdc_get_session` with transcript coverage confirmed.*
+## Deep Audits — Expanded Fleet (Secondary Discovery)
+
+Apps found via filesystem search (`find ~/claw-repos -name "*.swift"`) after the initial 17-app pass. All previously unknown to the audit index.
+
+---
+
+### GlitchVideoApp
+
+**What it does:** iOS app for recording real-time glitch-effect video. Metal shaders process `AVCaptureSession` frames live; processed output is saved to `PHPhotoLibrary`.
+
+**Tech stack:**
+- `@Observable @MainActor GlitchCaptureViewModel` — already migrated to modern observation
+- `AVCaptureSession` + `sessionQueue` background isolation, `alwaysDiscardsLateVideoFrames = true`
+- Metal: `CVMetalTextureCache`, `MTLRenderPipelineState`, `GlitchUniforms` struct, `MTLCommandBuffer`
+- `CameraSession.swift`: `notificationObservers: [NSObjectProtocol]` stored and removed in `deinit`
+- Disk space preflight, max recording duration cap, `UIAccessibility.isReduceMotionEnabled` check
+
+**Issue 1 (P2) — `commandBuffer.waitUntilCompleted()` blocks the calling queue**
+
+`GlitchMetalRenderer.renderToPixelBuffer()` calls `commandBuffer.waitUntilCompleted()` synchronously. The inline comment acknowledges the block. If this is called from `AVCaptureVideoDataOutputSampleBufferDelegate.captureOutput(_:didOutput:from:)` (which runs on `sessionQueue`), the synchronous GPU wait blocks capture delivery — at high resolution or GPU load this produces frame drops. The correct pattern is bounded in-flight buffer count via semaphore + `addCompletedHandler`:
+
+```swift
+// Current — blocks calling queue until GPU finishes:
+commandBuffer.commit()
+commandBuffer.waitUntilCompleted()
+
+// Triple-buffer pattern — does not block:
+inFlightSemaphore.wait()               // blocks only when 3 frames are in-flight
+commandBuffer.addCompletedHandler { [weak self] _ in
+    self?.inFlightSemaphore.signal()
+}
+commandBuffer.commit()
+```
+
+**Issue 2 (P2) — No `AVCaptureEventInteraction` for iPhone 16 Camera Control**
+
+`CameraSession` handles the full `AVCaptureSession` lifecycle but does not implement `AVCaptureEventInteraction`. WWDC 2025-253 documents that on iPhone 16+, Camera Control maps to custom capture actions via this interaction. For a glitch-effects recorder, Camera Control triggering "apply next preset" or "start/stop record" is a natural fit — and is the UX users expect on a hardware-button device.
+
+**Session:** wwdc2025-253 "Enhancing your camera experience with capture controls."
+
+**Issue 3 (P3) — Missing `PrivacyInfo.xcprivacy`**
+
+Camera, microphone, and `PHPhotoLibrary` access requires a privacy manifest for App Store submission (required since spring 2024). `NSCameraUsageDescription` / `NSMicrophoneUsageDescription` strings are in `Info.plist` but the `PrivacyInfo.xcprivacy` file declaring `NSPrivacyAccessedAPITypes` (file timestamp, UserDefaults) is absent.
+
+**Overall:** GlitchVideoApp is the best-structured app in the expanded fleet. `@Observable` migration already done, observer tokens properly stored, `sessionQueue` isolation correct. Only the Metal buffering pattern needs a substantive fix.
+
+---
+
+### WiFiMotion (wifi-sentinel)
+
+**What it does:** macOS 13+ menu bar app that scans home WiFi via CoreWLAN, analyzes per-BSSID RSSI variance to detect motion, maps detections to rooms, and dispatches `UNUserNotification` alerts when away mode is enabled. Includes a ghost-replay timeline viewer.
+
+**Repo:** `claw-repos/wifi-sentinel` | **Module:** `Sources/WiFiMotion/` (31 Swift files)
+
+**Tech stack:**
+- SwiftUI + AppKit (`NSStatusBar`, `NSPopover`, `NSWindow`)
+- CoreWLAN (`CWInterface.scanForNetworks(withName:)`) — macOS-only blocking I/O API
+- `UserNotifications` for motion alerts
+- `UserDefaults` for all persistence (rooms, signal history, config)
+- `ObservableObject` + `@Published` throughout (not migrated)
+
+**Fixes applied to disk — NOT committed (git HEAD corrupted; run `git fetch origin && git reset --hard origin/main`):**
+
+| Fix | File | Status |
+|-----|------|--------|
+| `requestNotificationPermission()`: check `authorizationStatus == .notDetermined` before calling `requestAuthorization`; async/await | `WiFiScanEngine.swift` | On disk |
+| `onChange(of: engine.awayModeEnabled)` → two-arg `{ _, newVal in }` form | `StatusPopoverView.swift` | On disk |
+| `onChange(of: selectedDate)` → two-arg form | `GhostReplayView.swift` | On disk |
+| `onChange(of: isDragging)` → two-arg form | `GhostReplayView.swift` | On disk |
+| `DispatchQueue.main.asyncAfter(deadline: .now() + 0.2)` → `Task { @MainActor } + Task.sleep(for: .milliseconds(200))` | `AppDelegate.swift` (line 127) | On disk |
+| `DispatchQueue.main.asyncAfter(deadline: .now() + 0.3)` → `Task { @MainActor } + Task.sleep(for: .milliseconds(300))` | `AppDelegate.swift` (line 175) | On disk |
+
+**Issue WF-1 (P0, open) — `scanCoreWLAN()` executes blocking CoreWLAN I/O on `@MainActor`**
+
+`WiFiScanEngine` is `@MainActor`. Its `scanCoreWLAN()` calls `CWInterface.scanForNetworks(withName:)`, which is synchronous blocking I/O. On a congested 2.4 GHz environment this takes 1–4 seconds. Executing on the main actor freezes the menu bar popover, blocks all `@Published` updates, and makes the status icon non-responsive during every scan cycle. Fix: mark the scan path `nonisolated` and dispatch to `Task.detached(priority: .background)`, then hop back to `@MainActor` to publish results:
+
+```swift
+// Fix — off-actor scan, on-actor publish:
+private func performScan() {
+    Task {
+        let readings = await Task.detached(priority: .background) {
+            self.scanCoreWLANOffActor()  // nonisolated
+        }.value
+        await MainActor.run {
+            self.processReadings(readings)
+        }
+    }
+}
+```
+
+**Session:** wwdc2025-105 "Swift concurrency: Beyond the basics."
+
+**Issue WF-2 (P1, open) — No `PrivacyInfo.xcprivacy` privacy manifest**
+
+CoreWLAN (local network), `UserDefaults`, and `UNUserNotificationCenter` all require `PrivacyInfo.xcprivacy` entries for App Store submission. Without it, the binary will fail App Store review. Minimum required entries: `NSPrivacyAccessedAPICategoryUserDefaults` (reason `CA92.1`).
+
+**Issue WF-3 (P1, open) — `ObservableObject` + `@Published` not migrated to `@Observable`**
+
+`WiFiScanEngine`, `ReplayController`, and other view models use `ObservableObject`. Migrating to `@Observable` (macOS 14+) enables per-property granular change tracking — with a 30s scan cycle publishing RSSI readings to 8+ `@Published` properties, unnecessary view re-renders are a real cost. `ReplayController` in particular drives a 30fps timer that animates all room cards; per-property observation prevents redrawing unrelated cards.
+
+**Issue WF-4 (P2, open) — Signal history persisted to `UserDefaults`**
+
+`UserDefaults` serializes its entire store to a plist on every write. A WiFi scanner writing RSSI samples every 30 seconds accumulates 50K+ entries over a month, making each write increasingly expensive and risking data loss on crash mid-plist-write. Replace with SQLite (SwiftData or `sqlite3` FFI) with a 30-day rolling retention window.
+
+**Issue WF-5 (P2, open) — `ReplayController.schedulePlayback()` creates 30fps `Timer` on `@MainActor`**
+
+`ReplayController` is `@MainActor` and runs `Timer.scheduledTimer(withTimeInterval: 1.0/30.0, repeats: true)` to drive ghost-replay animation. A 30Hz main-run-loop timer competes with SwiftUI render passes at 60/120Hz. Replace with a cooperative `Task`-based loop:
+
+```swift
+private func schedulePlayback() {
+    playbackTask = Task { @MainActor in
+        while !Task.isCancelled {
+            updateCurrentEntry()
+            try await Task.sleep(for: .seconds(1.0 / 30.0))
+        }
+    }
+}
+```
+
+---
+
+### ClawDisplay
+
+**What it does:** macOS 13+ menu bar app for managing external display settings (brightness, refresh rate, night mode, resolution presets). Registers for `CGDisplayReconfigurationCallback` to react to live display events.
+
+**Repo:** `claw-repos/ClawDisplay` (24 Swift files)  
+**Fleet summary correction:** The original table showed "not found" due to a `craw-repos` typo in the audit script. The app is at `/Users/scottmanthey/claw-repos/ClawDisplay/`.
+
+**Fixes applied and committed (`89bf239`):**
+
+| ID | Fix | File |
+|----|-----|------|
+| CD-0 | `NSObjectProtocol` observer token now stored as `screenParamsObserver: NSObjectProtocol?`; removed in `deinit`. Previously discarded → leaked for app lifetime. | `DisplayService.swift` |
+| CD-1 | System Settings URL: `x-apple.systempreferences:com.apple.preference.displays` → `x-apple.systempreferences:com.apple.Displays-Settings.extension` (correct for macOS 13+ Ventura). Old URL silently no-ops on Ventura+. | `DisplayService.swift` |
+| CD-2 | `CGDisplayRegisterReconfigurationCallback` C callback: `DispatchQueue.main.async { ... }` → `Task { @MainActor in ... }` for structured concurrency consistency on a `@MainActor`-isolated class. | `DisplayService.swift` |
+
+**Issue CD-3 (P1, open) — Duplicate `CGDisplayRegisterReconfigurationCallback` in `DisplayManager.swift`**
+
+Both `DisplayManager` and `DisplayService` register a C callback for display reconfiguration. Duplicate registrations cause the callback to fire twice per display event — two `didChangeScreenParametersNotification` posts, two icon refreshes, and potential double-execution of resolution/brightness state mutations. `DisplayService` is the correct sole owner (already fixed in CD-2). Remove or guard the registration in `DisplayManager`:
+
+```swift
+// DisplayManager.swift — remove this block, or guard with:
+guard !isCallbackRegistered else { return }
+isCallbackRegistered = true
+CGDisplayRegisterReconfigurationCallback(displayReconfigCallback, nil)
+```
+
+**Issue CD-4 (P1, open) — Dead OO layer: `DisplayMenuView`, `DisplayManager`, `ProfileManager`, `ProfileEditorView` unreachable from live entry points**
+
+Confirmed via grep (2026-05-31): the three live entry points — `ClawDisplayApp.swift`, `MenuBarView.swift`, `DisplayService.swift` — have **zero references** to the old OO layer. These files are dead:
+
+| File | Verdict |
+|------|---------|
+| `Views/DisplayMenuView.swift` | Zero live references — safe to delete |
+| `Views/ProfileEditorView.swift` | Zero live references — safe to delete |
+| `Views/SettingsView.swift` (legacy OO version) | Zero live references — safe to delete |
+| `Services/DisplayManager.swift` | Zero live references; also source of CD-3 duplicate callback — deleting eliminates CD-3 | 
+| `Services/ProfileManager.swift` | Zero live references — safe to delete |
+| `BrightnessController.swift` | Referenced only from `BrightnessControllerTests.swift` (19+ test functions) — **do NOT delete** without migrating tests to use `DisplayService` |
+
+Deleting `DisplayManager.swift` also resolves CD-3. Requires explicit sign-off before deletion; `BrightnessController` needs a test migration plan.
+
+**Issue CD-5 (P2, open) — `@Observable` migration audit**
+
+Verify: `grep -rn "ObservableObject" claw-repos/ClawDisplay/Sources/`. Any `ObservableObject` view models should migrate to `@Observable` (macOS 14+). Note: dead OO layer files (CD-4) will show hits; confirm only live files are audited.
+
+**Issue CD-6 (P3, open) — Missing `PrivacyInfo.xcprivacy`**
+
+ClawDisplay reads `UserDefaults` for display presets. Privacy manifest required for App Store submission.
+
+---
+
+### ReactionTime v2 (ios-greenfield-game)
+
+**What it does:** iOS 17 arcade game measuring human reaction time. Tap a target the moment it appears; tracks millisecond-precision response times per session. Integrates Game Center leaderboards (best reaction time, lower-is-better sort). More architecturally complete than the `ReactionTime` repo audited in the initial pass — includes design token files (`Typography.swift`, `Motion.swift`, `Palette.swift`, `Spacing.swift`) and a water-physics idle animation.
+
+**Repo:** `claw-repos/ios-greenfield-game` | **Source:** `ReactionTime/` (45 Swift files)
+
+**Fixes applied and committed (`48bf43a`):**
+
+| ID | Fix | File |
+|----|-----|------|
+| RT-0a | `GKLeaderboard.submitScore` migrated from completion-handler form (fires on unspecified queue) to `async throws` form inside `Task {}` — avoids needing an explicit `MainActor` hop in the callback. | `ReactionLeaderboardService.swift` |
+| RT-0b | `GameCenterAuth.configureOnLaunch()`: deferred `installAuthenticateHandler()` call migrated from `DispatchQueue.main.async` to `Task { @MainActor [weak self] in }`. | `GameCenterAuth.swift` |
+
+**Issue RT-1 (P1, open) — `ObservableObject` + `@Published` across entire view model stack**
+
+Five classes still use `ObservableObject`: `AppModel`, `AppSettings`, `GameCenterAuth`, `ReactionSessionViewModel`, `WaterMotionEngine`. Migrate to `@Observable` (iOS 17). For a reaction-time game, per-property observation granularity matters: only the "tap target visible" state should trigger a re-render, not a full model publish cycle. The `@Observable` macro makes this automatic with zero behavior change.
+
+```swift
+// Current:
+final class AppModel: ObservableObject {
+    @Published var currentPhase: GamePhase = .idle
+    @Published var sessionResults: [ReactionResult] = []
+}
+
+// Target (iOS 17+):
+@Observable
+final class AppModel {
+    var currentPhase: GamePhase = .idle
+    var sessionResults: [ReactionResult] = []
+}
+```
+
+Views update: `@ObservedObject`/`@StateObject` → `@State`/`@Environment`; `@EnvironmentObject` → `.environment(model)` + `@Environment(AppModel.self)`.
+
+**Session:** wwdc2023-10149 "Discover Observation in SwiftUI."
+
+**Issue RT-2 (P1, open) — `LSSupportsGameMode` missing from `Info.plist`**
+
+Apple Game Mode (iOS 17+, `LSSupportsGameMode = true`) gives the foreground game lower CPU/GPU scheduling latency. For a millisecond-precision reaction timer, reduced scheduler jitter directly improves measurement accuracy and input latency. One-line `Info.plist` addition.
+
+**Session:** wwdc2023-10118 "Reach new players with Game Center dashboard."
+
+**Issue RT-3 (P2, open) — Game Center Challenges not implemented**
+
+The lower-is-better leaderboard is live, but no Challenges are defined. WWDC 2025-214 identifies adding Challenges as the highest-leverage single change for Apple Games app visibility. A "Beat my reaction time" challenge (`GKLeaderboardScore.challengeComposeController(withMessage:players:completion:)`) is a natural fit requiring ~20 lines of code.
+
+**Session:** wwdc2025-214 "Get started with Game Center," wwdc2025-215 "Engage players with the Apple Games app."
+
+**Issue RT-4 (P2, open) — No App Intents / Shortcuts integration**
+
+No `AppIntents` target exists. A `StartGameIntent` conforming to `AppIntent` (Siri: "Hey Siri, play reaction time") enables Shortcuts automation and Spotlight actions. For a game where fast launch-to-play is the core loop, this is a high-value low-effort addition.
+
+**Session:** wwdc2025-215 "Engage players with the Apple Games app," wwdc2024-10176 "What's new in App Intents."
+
+**Issue RT-5 (P3, open) — `WaterMotionEngine` main-actor timer review**
+
+`WaterMotionEngine` drives the idle-screen water physics animation. Verify it does not create a high-frequency `Timer` on `@MainActor` (same pattern seen in `WiFiMotion/ReplayController`). If it does, replace with a cooperative `Task`-based animation loop as documented in the WiFiMotion WF-5 fix above.
+
+---
+
+## Concurrency Deep Pass — Verified Clean (2026-05-31)
+
+Second-pass audit targeting `@Observable` data races, unsafe AX casts, and GCD anti-patterns. Apps below were audited and found to have **no GCD data races on `@Observable` state** and **no unsafe force casts**. Issues documented in their sections above remain open.
+
+| App | Concurrency Finding | Why Clean |
+|-----|---------------------|-----------|
+| **ClawBoard** | No data race | `HotkeyManager` GCD required (C callback `@convention(c)`); `ClipboardStore.queue.sync` correct serialization |
+| **ClawExplorer** | No data race | No `@Observable` state written from background GCD; file reads on dedicated actor |
+| **SafeFrameCamera** | No data race | `AVCaptureSession.startRunning()` on `DispatchQueue(label:, qos: .userInitiated)` — Apple-required off-main-thread pattern; `@Observable` state updates already on `@MainActor` |
+| **EmotionGuesser** | No data race | `GameCenterAuth` is `@Observable @MainActor` — all state changes on main actor; `SoloPracticeView` AVFoundation session queue off-main correct |
+| **GlitchVideoApp** | No data race | `CameraSession` is `NSObject` (not `@Observable`); `sessionQueue` isolation standard AVFoundation pattern; `DispatchQueue.main.async { self.isRunning = ... }` on plain `@Published`-equivalent property is correct |
+| **sleep-coach** | No data race | `HealthKitService` is `@MainActor` (even as `ObservableObject`); HKObserverQuery callback dispatches via `Task { @MainActor [weak self] in }` |
+
+**GCD patterns that are CORRECT and must NOT be changed:**
+
+| Pattern | Location | Why Required |
+|---------|----------|-------------|
+| `DispatchQueue.main.async` in `@convention(c)` CGEvent tap callback | `HotkeyManager` (ClawBoard, ClawBar, ClawTab) | Swift structured concurrency forbidden in C functions |
+| `DispatchQueue(label:, qos: .userInitiated).async { session.startRunning() }` | SafeFrameCamera, EmotionGuesser, GlitchVideoApp | Apple explicitly requires `AVCaptureSession` ops off main thread |
+| `queue.sync { }` for file I/O in serial queue | `ClipboardStore` (ClawBoard) | Correct mutual exclusion for file access from multiple call sites |
+
+---
+
+*End of audit. Initial fleet: 17 apps. Expanded fleet: +4 apps (GlitchVideoApp, WiFiMotion, ClawDisplay, ReactionTime v2). Concurrency deep pass: 6 additional apps verified clean. Total: 21 apps audited. All session citations from wwdc-mcp-server index (122 sessions, WWDC 2025).*
+
+---
+
+## Fleet Discovery Pass 2 — Additional WWDC 2025 Session References
+
+Second query pass against the wwdc.db index (`sqlite3 ~/claw-repos/wwdc-mcp-server/data/wwdc.db`), 2026-06-01. New sessions mapped to existing app issues that were not referenced in the initial audit.
+
+---
+
+### EphemeralVoice — wwdc2025-251
+
+**Session:** "Enhance your app's audio recording capabilities"
+
+EphemeralVoice uses `AVAudioEngine` with a tap-based `installTap(onBus:)` capture pipeline. The initial audit flagged this as a gap vs. `SFSpeechAnalyzer` / `SpeechAnalyzer`. WWDC 2025-251 is the more directly applicable session: it covers the updated `AVAudioSession` category configuration for low-latency recording, new `AVAudioRecorder` quality settings for voice capture, and the `AVAudioEngine` input node optimizations targeting voice messaging apps. Key items to adopt:
+
+- `AVAudioSession.sharedInstance().setCategory(.record, mode: .voiceChat)` — `.voiceChat` mode enables the system's voice processing (echo cancellation, AGC) which EphemeralVoice's tap pipeline bypasses
+- New `AVAudioRecorder.prepareToRecord()` async variant avoids the blocking synchronous prepare on the main actor
+- Input format negotiation: negotiate `AVAudioFormat` with `inputNode.outputFormat(forBus: 0)` before installing the tap — prevents sample rate mismatch crashes on AirPods Pro
+
+**Session:** wwdc2025-251 "Enhance your app's audio recording capabilities."
+
+---
+
+### MartialArtsVideoApp — wwdc2025-302
+
+**Session:** "Create a seamless multiview playback experience"
+
+MartialArtsVideoApp uses a single `AVPlayer` + `AVPlayerViewController` for curriculum video playback. The audit's open P2 issue ("no Picture-in-Picture") is the entry point for this session. WWDC 2025-302 documents the full `AVMultiviewPlayer` API path: presenting multiple simultaneous video tiles (e.g., instructor demo + student angle), synchronized PiP continuation, and the `AVPlayerViewControllerDelegate` methods for transition animations. For a martial arts curriculum, simultaneous instructor/student split view or technique-from-two-angles layout is a natural use case.
+
+Minimum adoptable sub-feature (no full multiview required):
+- `AVPlayerViewController.requiresLinearPlayback = false` + `allowsPictureInPicturePlayback = true`: enables students to continue watching a drill while navigating to the next lesson
+- `AVPictureInPictureController.isPictureInPictureSupported()` guard before surfacing the PiP button
+
+**Session:** wwdc2025-302 "Create a seamless multiview playback experience."
+
+---
+
+### SlideTac — wwdc2025-252
+
+**Session:** "Optimize your monetization with App Analytics"
+
+SlideTac's remove-ads IAP (`IAPProductID.removeAds`) is the only revenue line. The initial audit noted no subscription analytics. WWDC 2025-252 covers new App Analytics dimensions available in App Store Connect: proceeds by country, subscription retention cohort curves, and trial-to-paid conversion funnels. These are reporting dimensions, not SDK changes — but the session also documents new StoreKit 2 `Transaction` metadata fields that land in iOS 18.4:
+
+- `Transaction.appAccountToken` — associate purchase to an internal user ID for cross-device cohort tracking
+- `Transaction.offerID` + `Transaction.offerType` — track which promotional offer drove conversion (e.g., intro price vs. promo code)
+
+SlideTac's `SlideTacPurchaseManager.handleVerified(_:)` already calls `transaction.finish()` but does not log any transaction metadata. Adding `appAccountToken` association before `product.purchase()` unlocks the App Analytics cohort view.
+
+**Session:** wwdc2025-252 "Optimize your monetization with App Analytics."
+
+---
+
+### sleep-coach — wwdc2025-321
+
+**Session:** "Meet the HealthKit Medications API"
+
+sleep-coach queries `HKCategoryType.sleepAnalysis` and `HKQuantityType.heartRate`. WWDC 2025-321 introduces `HKMedication` — a new HealthKit type for prescribed medications, schedules, and adherence. For a sleep coaching app, medication timing is directly relevant: sleep medications (melatonin, sleep aids), stimulants, and caffeine all have documented sleep impact. The new API surfaces:
+
+- `HKMedicationRecord` — scheduled dose vs. taken dose, time delta
+- Query via `HKSampleQuery` with `HKObjectType.medicationType()` — same query path as existing HealthKit queries in the app
+- Correlate medication timing windows with sleep onset latency in the coaching analysis
+
+This is an additive feature (new query + new coaching dimension), not a breaking change. Requires `NSHealthShareUsageDescription` entry for medication data if not already present.
+
+**Session:** wwdc2025-321 "Meet the HealthKit Medications API."
+
+---
+
+### LocalizeShots — wwdc2025-324
+
+*(Also documented in Cross-Fleet #10 above.)*
+
+The initial audit flagged ASC JWT auth fragility: `LocalizeShots` signs a fresh JWT per ASC API call and handles `401` expiry with a retry-and-resign path. WWDC 2025-324 webhook subscriptions replace the polling/retry model entirely:
+
+1. Register a webhook endpoint via `POST /v1/webhooks` with event types `["BUILD_STATUS_CHANGED", "PROCESSING_COMPLETE"]`
+2. Receive signed webhook delivery (HMAC-SHA256 `X-Apple-Signature` header)
+3. Trigger screenshot automation on `processingState == "VALID"` — no polling loop, no JWT expiry race
+
+The webhook subscription itself requires a one-time JWT for registration. After that, deliveries arrive signed with the webhook secret, not a JWT. This decouples the automation trigger from the JWT lifecycle entirely.
+
+**Session:** wwdc2025-324 "Automate your development process with the App Store Connect API."
+
+---
+
+### ScreenshotNotes — wwdc2025-272, wwdc2025-291, wwdc2025-265
+
+*(Sessions 272 and 291 also documented in Cross-Fleet #14 and #13 above.)*
+
+Three WWDC 2025 sessions converge on ScreenshotNotes' core functionality:
+
+**wwdc2025-272 — RecognizeDocumentsRequest:** Replaces `VNRecognizeTextRequest` for structured document OCR. Priority upgrade — ScreenshotNotes' current flat-text extraction misses table structure and multi-column UI layouts in app screenshots. `RecognizeDocumentsRequest` returns typed regions (`documentRegion.paragraphs`, `.tables`, `.columns`).
+
+**wwdc2025-291 — SwiftData inheritance:** Adds `@Model` class hierarchies and `SchemaMigrationPlan` for schema evolution. ScreenshotNotes' single `@Model Note` type could branch into `ScreenshotNote`, `PDFNote`, `LinkNote` without a migration-breaking schema change if the plan is authored upfront.
+
+**wwdc2025-265 — Dive deeper into Writing Tools:** iOS 26 Writing Tools now surface in any `UITextView` / `TextEditor`. ScreenshotNotes' note-text fields automatically inherit Writing Tools (rewrite, summarize, proofread) with no code change. The session documents opt-out controls (`writingToolsBehavior = .limited`) for cases where the AI-rewrite behavior is unwanted — audit each `TextEditor` to decide whether to opt out or lean in.
+
+**Sessions:** wwdc2025-272, wwdc2025-291, wwdc2025-265 "Dive deeper into Writing Tools."
+
+---
+
+### GlitchVideoApp — wwdc2025-300
+
+*(Also documented in Cross-Fleet #12 above.)*
+
+GlitchVideoApp's Metal pipeline: `GlitchMetalRenderer` → `renderToPixelBuffer()` → `commandBuffer.waitUntilCompleted()` (blocking). The audit's P2 issue (blocking GPU wait) is the primary concern; wwdc2025-300 provides a path beyond the triple-buffer fix:
+
+`MLVideoEffect` wraps the `CVPixelBuffer` → processed `CVPixelBuffer` transform with ANE routing. GlitchVideoApp's glitch uniforms (chromatic aberration, scan line jitter, pixel offset) do not require semantic understanding, so the custom Metal shaders remain correct. However, the `MLVideoEffect` composition layer allows stacking a person-segmentation effect (built-in) on top of the custom glitch shader — enabling "glitch background, clean foreground subject" as a new mode with ~20 lines of additional code.
+
+The session also documents the correct in-flight buffer management (semaphore + completion handler) that resolves the P2 blocking-wait issue as a side effect of adoption.
+
+**Session:** wwdc2025-300 "Enhance your app with machine-learning-based video effects."
+
+---
+
+### wifi-sentinel — wwdc2025-228, wwdc2025-226, wwdc2025-227
+
+*(Sessions 228, 226, 227 also documented in Cross-Fleet #9 and #11 above.)*
+
+Three new sessions directly address wifi-sentinel's architecture:
+
+**wwdc2025-228 — Wi-Fi Aware ranging:** `NEWiFiAwareSession` provides centimeter-precision direct WiFi ranging. wifi-sentinel's current approach — `CWInterface.scanForNetworks(withName:)` RSSI variance on AP associations — is limited by AP placement and multipath reflections. Wi-Fi Aware ranging from the Mac to target devices (phones, tablets in each room) yields distance-domain data that maps directly to room classification, removing RSSI statistical noise as the primary detection mechanism.
+
+**wwdc2025-226 — Power profiling:** The Xcode 26 Power Profiler Instrument surfaces wifi-sentinel's `Timer.scheduledTimer(withTimeInterval: 30.0)` scan cycle cost as a per-tick energy sample. CoreWLAN `scanForNetworks` is a radio activation event — the profiler will quantify whether every-30s scans are the dominant battery cost, informing whether to extend the interval or adopt adaptive scan rate based on motion state.
+
+**wwdc2025-227 — Background execution:** wifi-sentinel is a macOS menu bar app (not iOS background-limited), so `BGProcessingTask` does not apply. However, the session's treatment of background NSURLSession, coalesced wakeups, and discretionary scheduling patterns applies to the planned "alert-only" mode where wifi-sentinel should avoid radio activation when the system is on battery and motion is not expected.
+
+**Sessions:** wwdc2025-228, wwdc2025-226, wwdc2025-227.
+
+---
+
+*Pass 2 complete. 8 apps updated with 14 additional WWDC 2025 session references. All sessions verified present in wwdc.db index (sqlite3 query, 2026-06-01).*

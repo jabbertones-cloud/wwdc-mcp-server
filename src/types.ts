@@ -151,10 +151,50 @@ export interface SampleCodeRef {
   files?: string[];             // if extracted
 }
 
+// ---------- Apple Documentation (DocC) ----------
+
+export interface AppleDocPage {
+  id: string;                   // normalized path, e.g. "swiftui/view"
+  title: string;
+  role?: string;
+  symbolKind?: string;
+  modules: string[];
+  platforms: string[];
+  url: string;
+  abstract: string;
+  body: string;
+  topicSections: string[];
+  references: string[];         // normalized documentation paths discovered on page
+  rawJson: string;
+  updatedAt: string;
+}
+
+// ---------- Swift Language Reference (docs.swift.org/swift-book) ----------
+
+export interface SwiftBookChapter {
+  id: string;       // slug, e.g. "thebasics"
+  title: string;
+  section: string;  // "Language Guide" | "Language Reference" | "Revision History"
+  body: string;
+  url: string;
+  updatedAt: string;
+}
+
+// ---------- App Store Review Guidelines ----------
+
+export interface AppStoreGuidelineEntry {
+  id: string;            // e.g. "safety-1-1"
+  sectionNumber: string; // e.g. "1.1"
+  title: string;
+  body: string;
+  url: string;
+  updatedAt: string;
+}
+
 // ---------- Ingest status ----------
 
 export interface IngestStatus {
-  source: "wwdc" | "tutorials" | "pathways" | "hig" | "evolution" | "sample-code";
+  source: "wwdc" | "tutorials" | "pathways" | "hig" | "evolution" | "sample-code" | "docs" | "swiftbook" | "appstore" | "release-notes" | "deprecation-backfill" | "swift-forums" | "apple-dev-forums" | "session-summaries" | "cross-reference";
   lastRunAt: string;
   lastSuccessAt?: string;
   itemsIngested: number;

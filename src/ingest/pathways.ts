@@ -67,6 +67,128 @@ const CURATED_PATHWAYS: Array<{
       { title: "Meet visionOS tutorials", kind: "tutorial", url: "https://developer.apple.com/tutorials/visionos" },
     ],
   },
+  {
+    id: "macos-menu-bar-utilities",
+    title: "macOS menu bar utilities",
+    description: "Build status-item, command-menu, keyboard-first macOS utilities.",
+    category: "macOS",
+    steps: [
+      { title: "NSStatusItem documentation", kind: "doc", url: "https://developer.apple.com/documentation/appkit/nsstatusitem" },
+      { title: "Commands documentation", kind: "doc", url: "https://developer.apple.com/documentation/swiftui/commands" },
+      { title: "WindowGroup documentation", kind: "doc", url: "https://developer.apple.com/documentation/swiftui/windowgroup" },
+    ],
+  },
+  {
+    id: "macos-display-monitor-tools",
+    title: "macOS display and monitor tools",
+    description: "Build display, monitor, brightness, HDR, and external-screen utilities with AppKit and ScreenCaptureKit context.",
+    category: "macOS",
+    steps: [
+      { title: "NSScreen documentation", kind: "doc", url: "https://developer.apple.com/documentation/appkit/nsscreen" },
+      { title: "ScreenCaptureKit documentation", kind: "doc", url: "https://developer.apple.com/documentation/screencapturekit" },
+      { title: "NSWindow documentation", kind: "doc", url: "https://developer.apple.com/documentation/appkit/nswindow" },
+    ],
+  },
+  {
+    id: "macos-file-browser-navigation",
+    title: "macOS file browser navigation",
+    description: "Build Finder-style sidebars, file navigation, previews, import/export, and drag/drop flows.",
+    category: "macOS",
+    steps: [
+      { title: "NavigationSplitView documentation", kind: "doc", url: "https://developer.apple.com/documentation/swiftui/navigationsplitview" },
+      { title: "NSOpenPanel documentation", kind: "doc", url: "https://developer.apple.com/documentation/appkit/nsopenpanel" },
+      { title: "Quick Look documentation", kind: "doc", url: "https://developer.apple.com/documentation/quicklook" },
+      { title: "Uniform Type Identifiers documentation", kind: "doc", url: "https://developer.apple.com/documentation/uniformtypeidentifiers" },
+      { title: "File Provider documentation", kind: "doc", url: "https://developer.apple.com/documentation/fileprovider" },
+    ],
+  },
+  {
+    id: "macos-window-app-switcher",
+    title: "macOS window and app switchers",
+    description: "Build app/window switchers that handle focus, keyboard navigation, multiple displays, Spaces, and hidden windows.",
+    category: "macOS",
+    steps: [
+      { title: "NSWindow documentation", kind: "doc", url: "https://developer.apple.com/documentation/appkit/nswindow" },
+      { title: "NSScreen documentation", kind: "doc", url: "https://developer.apple.com/documentation/appkit/nsscreen" },
+      { title: "WindowGroup documentation", kind: "doc", url: "https://developer.apple.com/documentation/swiftui/windowgroup" },
+      { title: "Commands documentation", kind: "doc", url: "https://developer.apple.com/documentation/swiftui/commands" },
+    ],
+  },
+  {
+    id: "macos-clipboard-workflows",
+    title: "macOS clipboard workflows",
+    description: "Build pasteboard-driven tools with privacy, keyboard, and failure-state coverage.",
+    category: "macOS",
+    steps: [
+      { title: "NSPasteboard documentation", kind: "doc", url: "https://developer.apple.com/documentation/appkit/nspasteboard" },
+      { title: "Commands documentation", kind: "doc", url: "https://developer.apple.com/documentation/swiftui/commands" },
+    ],
+  },
+  {
+    id: "screenshot-capture-tools",
+    title: "Screenshot and capture tools",
+    description: "Build screen capture, screenshot annotation, export, share, and Photos workflows.",
+    category: "Capture",
+    steps: [
+      { title: "ScreenCaptureKit documentation", kind: "doc", url: "https://developer.apple.com/documentation/screencapturekit" },
+      { title: "Photos documentation", kind: "doc", url: "https://developer.apple.com/documentation/photos" },
+      { title: "ShareLink documentation", kind: "doc", url: "https://developer.apple.com/documentation/swiftui/sharelink" },
+    ],
+  },
+  {
+    id: "ios-reader-authenticated-video-training",
+    title: "iOS reader and authenticated video training apps",
+    description: "Build reader-style training apps with SwiftUI navigation, magic-link auth, Keychain sessions, authenticated HLS playback, web purchase handoff, booking, and submission workflows.",
+    category: "iOS",
+    steps: [
+      { title: "AVKit documentation", kind: "doc", url: "https://developer.apple.com/documentation/avkit" },
+      { title: "AuthenticationServices documentation", kind: "doc", url: "https://developer.apple.com/documentation/authenticationservices" },
+      { title: "Associated Domains documentation", kind: "doc", url: "https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.developer.associated-domains" },
+      { title: "Keychain Services documentation", kind: "doc", url: "https://developer.apple.com/documentation/security/keychain_services" },
+      { title: "SafariServices documentation", kind: "doc", url: "https://developer.apple.com/documentation/safariservices" },
+    ],
+  },
+  {
+    id: "gamekit-storekit-games",
+    title: "GameKit and StoreKit games",
+    description: "Build multiplayer, leaderboard, monetization, and App Store-ready Apple games.",
+    category: "Games",
+    steps: [
+      { title: "GameKit documentation", kind: "doc", url: "https://developer.apple.com/documentation/gamekit" },
+      { title: "StoreKit documentation", kind: "doc", url: "https://developer.apple.com/documentation/storekit" },
+    ],
+  },
+  {
+    id: "camera-capture-export",
+    title: "Camera capture and export",
+    description: "Build camera capture, framing, photo-library, export, and paywall-aware apps.",
+    category: "Capture",
+    steps: [
+      { title: "AVFoundation documentation", kind: "doc", url: "https://developer.apple.com/documentation/avfoundation" },
+      { title: "Photos documentation", kind: "doc", url: "https://developer.apple.com/documentation/photos" },
+      { title: "StoreKit documentation", kind: "doc", url: "https://developer.apple.com/documentation/storekit" },
+    ],
+  },
+  {
+    id: "voice-audio-push-workflows",
+    title: "Voice, audio, and push workflows",
+    description: "Build audio-session, voice, notification, deep-link, and monetization workflows.",
+    category: "Audio",
+    steps: [
+      { title: "AVFoundation documentation", kind: "doc", url: "https://developer.apple.com/documentation/avfoundation" },
+      { title: "App Intents documentation", kind: "doc", url: "https://developer.apple.com/documentation/appintents" },
+      { title: "StoreKit documentation", kind: "doc", url: "https://developer.apple.com/documentation/storekit" },
+    ],
+  },
+  {
+    id: "app-intents-automation",
+    title: "App Intents automation",
+    description: "Build Shortcuts, Spotlight, and app-action workflows with App Intents.",
+    category: "Automation",
+    steps: [
+      { title: "App Intents documentation", kind: "doc", url: "https://developer.apple.com/documentation/appintents" },
+    ],
+  },
 ];
 
 /** Derive a pathway from a top-level tutorial pack's chapter structure. */

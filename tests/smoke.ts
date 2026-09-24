@@ -9,6 +9,7 @@ import path from "node:path";
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { openDb, migrate, rebuildFts } from "../src/db/schema.js";
+import { formatResponse } from "../src/services/format.js";
 import {
   upsertSession, upsertTutorial, upsertHig, upsertEvolution,
   searchSessionsFts, getSession, listYears, listTopics,
@@ -117,6 +118,12 @@ async function main(): Promise<void> {
   assert.ok(years.length >= 2, "listYears");
   const topics = listTopics(db);
   assert.ok(topics.find((t) => t.topic === "SwiftUI"), "topics has SwiftUI");
+
+  const largeJson = formatResponse("json", "", {
+    rows: Array.from({ length: 200 }, (_, i) => ({ id: i, text: "x".repeat(500) })),
+  });
+  const parsedLargeJson = JSON.parse(largeJson) as { truncated?: boolean };
+  assert.equal(parsedLargeJson.truncated, true, "large JSON stays parseable after compaction");
 
   const { hits } = searchSessionsFts(db, `"SwiftUI"`, 10, 0);
   assert.ok(hits.length >= 1, "FTS sessions hit");
