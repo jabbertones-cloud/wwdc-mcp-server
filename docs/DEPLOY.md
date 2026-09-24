@@ -1,26 +1,22 @@
 # wwdc-mcp-server — Deploy runbook
 
-## 1. Fix the stuck `.git` (one-time, Scott's local shell)
+## 1. Fix a stuck Git index lock (one-time, Scott's local shell)
 
-The sandbox that built this repo left behind a `.git/index.lock` the sandbox can't unlink
-(SMB/Syncthing-synced folders disallow deletes from inside the sandbox). From **Scott's real
-terminal** (not the sandbox):
+If a previous process left behind `.git/index.lock`, remove only that lock file.
+Do not remove `.git`; that deletes local repository history and branch state.
+From **Scott's real terminal** (not the sandbox):
 
 ```bash
 cd ~/path/to/claw-repos/wwdc-mcp-server
-rm -rf .git
-git init -b main
-git add -A
-git -c user.name="Scott" -c user.email="jamonwidit@plushtrap.com" \
-  commit -m "Initial commit — wwdc-mcp-server v0.1.0"
-git remote add origin https://github.com/jabbertones-cloud/wwdcmcp-.git
+rm -f .git/index.lock
+git status
 ```
 
-If the GitHub repo doesn't exist yet, create it (private or public, empty, no README) at
-https://github.com/jabbertones-cloud/wwdcmcp- then:
+If the local checkout is corrupt, make a fresh clone beside it and copy only
+uncommitted working files after review:
 
 ```bash
-git push -u origin main
+git clone https://github.com/jabbertones-cloud/wwdc-mcp-server.git wwdc-mcp-server-clean
 ```
 
 ## 2. First-time install
@@ -28,6 +24,7 @@ git push -u origin main
 ```bash
 npm install
 npm run build
+npm run health:native        # verifies better-sqlite3 native addon loads
 ollama pull nomic-embed-text   # enables semantic search; FTS-only if skipped
 ```
 
@@ -41,7 +38,11 @@ npm run ingest:hig
 npm run ingest:evolution -- --limit 50
 ```
 
-DB lands at `data/wwdc.db`.
+DB lands at:
+
+- macOS default: `~/Library/Application Support/wwdc-mcp-server/wwdc.db`
+- Linux default: `~/.local/share/wwdc-mcp-server/wwdc.db`
+- override: `WWDC_MCP_DB=/absolute/path/to/wwdc.db`
 
 ## 4. Register with Claude Code / Claude Desktop
 
@@ -63,8 +64,9 @@ Add to `~/.config/Claude/claude_desktop_config.json` (or your Claude Code MCP co
 }
 ```
 
-Restart the client. The 15 tools (`wwdc_search`, `wwdc_get_session`, `wwdc_session_deep_link`,
-`apple_doc_lookup`, …) should appear in the tool call trace.
+Restart the client. The 45 canonical tools (`wwdc_search`, `wwdc_get_session`,
+`wwdc_session_deep_link`, `apple_doc_lookup`, `swift_app_audit`,
+`apple_swift_book_get`, `appstore_guidelines_search`, `wwdc_security_manifest`, …) should appear in the tool call trace.
 
 ## 5. Wire into the 6 target skills
 
@@ -103,7 +105,10 @@ npx tsx tests/wwdc-live.ts      # live pipeline: discover + ingest 3 sessions
 Current public release supports richer `wwdc_search` filters for session year ranges, topics,
 platforms, transcript presence, judgment metadata, and output detail level. `wwdc_get_session`
 supports transcript character caps plus toggles for chapters, sample code, related docs, and
-session judgment metadata.
+session judgment metadata. Use these source tools with app specs, OSS benchmark patterns,
+and patent/opportunity radar outputs for broader app-improvement workflows.
+For Swift/SwiftUI/macOS/iOS app work, call `swift_app_audit` before code changes to gather
+WWDC, HIG, tutorial, and Swift Evolution context plus validation steps.
 
 ## 9. Evaluation harness
 

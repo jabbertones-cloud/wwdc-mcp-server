@@ -7,6 +7,7 @@
  *   - pathways          Curated learning tracks
  *   - hig_entries       Human Interface Guidelines topics
  *   - evolution         Swift Evolution proposals
+ *   - apple_docs        Apple Developer documentation DocC pages
  *   - sample_code       Extracted sample-code bundles
  *   - embeddings        Ollama nomic-embed-text vectors (768-dim) per doc_id
  *   - ingest_status     Last-run metadata per source
@@ -23,6 +24,8 @@ export function openDb(dbPath: string): DatabaseType {
   try { db.pragma("journal_mode = WAL"); } catch { /* fall through */ }
   try { db.pragma("synchronous = NORMAL"); } catch { /* noop */ }
   db.pragma("foreign_keys = ON");
+  // Allow up to 60 s for write locks during concurrent ingest + server reads.
+  try { db.pragma("busy_timeout = 60000"); } catch { /* noop */ }
   return db;
 }
 
@@ -98,6 +101,24 @@ export function migrate(db: DatabaseType): void {
       updated_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS apple_docs (
+      id TEXT PRIMARY KEY,         -- normalized /documentation path, e.g. "swiftui/view"
+      title TEXT NOT NULL,
+      role TEXT,
+      symbol_kind TEXT,
+      modules TEXT,                -- JSON array
+      platforms TEXT,              -- JSON array
+      url TEXT NOT NULL,
+      abstract TEXT,
+      body TEXT,
+      topic_sections TEXT,         -- JSON array
+      references_json TEXT,        -- JSON array of normalized documentation paths
+      raw_json TEXT,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_apple_docs_role ON apple_docs(role);
+    CREATE INDEX IF NOT EXISTS idx_apple_docs_symbol_kind ON apple_docs(symbol_kind);
+
     CREATE TABLE IF NOT EXISTS sample_code (
       id TEXT PRIMARY KEY,
       session_id TEXT,
@@ -110,6 +131,139 @@ export function migrate(db: DatabaseType): void {
     );
     CREATE INDEX IF NOT EXISTS idx_sample_code_session ON sample_code(session_id);
 
+    -- Swift Language Reference (docs.swift.org/swift-book) --------------
+    CREATE TABLE IF NOT EXISTS swift_book (
+      id TEXT PRIMARY KEY,          -- normalized chapter slug, e.g. "thebasics"
+      title TEXT NOT NULL,
+      section TEXT,                 -- parent section, e.g. "Language Guide"
+      body TEXT,
+      url TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_swift_book_section ON swift_book(section);
+
+    CREATE VIRTUAL TABLE IF NOT EXISTS swift_book_fts USING fts5(
+      id UNINDEXED,
+      title,
+      section,
+      body,
+      content='swift_book',
+      content_rowid='rowid',
+      tokenize='porter'
+    );
+
+    -- App Store Review Guidelines -----------------------------------------
+    CREATE TABLE IF NOT EXISTS appstore_guidelines (
+      id TEXT PRIMARY KEY,          -- anchor slug, e.g. "safety-1-1"
+      section_number TEXT,          -- e.g. "1.1"
+      title TEXT NOT NULL,
+      body TEXT,
+      url TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_appstore_section ON appstore_guidelines(section_number);
+
+    CREATE VIRTUAL TABLE IF NOT EXISTS appstore_guidelines_fts USING fts5(
+      id UNINDEXED,
+      section_number,
+      title,
+      body,
+      content='appstore_guidelines',
+      content_rowid='rowid',
+      tokenize='porter'
+    );
+
+    -- Swift Forums (forums.swift.org) -------------------------------------
+    CREATE TABLE IF NOT EXISTS swift_forum_posts (
+      id TEXT PRIMARY KEY,
+      topic_id INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      category TEXT,
+      content TEXT,
+      author TEXT,
+      post_count INTEGER DEFAULT 1,
+      reply_count INTEGER DEFAULT 0,
+      created_at TEXT,
+      url TEXT,
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE VIRTUAL TABLE IF NOT EXISTS swift_forum_posts_fts USING fts5(
+      id UNINDEXED, title, category, content,
+      content='swift_forum_posts', content_rowid='rowid', tokenize='porter'
+    );
+
+    CREATE TRIGGER IF NOT EXISTS swift_forum_posts_ai AFTER INSERT ON swift_forum_posts BEGIN
+      INSERT INTO swift_forum_posts_fts(rowid, id, title, category, content)
+        VALUES (new.rowid, new.id, new.title, new.category, new.content);
+    END;
+
+    -- Apple Developer Forums (RSS) ----------------------------------------
+    CREATE TABLE IF NOT EXISTS apple_dev_forum_posts (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      tags TEXT,
+      content TEXT,
+      author TEXT,
+      url TEXT,
+      published_at TEXT,
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE VIRTUAL TABLE IF NOT EXISTS apple_dev_forum_posts_fts USING fts5(
+      id UNINDEXED, title, tags, content,
+      content='apple_dev_forum_posts', content_rowid='rowid', tokenize='porter'
+    );
+
+    CREATE TRIGGER IF NOT EXISTS apple_dev_forum_posts_ai AFTER INSERT ON apple_dev_forum_posts BEGIN
+      INSERT INTO apple_dev_forum_posts_fts(rowid, id, title, tags, content)
+        VALUES (new.rowid, new.id, new.title, new.tags, new.content);
+    END;
+
+    -- Release notes -------------------------------------------------------
+    CREATE TABLE IF NOT EXISTS release_notes (
+      id TEXT PRIMARY KEY,
+      os TEXT NOT NULL,
+      version TEXT NOT NULL,
+      title TEXT NOT NULL,
+      content TEXT,
+      url TEXT,
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_release_notes_os ON release_notes(os);
+    CREATE INDEX IF NOT EXISTS idx_release_notes_version ON release_notes(version);
+
+    CREATE VIRTUAL TABLE IF NOT EXISTS release_notes_fts USING fts5(
+      id UNINDEXED,
+      os,
+      version,
+      title,
+      content,
+      content='release_notes',
+      content_rowid='rowid',
+      tokenize='porter'
+    );
+
+  `);
+
+  // Deprecation columns on apple_docs — added conditionally because SQLite
+  // does not support "ALTER TABLE … ADD COLUMN IF NOT EXISTS".
+  const appleDocsCols = new Set(
+    db.prepare("PRAGMA table_info(apple_docs)").all().map((r: any) => r.name)
+  );
+  for (const [col, def] of [
+    ["deprecated",         "INTEGER DEFAULT 0"],
+    ["deprecated_at",      "TEXT"],
+    ["introduced_at",      "TEXT"],
+    ["deprecated_message", "TEXT"],
+  ] as [string, string][]) {
+    if (!appleDocsCols.has(col)) {
+      db.exec(`ALTER TABLE apple_docs ADD COLUMN ${col} ${def}`);
+    }
+  }
+
+  db.exec(`
+
     -- Semantic embeddings ------------------------------------------------
     -- Stored as raw Float32 blob; cosine similarity computed in JS.
     CREATE TABLE IF NOT EXISTS embeddings (
@@ -121,6 +275,31 @@ export function migrate(db: DatabaseType): void {
       created_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_embeddings_kind ON embeddings(kind);
+
+    -- Session summaries (LLM-generated) ----------------------------------
+    CREATE TABLE IF NOT EXISTS session_summaries (
+      session_id TEXT PRIMARY KEY REFERENCES sessions(id),
+      summary TEXT NOT NULL,
+      key_apis TEXT,                   -- JSON array of API names mentioned
+      key_topics TEXT,                 -- JSON array of topic strings
+      code_patterns TEXT,              -- JSON array of code pattern descriptions
+      difficulty TEXT,                 -- "beginner" | "intermediate" | "advanced"
+      model_used TEXT,
+      generated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    -- Cross-reference graph ----------------------------------------------
+    CREATE TABLE IF NOT EXISTS cross_references (
+      from_type TEXT NOT NULL,    -- 'session', 'doc', 'hig', 'evolution', 'sample_code'
+      from_id TEXT NOT NULL,
+      to_type TEXT NOT NULL,
+      to_id TEXT NOT NULL,
+      relationship TEXT NOT NULL, -- 'mentions_api', 'introduces_api', 'deprecates', 'implements_proposal', 'demonstrates_hig', 'related_session'
+      weight REAL DEFAULT 1.0,
+      PRIMARY KEY (from_type, from_id, to_type, to_id, relationship)
+    );
+    CREATE INDEX IF NOT EXISTS idx_xref_from ON cross_references(from_type, from_id);
+    CREATE INDEX IF NOT EXISTS idx_xref_to ON cross_references(to_type, to_id);
 
     -- Ingest status ------------------------------------------------------
     CREATE TABLE IF NOT EXISTS ingest_status (
@@ -173,6 +352,18 @@ export function migrate(db: DatabaseType): void {
       content_rowid='rowid',
       tokenize='porter'
     );
+
+    CREATE VIRTUAL TABLE IF NOT EXISTS apple_docs_fts USING fts5(
+      id UNINDEXED,
+      title,
+      abstract,
+      body,
+      modules,
+      platforms,
+      content='apple_docs',
+      content_rowid='rowid',
+      tokenize='porter'
+    );
   `);
 }
 
@@ -183,5 +374,11 @@ export function rebuildFts(db: DatabaseType): void {
     INSERT INTO tutorials_fts(tutorials_fts) VALUES('rebuild');
     INSERT INTO hig_fts(hig_fts) VALUES('rebuild');
     INSERT INTO evolution_fts(evolution_fts) VALUES('rebuild');
+    INSERT INTO apple_docs_fts(apple_docs_fts) VALUES('rebuild');
+    INSERT INTO swift_book_fts(swift_book_fts) VALUES('rebuild');
+    INSERT INTO appstore_guidelines_fts(appstore_guidelines_fts) VALUES('rebuild');
+    INSERT INTO release_notes_fts(release_notes_fts) VALUES('rebuild');
+    INSERT INTO swift_forum_posts_fts(swift_forum_posts_fts) VALUES('rebuild');
+    INSERT INTO apple_dev_forum_posts_fts(apple_dev_forum_posts_fts) VALUES('rebuild');
   `);
 }

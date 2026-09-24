@@ -1,51 +1,76 @@
 /**
- * Ollama local embeddings service.
- * Uses nomic-embed-text (768-dim) via POST /api/embeddings.
- * No paid API dependency. Gracefully degrades when Ollama is offline.
+ * Local embeddings via @huggingface/transformers (ONNX, no Ollama required).
+ * Model: nomic-ai/nomic-embed-text-v1.5 (768-dim, same as original Ollama schema).
+ * Pipeline is lazy-initialized on first use so startup is not blocked.
+ *
+ * All original exports are preserved for backward compatibility.
  */
 
-import axios from "axios";
+import path from "node:path";
+import os from "node:os";
 import type { Database as DatabaseType } from "better-sqlite3";
+import { pipeline, env } from "@huggingface/transformers";
 import {
-  OLLAMA_BASE,
   OLLAMA_EMBED_MODEL,
   OLLAMA_EMBED_DIM,
 } from "../constants.js";
 
-interface EmbeddingsResponse {
-  embedding: number[];
-}
+// Cache ONNX model files locally so they survive between runs.
+env.cacheDir = path.join(os.homedir(), ".cache", "huggingface", "hub");
 
-let ollamaAvailable: boolean | null = null;
+const HF_MODEL = "nomic-ai/nomic-embed-text-v1.5";
 
-export async function checkOllama(): Promise<boolean> {
-  if (ollamaAvailable !== null) return ollamaAvailable;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _pipe: any = null;
+let embeddingAvailable: boolean | null = null;
+let initErrorLogged = false;
+
+async function getPipeline() {
+  if (_pipe) return _pipe;
+  if (embeddingAvailable === false) return null;
   try {
-    const resp = await axios.get(`${OLLAMA_BASE}/api/tags`, { timeout: 3000 });
-    ollamaAvailable = resp.status === 200;
-  } catch {
-    ollamaAvailable = false;
-  }
-  return ollamaAvailable;
-}
-
-/** Reset the cached flag (useful in tests). */
-export function resetOllamaStatus(): void { ollamaAvailable = null; }
-
-export async function embed(text: string): Promise<Float32Array | null> {
-  if (!(await checkOllama())) return null;
-  try {
-    const resp = await axios.post<EmbeddingsResponse>(
-      `${OLLAMA_BASE}/api/embeddings`,
-      { model: OLLAMA_EMBED_MODEL, prompt: text },
-      { timeout: 20_000 },
-    );
-    const arr = resp.data?.embedding;
-    if (!Array.isArray(arr)) return null;
-    return new Float32Array(arr);
-  } catch {
+    _pipe = await pipeline("feature-extraction", HF_MODEL, { dtype: "fp32" });
+    embeddingAvailable = true;
+    return _pipe;
+  } catch (err) {
+    embeddingAvailable = false;
+    if (!initErrorLogged) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`[embed] local model unavailable; embeddings disabled for this process: ${message}`);
+      initErrorLogged = true;
+    }
     return null;
   }
+}
+
+/**
+ * Embed a text string using the local ONNX model.
+ * Returns a Float32Array of length 768, or null on error.
+ */
+export async function embed(text: string): Promise<Float32Array | null> {
+  try {
+    const pipe = await getPipeline();
+    if (!pipe) return null;
+    const output = await pipe(text, { pooling: "mean", normalize: true });
+    return new Float32Array(output.data as Float32Array);
+  } catch (err) {
+    console.error("[embed] HuggingFace inference error:", err);
+    return null;
+  }
+}
+
+/** Backward-compatible availability check used by ingest callers. */
+export async function checkOllama(): Promise<boolean> {
+  if (process.env.WWDC_SKIP_EMBEDDINGS === "1") return false;
+  if (embeddingAvailable !== null) return embeddingAvailable;
+  return Boolean(await getPipeline());
+}
+
+/** Reset cached availability so a later call may retry initialization. */
+export function resetOllamaStatus(): void {
+  _pipe = null;
+  embeddingAvailable = null;
+  initErrorLogged = false;
 }
 
 export function storeEmbedding(
@@ -66,7 +91,7 @@ export function storeEmbedding(
     kind,
     vector: buf,
     dim: vec.length,
-    model: OLLAMA_EMBED_MODEL,
+    model: HF_MODEL,
     created_at: new Date().toISOString(),
   });
 }

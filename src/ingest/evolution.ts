@@ -22,7 +22,8 @@ interface GithubFile {
 
 export async function listProposalFiles(): Promise<GithubFile[]> {
   const { data } = await httpGet<GithubFile[]>(SWIFT_EVOLUTION_INDEX_API);
-  return Array.isArray(data) ? data.filter((f) => f.type === "file" && /\.md$/i.test(f.name)) : [];
+  const parsed = typeof data === "string" ? JSON.parse(data) as GithubFile[] : data;
+  return Array.isArray(parsed) ? parsed.filter((f) => f.type === "file" && /\.md$/i.test(f.name)) : [];
 }
 
 /** Parse the leading metadata block of a Swift Evolution proposal. */
@@ -95,7 +96,8 @@ export async function ingestEvolution(
         const vec = await embed(`${proposal.title}\n${proposal.body}`.slice(0, 4000));
         if (vec) storeEmbedding(db, `evolution:${proposal.id}`, "evolution", vec);
       }
-    } catch {
+    } catch (error) {
+      if (errors < 5) console.error(`[ingest:evolution] ${f.name}:`, error instanceof Error ? error.message : error);
       errors++;
     }
   }

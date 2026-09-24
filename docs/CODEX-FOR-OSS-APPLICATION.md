@@ -16,7 +16,7 @@ Primary maintainer and repository administrator. I maintain the MCP server, inge
 
 ## Why this is open source infrastructure
 
-Apple platform developers often need authoritative, current context from WWDC sessions, HIG pages, DocC tutorials, and Swift Evolution proposals. This project packages those sources into a reusable local MCP server so coding agents can answer Swift, SwiftUI, visionOS, macOS, and iOS implementation questions with better context and fewer hallucinations.
+Apple platform developers often need authoritative, current context from WWDC sessions, HIG pages, DocC tutorials, and Swift Evolution proposals. This project packages those sources into a reusable local MCP server so coding agents can answer iOS, macOS, visionOS, watchOS, tvOS, Swift, SwiftUI, UIKit, AppKit, Metal, StoreKit, GameKit, Vision, AVFoundation, Foundation Models, and platform UX implementation questions with better context and fewer hallucinations.
 
 The server is intentionally local-first:
 
@@ -35,6 +35,9 @@ Codex is useful for:
 - Improving docs and examples for new MCP clients.
 - Triage of issues from Apple platform developers.
 - Release checks before publishing tags.
+- Finding reusable WWDC/HIG/Swift Evolution guidance for iOS, macOS, visionOS, watchOS, tvOS, and iPadOS app improvements.
+- Combining WWDC source retrieval with existing app specs, OSS benchmarks, and patent/opportunity radar patterns.
+- Turning app-improvement findings back into MCP search, parser, and documentation improvements.
 
 ## API credit use case
 
@@ -44,6 +47,7 @@ If API credits are granted, they would support maintainer automation:
 - Release checklist generation and changelog review.
 - Test failure triage for CI runs.
 - Documentation quality checks against repository examples.
+- App-improvement synthesis for maintained Apple-platform apps using local WWDC evidence.
 
 API credits would not be used to power a commercial hosted service.
 
@@ -73,7 +77,7 @@ Current security posture:
 - Contributing guide: yes.
 - Security policy: yes.
 - CI: build, smoke test, parse test, high-severity audit.
-- MCP e2e coverage: all 15 tools plus filtered search, no-hit judgment, session response shaping, package smoke.
+- MCP e2e coverage: all 45 canonical tools plus filtered search, no-hit judgment, session response shaping, security manifest, package smoke.
 - Local verification:
   - `npm run build`
   - `npm test`
@@ -81,8 +85,10 @@ Current security posture:
 
 ## Suggested application answer
 
-I maintain `wwdc-mcp-server`, a local-first MCP server for Apple platform development. It indexes WWDC sessions, Apple tutorials, Human Interface Guidelines, and Swift Evolution proposals, then exposes them through 15 MCP tools for Codex and other MCP-compatible coding agents.
+I maintain `wwdc-mcp-server`, a local-first MCP server for Apple platform development. It indexes WWDC sessions, Apple tutorials, Human Interface Guidelines, Swift Evolution proposals, Swift Book chapters, and App Store Review Guidelines, then exposes them through 45 MCP tools for Codex and other MCP-compatible coding agents.
 
-The project helps Swift, SwiftUI, iOS, macOS, and visionOS developers ground agent answers in authoritative Apple material while keeping retrieval local through SQLite FTS5 and optional Ollama embeddings. It does not require paid APIs for normal use.
+The project helps Apple-platform developers ground agent answers in authoritative Apple material while keeping retrieval local through SQLite FTS5 and optional Ollama embeddings. It does not require paid APIs for normal use.
 
 I use Codex for maintainer workflows: PR review, issue triage, test failure analysis, release checks, and documentation updates. API credits would be used only for open-source maintainer automation around this repository, especially PR/release review and CI triage. Codex Security would help validate the local MCP boundary, public-web ingest code, and SQLite-backed tool surface.
+
+In practice, the MCP is also used as Apple-platform upgrade infrastructure for maintained apps. Its `swift_app_audit` tool supplies source-grounded WWDC/HIG/tutorial/evolution context that combines with the existing OpenClaw Mac utilities spec format, OSS index patterns, and patent/opportunity radar patterns; those findings feed back into better MCP parser coverage, search judgment, and docs.

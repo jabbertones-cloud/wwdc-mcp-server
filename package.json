@@ -8,7 +8,7 @@
     "wwdc-mcp-server": "dist/index.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "node ./node_modules/typescript/bin/tsc",
     "prepare": "npm run build",
     "prepack": "npm run build",
     "dev": "tsx src/index.ts",
@@ -18,11 +18,16 @@
     "ingest:tutorials": "tsx src/ingest/run.ts --source tutorials",
     "ingest:hig": "tsx src/ingest/run.ts --source hig",
     "ingest:evolution": "tsx src/ingest/run.ts --source evolution",
+    "ingest:docs": "tsx src/ingest/run.ts --source docs",
+    "ingest:swiftbook": "tsx src/ingest/run.ts --source swiftbook",
+    "ingest:appstore": "tsx src/ingest/run.ts --source appstore",
     "ingest:all": "tsx src/ingest/run.ts --source all",
     "smoke": "tsx tests/smoke.ts",
-    "test": "tsx tests/smoke.ts && tsx tests/ingest-parse.ts && tsx tests/mcp-e2e.ts && tsx tests/package-smoke.ts",
+    "health:native": "node -e \"require('better-sqlite3'); console.log('better-sqlite3 native addon OK')\"",
+    "test": "tsx tests/smoke.ts && tsx tests/ingest-parse.ts && tsx tests/security-eval.ts && tsx tests/mcp-e2e.ts && tsx tests/package-smoke.ts",
     "test:parse": "tsx tests/ingest-parse.ts",
     "test:e2e": "tsx tests/mcp-e2e.ts",
+    "test:security": "tsx tests/security-eval.ts",
     "test:package": "tsx tests/package-smoke.ts",
     "test:live": "tsx tests/ingest-live.ts",
     "eval": "tsx tests/eval.ts"
@@ -53,8 +58,9 @@
     "url": "https://github.com/jabbertones-cloud/wwdc-mcp-server/issues"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.6.1",
-    "axios": "^1.7.9",
+    "@huggingface/transformers": "^4.3.0",
+    "@modelcontextprotocol/sdk": "^1.30.1",
+    "axios": "^1.20.0",
     "better-sqlite3": "^11.5.0",
     "cheerio": "^1.0.0",
     "p-limit": "^6.1.0",
@@ -63,7 +69,7 @@
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.11",
     "@types/node": "^22.10.1",
-    "tsx": "^4.19.2",
+    "tsx": "^4.23.15",
     "typescript": "^5.7.2"
   },
   "engines": {
