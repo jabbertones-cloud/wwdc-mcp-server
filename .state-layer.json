@@ -1,0 +1,16 @@
+{
+  "contract": "state-layer.repo.v1",
+  "repository": "jabbertones-cloud/wwdc-mcp-server",
+  "role": "research-provider",
+  "preflight": {
+    "purpose": "committed-head",
+    "bootstrap": "npm ci",
+    "verify": "npm test"
+  },
+  "classification": {
+    "missingDependencies": "environment_not_code_regression"
+  },
+  "learning": {
+    "trajectoryPolicy": "candidate-until-evidence-verified"
+  }
+}
