@@ -4,6 +4,7 @@
 
 | Version | Supported |
 | --- | --- |
+| current `main` / 0.2.0 release candidate | Yes |
 | 0.1.x | Yes |
 
 ## Reporting a vulnerability
@@ -63,7 +64,9 @@ Ingest can fetch public Apple Developer pages, Swift Evolution content, Swift do
 
 No Apple Developer account credentials are required or stored.
 
-Ollama, when enabled, defaults to localhost.
+Semantic reranking runs locally through `@huggingface/transformers` using `nomic-ai/nomic-embed-text-v1.5`. Model files may be downloaded from Hugging Face on first use and are cached locally; set `WWDC_SKIP_EMBEDDINGS=1` to disable that path.
+
+`session-summaries` is an optional, explicit external-API lane. When `ANTHROPIC_API_KEY` is configured, it sends bounded WWDC session titles, topics, descriptions, and transcript excerpts to Anthropic for generated summaries. Do not enable that source if those inputs must remain local.
 
 ## Deployment checklist
 
