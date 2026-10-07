@@ -11,14 +11,14 @@ import os from "node:os";
 import type { Database as DatabaseType } from "better-sqlite3";
 import { pipeline, env } from "@huggingface/transformers";
 import {
-  OLLAMA_EMBED_MODEL,
-  OLLAMA_EMBED_DIM,
+  LOCAL_EMBED_MODEL,
+  LOCAL_EMBED_DIM,
 } from "../constants.js";
 
 // Cache ONNX model files locally so they survive between runs.
 env.cacheDir = path.join(os.homedir(), ".cache", "huggingface", "hub");
 
-const HF_MODEL = "nomic-ai/nomic-embed-text-v1.5";
+const HF_MODEL = LOCAL_EMBED_MODEL;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _pipe: any = null;
@@ -60,14 +60,14 @@ export async function embed(text: string): Promise<Float32Array | null> {
 }
 
 /** Backward-compatible availability check used by ingest callers. */
-export async function checkOllama(): Promise<boolean> {
+export async function checkEmbeddings(): Promise<boolean> {
   if (process.env.WWDC_SKIP_EMBEDDINGS === "1") return false;
   if (embeddingAvailable !== null) return embeddingAvailable;
   return Boolean(await getPipeline());
 }
 
 /** Reset cached availability so a later call may retry initialization. */
-export function resetOllamaStatus(): void {
+export function resetEmbeddingStatus(): void {
   _pipe = null;
   embeddingAvailable = null;
   initErrorLogged = false;
@@ -148,5 +148,9 @@ export async function semanticSearch(
   return scored.slice(0, topK);
 }
 
-export const EMBED_DIM = OLLAMA_EMBED_DIM;
-export const EMBED_MODEL = OLLAMA_EMBED_MODEL;
+export const EMBED_DIM = LOCAL_EMBED_DIM;
+export const EMBED_MODEL = LOCAL_EMBED_MODEL;
+
+// Deprecated compatibility aliases retained for callers that imported the old names.
+export const checkOllama = checkEmbeddings;
+export const resetOllamaStatus = resetEmbeddingStatus;
