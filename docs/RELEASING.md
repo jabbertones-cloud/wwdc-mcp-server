@@ -46,6 +46,7 @@ Confirm:
 - the 45-tool stdio and HTTP contracts pass
 - no secrets, local databases, or private workspace files are packed
 - README install claims match what is actually published
+- `AGENTS.md`, `docs/AGENT_GUIDE.md`, client rules, `SECURITY.md`, `SUPPORT.md`, and issue templates still match the current tool/auth/source contracts
 
 ## 2. Build release assets
 
@@ -176,5 +177,6 @@ After release verification:
 - update GitHub Release notes
 - update Cursor plugin/config version
 - update Apple Notes handoff
+- re-check `AGENTS.md`, `docs/AGENT_GUIDE.md`, Cursor/Copilot instructions, `SECURITY.md`, and `SUPPORT.md` for stale version/tool/auth claims
 
 A successful build is evidence only for the tested layer. A release is complete only when the GitHub assets, Registry record, runtime handshake, docs, and intended client install path all agree.
