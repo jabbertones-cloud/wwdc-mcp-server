@@ -9,19 +9,19 @@ description: Initialize or refresh the local WWDC MCP Apple-source index.
 2. If the index is empty, initialize the high-value release corpus with the commands below. Run them one at a time and report failures instead of hiding them.
 
 ```bash
-PKG="https://github.com/jabbertones-cloud/wwdc-mcp-server/releases/download/v0.2.0/wwdc-mcp-server-0.2.0.tgz"
+PKG="https://github.com/jabbertones-cloud/wwdc-mcp-server/releases/download/v0.2.1/wwdc-mcp-server-0.2.1.tgz"
 
-npm exec --yes --package="$PKG" -- wwdc-mcp-ingest --source wwdc --year 2026
-npm exec --yes --package="$PKG" -- wwdc-mcp-ingest --source docs
-npm exec --yes --package="$PKG" -- wwdc-mcp-ingest --source hig
-npm exec --yes --package="$PKG" -- wwdc-mcp-ingest --source evolution
-npm exec --yes --package="$PKG" -- wwdc-mcp-ingest --source appstore
+npm exec --yes --allow-remote=all --package="$PKG" -- wwdc-mcp-ingest --source wwdc --year 2026
+npm exec --yes --allow-remote=all --package="$PKG" -- wwdc-mcp-ingest --source docs
+npm exec --yes --allow-remote=all --package="$PKG" -- wwdc-mcp-ingest --source hig
+npm exec --yes --allow-remote=all --package="$PKG" -- wwdc-mcp-ingest --source evolution
+npm exec --yes --allow-remote=all --package="$PKG" -- wwdc-mcp-ingest --source appstore
 ```
 
 3. For broader historical research, add the full core corpus only when useful:
 
 ```bash
-npm exec --yes --package="$PKG" -- wwdc-mcp-ingest --source all
+npm exec --yes --allow-remote=all --package="$PKG" -- wwdc-mcp-ingest --source all
 ```
 
 4. Re-call `wwdc_ingest_status` and verify the expected sources and WWDC year coverage before research.
