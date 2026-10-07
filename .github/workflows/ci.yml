@@ -38,8 +38,11 @@ jobs:
       - name: Parse test
         run: npm run test:parse
 
-      - name: E2E test (MCP protocol)
+      - name: E2E test (stdio MCP protocol)
         run: npm run test:e2e
+
+      - name: E2E test (remote Streamable HTTP MCP)
+        run: npm run test:http
 
       - name: Package smoke
         run: npm run test:package
