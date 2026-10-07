@@ -69,7 +69,11 @@ const raw = execFileSync("npm", ["pack", "--dry-run", "--json"], {
   encoding: "utf8",
   stdio: ["ignore", "pipe", "pipe"],
 });
-const [pack] = JSON.parse(raw) as Array<{ files: Array<{ path: string }> }>;
+const parsedPack = JSON.parse(raw) as
+  | { files: Array<{ path: string }> }
+  | Array<{ files: Array<{ path: string }> }>;
+const pack = Array.isArray(parsedPack) ? parsedPack[0] : parsedPack;
+assert.ok(pack && Array.isArray(pack.files), "npm pack --json must return a file manifest");
 const files = new Set(pack.files.map((file) => file.path));
 
 assert.ok(files.has("dist/index.js"), "packed artifact must include dist/index.js");
