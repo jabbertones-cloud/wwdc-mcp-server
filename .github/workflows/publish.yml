@@ -4,14 +4,43 @@ on:
   push:
     tags:
       - "v*"
-
-permissions:
-  contents: read
-  id-token: write
+    branches:
+      - "release-v0.2.0"
 
 jobs:
-  publish:
+  bootstrap-tag:
+    if: github.ref == 'refs/heads/release-v0.2.0'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Create matching release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./package.json').version")"
+          TAG="v$VERSION"
+          test "$VERSION" = "0.2.0"
+          git fetch --tags --force
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "$TAG already exists; nothing to do"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "WWDC MCP $TAG"
+          git push origin "$TAG"
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v5
 
@@ -58,8 +87,20 @@ jobs:
             exit 1
           fi
 
-      - name: Publish npm package with OIDC trusted publishing
-        run: npm publish --access public
+      - name: Publish npm package
+        shell: bash
+        env:
+          NPM_TOKEN_SECRET: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${NPM_TOKEN_SECRET:-}" ]; then
+            export NODE_AUTH_TOKEN="$NPM_TOKEN_SECRET"
+            echo "Using configured npm bootstrap token."
+          else
+            unset NODE_AUTH_TOKEN || true
+            echo "No npm token configured; attempting npm trusted-publishing OIDC."
+          fi
+          npm publish --access public
 
       - name: Authenticate to official MCP Registry
         run: ./mcp-publisher login github-oidc
