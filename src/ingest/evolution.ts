@@ -12,7 +12,7 @@ import {
 } from "../constants.js";
 import { httpGet } from "../services/http.js";
 import { upsertEvolution, recordIngest } from "../db/queries.js";
-import { embed, checkEmbeddings, storeEmbedding } from "../services/ollama.js";
+import { embed, checkEmbeddings, storeEmbedding } from "../services/embeddings.js";
 import type { SwiftEvolutionProposal } from "../types.js";
 
 interface GithubFile {
