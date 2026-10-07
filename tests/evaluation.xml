@@ -27,13 +27,13 @@
   </qa_pair>
 
   <qa_pair>
-    <question>The wwdc-mcp-server uses a local embedding model served by Ollama for semantic search. What is the default model name?</question>
-    <answer>nomic-embed-text</answer>
+    <question>When semantic reranking is enabled, which local Hugging Face model does wwdc-mcp-server load through Transformers/ONNX?</question>
+    <answer>nomic-ai/nomic-embed-text-v1.5</answer>
   </qa_pair>
 
   <qa_pair>
-    <question>What is the default port the wwdc-mcp-server expects Ollama to be listening on?</question>
-    <answer>11434</answer>
+    <question>Which environment variable disables local embedding-model loading for deterministic keyword-only operation?</question>
+    <answer>WWDC_SKIP_EMBEDDINGS</answer>
   </qa_pair>
 
   <qa_pair>
