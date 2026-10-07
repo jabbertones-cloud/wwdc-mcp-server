@@ -11,6 +11,11 @@ commands
 rules
 docs
 packaging
+coverage
 *.log
+.env
+.env.*
+data
 .deploy-data/*
 !.deploy-data/wwdc.db
+.DS_Store
