@@ -1,0 +1,57 @@
+name: Publish public release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22.x"
+          registry-url: "https://registry.npmjs.org"
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - run: npm audit --audit-level=high
+
+      - name: Verify tag, package, runtime, and Registry versions agree
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+          SERVER_VERSION="$(node -e "import('./dist/server.js').then(m=>process.stdout.write(m.SERVER_VERSION))")"
+          REGISTRY_VERSION="$(node -p "require('./server.json').version")"
+          PACKAGE_REGISTRY_VERSION="$(node -p "require('./server.json').packages[0].version")"
+          test "$TAG_VERSION" = "$PACKAGE_VERSION"
+          test "$PACKAGE_VERSION" = "$SERVER_VERSION"
+          test "$PACKAGE_VERSION" = "$REGISTRY_VERSION"
+          test "$PACKAGE_VERSION" = "$PACKAGE_REGISTRY_VERSION"
+
+      - name: Publish npm package
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Install MCP publisher
+        run: |
+          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
+          ./mcp-publisher validate server.json
+
+      - name: Authenticate to official MCP Registry
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish to official MCP Registry
+        run: ./mcp-publisher publish server.json
