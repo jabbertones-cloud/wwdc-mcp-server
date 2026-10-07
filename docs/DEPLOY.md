@@ -74,6 +74,8 @@ The built server should expose exactly 45 read-only tools.
 
 ## 4. Remote Streamable HTTP
 
+### Private bearer-authenticated mode
+
 Generate a secret and start the HTTP entry point:
 
 ```bash
@@ -89,7 +91,17 @@ Routes:
 - `GET /healthz`
 - `POST /mcp`
 
-The MCP route returns `503 auth_not_configured` if neither `WWDC_MCP_BEARER_TOKEN` nor `WWDC_MCP_BEARER_TOKEN_SHA256` is set.
+For an intentionally public read-only connector:
+
+```bash
+export WWDC_MCP_PUBLIC_READ_ONLY=1
+export WWDC_MCP_HTTP_HOST=0.0.0.0
+export WWDC_MCP_HTTP_PORT=8789
+export WWDC_MCP_DEPLOYED_SHA="$(git rev-parse HEAD)"
+npm run start:http
+```
+
+The MCP route returns `503 auth_not_configured` unless bearer authentication is configured or `WWDC_MCP_PUBLIC_READ_ONLY=1` is explicitly enabled. The public switch changes authentication only; the MCP catalog remains the same 45 read-only tools.
 
 The server is stateless at the MCP transport layer: each HTTP request receives a fresh MCP server/transport instance while sharing the local SQLite database.
 
@@ -108,7 +120,27 @@ Forward the prefix unchanged.
 
 ### Internet exposure
 
-The Node HTTP server does not provide TLS. If remote access is required, terminate TLS at a reverse proxy and keep the origin private where possible. Treat bearer tokens as secrets.
+The Node HTTP server does not provide TLS. If remote access is required, terminate TLS at an edge/reverse proxy and keep the origin private where possible. Treat bearer tokens as secrets. For public read-only mode, add edge rate limiting, abuse monitoring, and deployment-SHA verification.
+
+### Cloudflare Worker + Container
+
+The planned public endpoint is `https://wwdc-mcp.smatdesigns.com/mcp`.
+
+The production shape intentionally separates concerns:
+
+- **Cloudflare Worker** — custom hostname, TLS, routing, observability, and edge controls.
+- **Cloudflare Container** — Node 22 runtime, `better-sqlite3`, the indexed WWDC/Apple corpus, and the existing Streamable HTTP MCP server.
+- **Public mode** — container sets `WWDC_MCP_PUBLIC_READ_ONLY=1`; no write tools are introduced.
+
+The server is not rewritten into a Worker isolate because the proven search/index implementation depends on native `better-sqlite3`. Keep the Node/SQLite engine intact and use the Worker as the public edge.
+
+Do not advertise the hostname as live until all of these pass against the deployed URL:
+
+1. `GET /healthz` returns the expected version and deployment SHA.
+2. MCP `initialize` succeeds over HTTPS.
+3. `tools/list` returns exactly 45 read-only tools.
+4. At least one WWDC26 search and one `wwdc_security_manifest` call succeed.
+5. Edge rate limits/observability are enabled.
 
 ## 5. Scheduled ingest
 
