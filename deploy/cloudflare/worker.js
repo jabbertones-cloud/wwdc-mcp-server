@@ -17,15 +17,15 @@ export class WwdcContainer extends DurableObject {
 
     if (!container.running) {
       container.start({
-        image: container.images.base,
-        enableInternet: true,
-        envVars: {
+        enableInternet: false,
+        env: {
           WWDC_MCP_PUBLIC_READ_ONLY: "1",
           WWDC_MCP_HTTP_HOST: "0.0.0.0",
           WWDC_MCP_HTTP_PORT: String(PORT),
           WWDC_MCP_DB: "/app/data/wwdc.db",
           WWDC_SKIP_EMBEDDINGS: "1",
-          WWDC_MCP_DEPLOYED_SHA: env.DEPLOYED_SHA ?? "",\n          WWDC_MCP_CORPUS_SHA256: env.CORPUS_SHA256 ?? ""
+          WWDC_MCP_DEPLOYED_SHA: this.env.DEPLOYED_SHA ?? "",
+          WWDC_MCP_CORPUS_SHA256: this.env.CORPUS_SHA256 ?? ""
         }
       });
       await container.setInactivityTimeout(INACTIVITY_MS);
