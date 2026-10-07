@@ -4,39 +4,9 @@ on:
   push:
     tags:
       - "v*"
-    branches:
-      - "release-v0.2.0"
 
 jobs:
-  bootstrap-tag:
-    if: github.ref == 'refs/heads/release-v0.2.0'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - name: Create matching release tag
-        shell: bash
-        run: |
-          set -euo pipefail
-          VERSION="$(node -p "require('./package.json').version")"
-          TAG="v$VERSION"
-          test "$VERSION" = "0.2.0"
-          git fetch --tags --force
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "$TAG already exists; nothing to do"
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "$TAG" -m "WWDC MCP $TAG"
-          git push origin "$TAG"
-
   publish:
-    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -50,24 +20,33 @@ jobs:
           registry-url: "https://registry.npmjs.org"
           package-manager-cache: false
 
-      - name: Upgrade npm for OIDC trusted publishing
+      - name: Upgrade npm for trusted publishing
         run: npm install --global npm@latest
 
-      - run: npm ci
-      - run: npm run build
-      - run: npm test
-      - run: npm audit --audit-level=high
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Verify tag, package, runtime, and Registry versions agree
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
+
+      - name: Audit
+        run: npm audit --audit-level=high
+
+      - name: Verify tag and release metadata
         shell: bash
         run: |
           set -euo pipefail
           TAG_VERSION="${GITHUB_REF_NAME#v}"
           PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+          LOCK_VERSION="$(node -p "require('./package-lock.json').version")"
           SERVER_VERSION="$(node -e "import('./dist/server.js').then(m=>process.stdout.write(m.SERVER_VERSION))")"
           REGISTRY_VERSION="$(node -p "require('./server.json').version")"
           PACKAGE_REGISTRY_VERSION="$(node -p "require('./server.json').packages[0].version")"
           test "$TAG_VERSION" = "$PACKAGE_VERSION"
+          test "$PACKAGE_VERSION" = "$LOCK_VERSION"
           test "$PACKAGE_VERSION" = "$SERVER_VERSION"
           test "$PACKAGE_VERSION" = "$REGISTRY_VERSION"
           test "$PACKAGE_VERSION" = "$PACKAGE_REGISTRY_VERSION"
@@ -77,30 +56,34 @@ jobs:
           curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
           ./mcp-publisher validate server.json
 
-      - name: Refuse an already-published version
+      - name: Refuse an already-published npm version
         shell: bash
         run: |
           set -euo pipefail
-          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
-          if npm view "wwdc-mcp-server@$PACKAGE_VERSION" version >/dev/null 2>&1; then
-            echo "::error::wwdc-mcp-server@$PACKAGE_VERSION already exists on npm"
+          VERSION="$(node -p "require('./package.json').version")"
+          if npm view "wwdc-mcp-server@$VERSION" version >/dev/null 2>&1; then
+            echo "::error::wwdc-mcp-server@$VERSION already exists on npm"
             exit 1
           fi
 
-      - name: Publish npm package
+      - name: Publish npm package with OIDC
+        run: npm publish --access public
+
+      - name: Verify npm anonymously
         shell: bash
-        env:
-          NPM_TOKEN_SECRET: ${{ secrets.NPM_TOKEN }}
         run: |
           set -euo pipefail
-          if [ -n "${NPM_TOKEN_SECRET:-}" ]; then
-            export NODE_AUTH_TOKEN="$NPM_TOKEN_SECRET"
-            echo "Using configured npm bootstrap token."
-          else
-            unset NODE_AUTH_TOKEN || true
-            echo "No npm token configured; attempting npm trusted-publishing OIDC."
-          fi
-          npm publish --access public
+          VERSION="$(node -p "require('./package.json').version")"
+          for attempt in 1 2 3 4 5 6; do
+            PUBLISHED="$(npm view "wwdc-mcp-server@$VERSION" version 2>/dev/null || true)"
+            if [ "$PUBLISHED" = "$VERSION" ]; then
+              echo "Verified wwdc-mcp-server@$VERSION on npm."
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::npm publication did not become publicly visible"
+          exit 1
 
       - name: Authenticate to official MCP Registry
         run: ./mcp-publisher login github-oidc
