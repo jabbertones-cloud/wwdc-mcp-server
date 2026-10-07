@@ -10,7 +10,7 @@ import { APPLE_BASE, APPLE_HIG_JSON } from "../constants.js";
 import { httpGet } from "../services/http.js";
 import type { HigEntry } from "../types.js";
 import { upsertHig, recordIngest } from "../db/queries.js";
-import { checkEmbeddings, embed, storeEmbedding } from "../services/ollama.js";
+import { checkEmbeddings, embed, storeEmbedding } from "../services/embeddings.js";
 
 /** Top-level HIG topic slugs (extend as Apple adds more). */
 export const HIG_SEEDS: readonly string[] = [
