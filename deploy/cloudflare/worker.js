@@ -25,7 +25,7 @@ export class WwdcContainer extends DurableObject {
           WWDC_MCP_HTTP_PORT: String(PORT),
           WWDC_MCP_DB: "/app/data/wwdc.db",
           WWDC_SKIP_EMBEDDINGS: "1",
-          WWDC_MCP_DEPLOYED_SHA: "93eae9425e3d1fc1a9b3dd6964abff067baf44d5"
+          WWDC_MCP_DEPLOYED_SHA: env.DEPLOYED_SHA ?? "",\n          WWDC_MCP_CORPUS_SHA256: env.CORPUS_SHA256 ?? ""
         }
       });
       await container.setInactivityTimeout(INACTIVITY_MS);
