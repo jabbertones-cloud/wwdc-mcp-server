@@ -3,47 +3,47 @@
 ## Current public state
 
 - Public repo: `jabbertones-cloud/wwdc-mcp-server`.
-- GitHub release `v0.2.0` is published and points to commit `6c692ac50d73b01512a6cd9e65fccbe74549485b`.
-- Release asset attached: `wwdc-mcp-server-0.2.0.tgz`.
-- Release asset SHA-256: `2126322dc4c93d64c8a0b71a205d8d90ebada624eb08ed24000f6a33e5ddf5d1`.
-- Public About metadata was updated from the stale “15 tools + Ollama” description to WWDC20-WWDC26 / 45 read-only MCP tools / current Apple developer intelligence.
-- GitHub topics now include WWDC26, Apple Developer, App Store, Xcode, macOS, Codex, Cursor, local-first, and semantic search.
-- README already contains the AiSCent funnel: WWDC MCP is the read-only Apple knowledge layer; AiSCent is the App Store Connect execution layer.
+- Current release: **v0.2.1**.
+- v0.2.1 tag points to `dcdd573f93c141f08acee0583ef922c7e45b51fe`.
+- GitHub Release: `https://github.com/jabbertones-cloud/wwdc-mcp-server/releases/tag/v0.2.1`.
+- Release assets:
+  - `wwdc-mcp-server-0.2.1.tgz`
+  - `WWDC-MCP-v0.2.1.mcpb`
+- MCPB SHA-256: `0ad362082b60cec8a14c745665cad9fb151b0340beef76ea2b9cc6fc9938654a`.
+- Official MCP Registry namespace: `io.github.jabbertones-cloud/wwdc`.
+- Registry v0.2.1: **active**, **latest**.
+- Registry v0.2.0: **deprecated**.
+- npm package `wwdc-mcp-server`: **not published**; npm is optional secondary distribution.
 
-## Verified release proof
+## What shipped
 
-The release candidate was exercised under Node 22.23.3 / npm 12.2.0:
+### Core product
 
-- build: pass
-- deterministic test suite: pass
-- parser/security checks: pass
-- all 45 stdio MCP tools: pass
-- search regression: pass
-- retrieval eval: pass
-- package smoke: pass
-- authenticated Streamable HTTP MCP test: pass
-- live WWDC26 ingest: pass
-- live tutorials/HIG/Swift Evolution/pathways ingest: pass
-- `npm audit --audit-level=high`: 0 vulnerabilities
-- MCP Registry `server.json` validation: pass
-- npm tarball contains both `wwdc-mcp-server` and `wwdc-mcp-ingest`.
+- WWDC20–WWDC26 Apple developer intelligence.
+- 45 read-only MCP tools.
+- SQLite + FTS5 local index.
+- Local Hugging Face/ONNX semantic reranking with `nomic-ai/nomic-embed-text-v1.5`.
+- `swift_app_audit` promoted as the repo-level Apple audit entry point.
+- `wwdc_security_manifest` promoted as the trust/attestation entry point.
+- stdio transport plus authenticated stateless Streamable HTTP.
+- no Ollama service requirement.
 
-The npm 12 `npm pack --json` format change was fixed by normalizing legacy array, direct object, and npm 12 keyed-object shapes.
+### Public distribution
 
-## Distribution work completed
+- GitHub v0.2.1 release is live.
+- npm-format tarball exposes:
+  - `wwdc-mcp-server`
+  - `wwdc-mcp-ingest`
+- valid MCPB v0.2.1 is live as a GitHub Release asset.
+- official MCP Registry entry is live from that MCPB.
+- Registry publication uses GitHub OIDC; no long-lived Registry token.
+- normal Registry publishing is gated on a published GitHub Release.
+- public MCPB is downloaded back, SHA-verified, and runtime-tested before Registry publication.
+- v0.2.0 was deprecated after v0.2.1 proved healthy.
 
-### npm package shape
+### Cursor integration
 
-`package.json` now exposes:
-
-- `wwdc-mcp-server` -> `dist/index.js`
-- `wwdc-mcp-ingest` -> `dist/ingest/run.js`
-
-The repository URL was normalized to the npm-preferred git URL.
-
-### Cursor plugin
-
-Post-v0.2.0 work on `main` added:
+Committed on `main`:
 
 - `.cursor-plugin/plugin.json`
 - `mcp.json`
@@ -51,83 +51,102 @@ Post-v0.2.0 work on `main` added:
 - `commands/wwdc-setup.md`
 - `commands/wwdc-audit.md`
 
-Latest validated `main` head after these files: `a697aff1877ef72ac88b33bc77825d4914496166`.
+Cursor/runtime install paths pin v0.2.1 GitHub Release assets and explicitly opt into npm 12 remote-tarball installs with `--allow-remote=all`.
 
-The Cursor MCP config uses the immutable GitHub release npm tarball, not the unpublished npm registry package:
+### Discovery / positioning
 
-`https://github.com/jabbertones-cloud/wwdc-mcp-server/releases/download/v0.2.0/wwdc-mcp-server-0.2.0.tgz`
+GitHub About metadata and topics are current: WWDC26, Apple Developer, App Store, Xcode, macOS, Codex, Cursor, local-first, semantic search, Swift/SwiftUI, MCP.
 
-That artifact was proven installable via `npm exec --package=<release-asset>`, and both public executables resolve.
-
-## Remaining blockers / next actions
-
-### 1. First npm publish — human account bootstrap only
-
-The code and release pipeline are not blocked. The first publish failed with npm `E404` because `wwdc-mcp-server` has never been created under an authenticated npm owner.
-
-Important facts:
-
-- GitHub Actions has **no repository or environment secrets** configured.
-- npm trusted publishing cannot create a brand-new package; the package must exist first.
-- Safari has no saved npm credential and the Mac is not authenticated with `npm whoami`.
-- Do not add a long-lived token just to bootstrap unless necessary.
-
-Next action:
-
-1. Sign into npm once.
-2. Publish `wwdc-mcp-server@0.2.0` publicly.
-3. Configure npm trusted publishing for this GitHub repo/workflow.
-4. Future releases should use OIDC only.
-
-### 2. Official MCP Registry — npm is not the only path
-
-The official Registry supports GitHub-hosted `mcpb` packages with:
-
-- `registryType: "mcpb"`
-- direct GitHub release asset URL
-- required `fileSha256`
-
-The Registry validator explicitly accepts GitHub release redirects.
-
-Do **not** rename the npm tarball to `.mcpb`. Build a valid MCPB bundle using manifest spec 0.3, upload it to the GitHub release, compute SHA-256, update `server.json`, validate with `mcp-publisher`, then publish.
-
-A clean design is a tiny Node MCPB bootstrap package that launches the pinned WWDC MCP release artifact while preserving stdio, with Node >=22.14 compatibility declared. Validate client behavior before listing it.
-
-### 3. Cursor Marketplace submission
-
-The public repo is structurally ready for Cursor marketplace submission.
-
-Current blocker: Cursor’s publisher page requires sign-in. The local Safari session reached the Cursor/WorkOS authentication page, which is an email/magic-link boundary. No account email was guessed or entered.
-
-Next action after Cursor sign-in:
-
-1. Open `https://cursor.com/marketplace/publish`.
-2. Submit the public GitHub repo.
-3. Confirm review status and any requested manifest changes.
-
-### 4. ChatGPT / Claude public directories
-
-Current public connector directories favor remote MCP endpoints. WWDC MCP is intentionally local-first and read-only. Do not weaken the product by mirroring Apple content into a hosted service merely to satisfy a directory.
-
-If a remote listing is desired, use the existing authenticated Streamable HTTP transport with a deliberate public deployment and a safe indexing model. Keep Apple content source-linked and respect source terms.
-
-## Product / positioning
-
-Keep the ecosystem story:
+The ecosystem story remains:
 
 - **WWDC MCP = know what Apple expects.**
 - **Research Fabric = reason and verify.**
 - **AiSCent = execute the App Store Connect release.**
 
-Primary open-source audience: AI-assisted Apple developers using Codex, Claude, Cursor, etc. who need current Apple evidence before changing or shipping code.
+README links the open-source knowledge layer to AiSCent for App Store Connect execution.
+
+## Verified proof
+
+The release path has passed:
+
+- Node 22/24 builds.
+- deterministic parser/security tests.
+- all 45 stdio MCP tools.
+- authenticated Streamable HTTP E2E.
+- search regression suite.
+- retrieval eval.
+- package smoke.
+- npm 11.16 and npm 12.2 remote-release-asset install checks.
+- npm audit: 0 vulnerabilities.
+- official MCP Registry manifest validation.
+- live WWDC26 ingest across sessions plus bounded tutorials/HIG/Swift Evolution/pathways.
+- public v0.2.1 MCPB download.
+- public MCPB SHA verification.
+- public MCPB MCP `initialize` handshake returning `wwdc-mcp-server` v0.2.1.
+- official Registry API verification showing v0.2.1 active/latest and v0.2.0 deprecated.
+
+## Release incident closed
+
+v0.2.0's first Registry MCPB launched a GitHub tarball through npm without opting into npm 12's remote-URL policy. npm 12 returned `EALLOWREMOTE`.
+
+Recovery:
+
+1. stopped trying to mutate Registry v0.2.0 in place because Registry versions are immutable;
+2. added `--allow-remote=all` to the pinned release-asset launcher/install path;
+3. issued v0.2.1;
+4. runtime-tested the **public** v0.2.1 MCPB before Registry publication;
+5. published v0.2.1;
+6. deprecated v0.2.0.
+
+Do not replace package bytes for an already-published Registry version.
+
+## Remaining work requiring Scott's account interaction
+
+### Cursor Marketplace submission
+
+The repo/plugin is ready. Cursor's publisher page requires an account email/magic-link sign-in. The existing browser session is not signed into Cursor.
+
+After Scott signs in once:
+
+1. open `https://cursor.com/marketplace/publish`;
+2. submit `https://github.com/jabbertones-cloud/wwdc-mcp-server`;
+3. record review status and any requested manifest changes.
+
+No code blocker remains for Cursor submission.
+
+### Optional npm publication
+
+npm is **not required** for the official MCP Registry or Cursor distribution.
+
+If npm distribution is desired:
+
+1. Scott signs into npm once;
+2. bootstrap-publish `wwdc-mcp-server@0.2.1` publicly;
+3. configure npm Trusted Publishing for `jabbertones-cloud/wwdc-mcp-server`;
+4. set repository variable `ENABLE_NPM_PUBLISH=true`;
+5. future releases publish npm through OIDC, not a long-lived token.
+
+Do not claim npm is live until anonymous lookup/install is verified.
+
+## Optional future remote-directory work
+
+ChatGPT/Claude public connector directories may prefer a stable remote MCP endpoint. The server already supports authenticated Streamable HTTP, but a deliberately public hosted deployment should be treated as a separate distribution project.
+
+Guardrails:
+
+- do not mirror/bundle Apple source content merely to satisfy a directory;
+- keep source-linked/local-index behavior;
+- keep the MCP tool surface read-only;
+- use TLS and fail-closed auth;
+- do not conflate local MCPB distribution with a hosted public service.
 
 ## Do not regress
 
-- Keep the 45-tool surface read-only.
-- Preserve source/evidence vs inference separation.
+- Keep the 45-tool MCP surface read-only.
+- Preserve source evidence vs inference separation.
 - Keep WWDC26 coverage current.
-- Keep `swift_app_audit` as the promoted repo-level entry point.
-- Keep `wwdc_security_manifest` as the promoted trust entry point.
-- Do not reintroduce Ollama as a required dependency; semantic reranking is local ONNX/Hugging Face.
-- Do not claim npm or official Registry publication until independently verified.
-- Do not repoint `v0.2.0` away from its published release commit now that the GitHub release exists.
+- Keep `swift_app_audit` and `wwdc_security_manifest` promoted.
+- Do not reintroduce Ollama as a required dependency.
+- Registry versions are immutable.
+- Runtime-test public release assets before publishing Registry metadata.
+- Keep npm optional until its one-time account bootstrap is completed.
