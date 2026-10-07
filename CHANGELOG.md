@@ -1,6 +1,15 @@
 # Changelog
 
-## v0.2.0 — release candidate (unpublished)
+## v0.2.1 — 2026-10-07
+
+- Fixed MCPB startup under npm 12 by explicitly opting into the pinned GitHub release tarball with `--allow-remote=all`; the same path remains compatible with npm 11.
+- Made the official MCP Registry distribution MCPB-first and npm publication optional.
+- Added an OIDC-only Registry publishing workflow with no repository secrets.
+- Added a portable MCPB wrapper, release-asset integrity hash, Cursor plugin manifest, Apple source-grounding rule, and `wwdc-setup` / `wwdc-audit` commands.
+- Updated Cursor and release-asset install paths to v0.2.1.
+- v0.2.0 is superseded because its initial MCPB launcher did not opt into npm 12 remote-tarball fetching.
+
+## v0.2.0 — 2026-10-07 (superseded)
 
 ### 2026-10-07 public release-readiness refresh
 
