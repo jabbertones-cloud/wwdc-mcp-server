@@ -2,13 +2,32 @@
 
 ## Unreleased
 
-- Added `docs/SOURCE-OF-TRUTH.md` as a local pointer to the NotebookLM SOT, existing adjacent inputs, and release verification guidance.
-- Updated README, deploy, skill wiring, and Codex for Open Source brief for the canonical 16-tool surface and broader Apple-platform use with app specs, OSS benchmarks, and patent/opportunity radar patterns.
-- Promoted `swift_app_audit` as the 16th canonical MCP tool for source-grounded Swift/SwiftUI/macOS/iOS audit context before app code changes.
-- Fixed Swift Evolution ingest when the GitHub contents API returns JSON as a string; full local run now ingests 534 proposal files with 0 errors.
+### 2026-10-07 public release-readiness refresh
+
+- Added authenticated, stateless **Streamable HTTP** transport alongside the default stdio transport.
+- Added `GET /healthz` with service/version/protocol/auth state, endpoint paths, optional path prefix, and deployed commit identity.
+- Added fail-closed bearer authentication for `POST /mcp` via `WWDC_MCP_BEARER_TOKEN` or `WWDC_MCP_BEARER_TOKEN_SHA256`.
+- Added `WWDC_MCP_PATH_PREFIX` so the remote MCP can share a reverse-proxy hostname without path rewriting.
+- Added remote MCP E2E coverage to CI; both stdio and HTTP tests assert the canonical 45-tool surface.
+- Aligned the public runtime requirement with the current package contract: Node.js `>=22.14.0`.
+- Confirmed the default WWDC year list includes **2020 through 2026**.
+- Rebuilt the public README around Apple-source grounding, WWDC26, source-grounded app audits, API intelligence, trust metadata, current transports, and concrete agent prompts.
+- Removed the stale `npx wwdc-mcp-server` quickstart because the npm package is not yet published.
+- Expanded npm discovery keywords and package description.
+- Added `mcpName: io.github.jabbertones-cloud/wwdc` in preparation for official MCP Registry publication after the npm artifact exists.
+- Replaced private/internal documentation assumptions with public repo truth in `docs/SOURCE-OF-TRUTH.md`, `docs/DEPLOY.md`, and `docs/SKILL-WIRING.md`.
+- Updated `SECURITY.md` for remote bearer auth, TLS/reverse-proxy expectations, untrusted retrieved content, and live Apple documentation lookup behavior.
+- Updated `CONTRIBUTING.md` for the current 45-tool architecture and deterministic stdio/HTTP/security test gates.
+
+### Prior unreleased work
+
+- Added `docs/SOURCE-OF-TRUTH.md` and release verification guidance.
+- Updated README, deploy, skill wiring, and Codex for Open Source brief for the canonical **45-tool** surface and broader Apple-platform use.
+- Promoted `swift_app_audit` as the app-audit entry point for source-grounded Swift/SwiftUI/macOS/iOS context before code changes.
+- Fixed Swift Evolution ingest when the GitHub contents API returns JSON as a string; full local run ingests proposal files with errors reported rather than swallowed.
 - Made tutorial ingest bounded with `WWDC_TUTORIAL_MAX_PAGES` so DocC walks finish instead of hanging after partial success.
 - Added `swift_app_audit` source coverage metadata for sessions, tutorials, HIG, Swift Evolution, pathways, and sample code.
-- Added app archetype query expansion for macOS menu bar, display/monitor, Finder-style file browser navigation, window/app switcher, clipboard, screenshot/capture, camera, game, voice/audio, and App Intents workflows.
+- Added app archetype query expansion for macOS menu bar, display/monitor, Finder-style navigation, window/app switcher, clipboard, screenshot/capture, camera, game, voice/audio, and App Intents workflows.
 - Added direct Apple documentation hints inside `swift_app_audit` for ScreenCaptureKit, NSPasteboard, NSStatusItem, NSWindow, NSScreen, App Intents, GameKit, StoreKit, AVFoundation, Photos, and adjacent file/navigation APIs.
 - Added archetype-derived pathways and weak-hit diagnostics so unrelated HIG results are flagged instead of silently treated as strong evidence.
 - Changed oversized JSON responses to return a parseable compacted envelope instead of invalid truncated JSON.
@@ -17,14 +36,11 @@
 - Added platform-only session search fallback, so queries like `macOS` and `iOS` search session platform metadata instead of returning empty FTS misses.
 - Added platform metadata to session search hits and judgment evidence.
 - Made search judgment more conservative for broad platform-only queries and more actionable for empty local indexes by returning exact ingest commands.
-- Fixed transcript extraction: now reads individual `.sentence` spans to skip UI chrome ("Search this video…", "Transcript Code") present in 2025+ pages. Falls back to full container text for older pages.
-- Added primary chapter extraction path for WWDC 2025+: `a.jump-to-time[data-start-time]` anchors with float-safe `Math.floor(parseFloat())` conversion. Chapters increased from 5 to up to 16 per session.
-- Added `li.chapter-item` to supplement-li chapter selector for broader coverage.
-- Fixed `WWDC_DB_PATH` env var documentation — correct name is `WWDC_MCP_DB`.
-- Added `repository`, `homepage`, and `bugs` fields to package.json.
-- Added `npx wwdc-mcp-server` quickstart to README.
-- Test suite: 3 new parser tests covering 2025 chapter format, sentence transcript extraction, and cross-format dedup.
-- Removed Node.js 18 from CI matrix (package already required Node 20+).
+- Fixed transcript extraction to prefer individual `.sentence` spans and avoid Apple video UI chrome.
+- Added chapter extraction for `a.jump-to-time[data-start-time]`, legacy `data-start` anchors, and supplemental chapter list items.
+- Fixed `WWDC_DB_PATH` documentation; the correct variable is `WWDC_MCP_DB`.
+- Added repository/homepage/bugs metadata to `package.json`.
+- Added parser, MCP E2E, security, search-regression, package-smoke, and HTTP protocol coverage.
 
 ## v0.1.3
 
