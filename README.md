@@ -9,6 +9,7 @@ WWDC MCP indexes **WWDC20–WWDC26 sessions**, Apple Developer Documentation, tu
 [![CI](https://github.com/jabbertones-cloud/wwdc-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/jabbertones-cloud/wwdc-mcp-server/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%3E%3D22.14-339933?logo=node.js&logoColor=white)](package.json)
+[![MCP](https://img.shields.io/badge/MCP-45%20read--only%20tools-5A45FF)](server.json)
 
 > **Unofficial community project.** Not affiliated with or endorsed by Apple. Apple content remains subject to Apple's terms and source-site availability.
 
@@ -25,6 +26,16 @@ Coding agents are excellent at writing Swift, but Apple APIs, platform guidance,
 - “Audit this macOS app for current SwiftUI, AppKit, concurrency, accessibility, and App Store guidance.”
 
 The promoted entry point for repo-level Apple work is `swift_app_audit`. The promoted trust entry point is `wwdc_security_manifest`.
+
+## Start here: three high-value workflows
+
+You do not need to learn 45 tool names first. Start with the job you are trying to finish:
+
+- **Modernize an Apple app:** call `swift_app_audit` with the repo's actual feature/API/problem, then follow its evidence into the focused WWDC, HIG, documentation, and API tools.
+- **Answer “what changed?”:** use `wwdc_what_changed` or `wwdc_search` with a framework/API and a year range, then open the strongest session/transcript evidence.
+- **Check shipping risk:** search `appstore_guidelines_search`, API availability/deprecation tools, and `wwdc_ingest_status` before treating a recommendation as current.
+
+The server instructions teach connected agents this routing automatically; the catalog remains available when you need a narrower source.
 
 ## What makes this different?
 
@@ -75,7 +86,15 @@ npm run ingest:appstore
 
 `ingest:all` covers the **core** sources: WWDC, tutorials, pathways, HIG, Swift Evolution, Apple docs, Swift Book, and App Store Review Guidelines. Additional optional enrichment sources are documented below.
 
-### 3. Add it to an MCP client
+### 3. Prove it works before wiring your client
+
+```bash
+npm test
+```
+
+That exercises parser/security checks, all 45 tools over stdio, search regressions, package metadata, and authenticated Streamable HTTP.
+
+### 4. Add it to an MCP client
 
 Generic stdio configuration:
 
