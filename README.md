@@ -10,6 +10,7 @@ WWDC MCP indexes **WWDC20–WWDC26 sessions**, Apple Developer Documentation, tu
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%3E%3D22.14-339933?logo=node.js&logoColor=white)](package.json)
 [![MCP](https://img.shields.io/badge/MCP-45%20read--only%20tools-5A45FF)](server.json)
+[![MCP Registry](https://img.shields.io/badge/MCP%20Registry-v0.2.1%20active-5A45FF)](https://registry.modelcontextprotocol.io/v0.1/servers/io.github.jabbertones-cloud%2Fwwdc/versions/0.2.1)
 
 > **Unofficial community project.** Not affiliated with or endorsed by Apple. Apple content remains subject to Apple's terms and source-site availability.
 
