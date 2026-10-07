@@ -1,22 +1,27 @@
 # Releasing WWDC MCP
 
-This project has two public distribution layers:
+WWDC MCP has three public distribution layers:
 
-1. npm package distribution.
-2. MCP Registry metadata/discovery.
+1. **GitHub Release** — source tag plus immutable release assets.
+2. **Official MCP Registry** — primary discovery/install metadata, backed by a GitHub-hosted MCPB bundle.
+3. **npm** — optional secondary distribution after the package is bootstrapped under an authenticated npm owner.
 
-Publish in that order. The Registry points at artifacts; it does not replace them.
+The Registry does **not** depend on npm.
 
 ## Current status
 
 As of 2026-10-07:
 
-- GitHub source install works.
-- `package.json` reserves npm package name `wwdc-mcp-server`.
-- `package.json` carries `mcpName: io.github.jabbertones-cloud/wwdc`.
-- `server.json` is checked in and version-locked to the npm artifact.
-- `.github/workflows/publish.yml` publishes npm first, then authenticates to the official MCP Registry with GitHub OIDC and publishes the validated manifest.
-- The npm package is not yet published. Use npm Trusted Publishing for this GitHub repository and `publish.yml` whenever npm permits it. If npm requires an authenticated bootstrap publish before trusted publishing can be configured, perform that one bootstrap release from an authenticated maintainer environment, verify it publicly, then configure trusted publishing before later tags.
+- Registry namespace: `io.github.jabbertones-cloud/wwdc`
+- Registry package type: `mcpb`
+- GitHub release assets include:
+  - `wwdc-mcp-server-X.Y.Z.tgz`
+  - `WWDC-MCP-vX.Y.Z.mcpb`
+- `.github/workflows/registry.yml` validates and publishes `server.json` with GitHub OIDC.
+- `.github/workflows/publish.yml` verifies tag releases and publishes the Registry entry; npm publishing runs only when repository variable `ENABLE_NPM_PUBLISH=true`.
+- npm is not required for Registry or Cursor distribution.
+
+Registry versions are immutable. Never replace a published Registry version with different package bytes or a different SHA. If a published bundle is defective, issue a patch version and deprecate the bad version.
 
 ## 1. Preflight
 
@@ -27,97 +32,149 @@ npm ci
 npm run build
 npm test
 npm audit --audit-level=high
-npm pack --dry-run
+```
+
+For changes that affect Apple source parsing, also run:
+
+```bash
+npm run test:live
 ```
 
 Confirm:
 
-- package version matches the server version reported by `src/server.ts`
-- the package tarball includes `dist/index.js`, README, changelog, and license
-- no tests, local databases, secrets, or private workspace files are packed
+- `package.json`, `package-lock.json`, runtime `SERVER_VERSION`, User-Agent, MCPB manifest, Cursor plugin version, and `server.json` all agree
+- the 45-tool stdio and HTTP contracts pass
+- no secrets, local databases, or private workspace files are packed
 - README install claims match what is actually published
 
-## 2. Publish npm
+## 2. Build release assets
 
-Authenticate with npm using your normal secure maintainer workflow, then:
-
-```bash
-npm publish --access public
-```
-
-After publishing, verify the artifact exists from an unauthenticated environment before adding any `npx` quickstart to the README.
-
-The expected future command is:
+### npm-format GitHub release tarball
 
 ```bash
-npx -y wwdc-mcp-server@latest
+npm run build
+npm pack
 ```
 
-Do not document it as supported until that check passes.
+The tarball must expose both:
 
-## 3. Prepare MCP Registry metadata
+- `wwdc-mcp-server`
+- `wwdc-mcp-ingest`
 
-The official MCP Registry requires the npm package to contain an `mcpName` matching the server name in `server.json`.
+### MCPB
 
-This repository already reserves:
+```bash
+npm exec --yes --package=@anthropic-ai/mcpb -- \
+  mcpb validate packaging/mcpb/manifest.json
+
+npm exec --yes --package=@anthropic-ai/mcpb -- \
+  mcpb pack packaging/mcpb WWDC-MCP-vX.Y.Z.mcpb
+
+shasum -a 256 WWDC-MCP-vX.Y.Z.mcpb
+```
+
+Put the exact SHA-256 into `server.json`.
+
+Do not rebuild the MCPB after locking its SHA unless you also update `server.json` to the newly built bytes.
+
+## 3. Create the GitHub release
+
+Tag the exact green release commit:
+
+```bash
+git tag -a vX.Y.Z -m "WWDC MCP vX.Y.Z"
+git push origin vX.Y.Z
+```
+
+Create the GitHub Release and attach both immutable artifacts.
+
+The MCPB launcher and Cursor config pin the matching GitHub release tarball. Because npm 12 blocks arbitrary remote tarballs by default, the launcher/config must use:
 
 ```text
-io.github.jabbertones-cloud/wwdc
+--allow-remote=all
 ```
 
-`server.json` is committed and should be updated with every release. Its package entry references:
+with the pinned GitHub release URL.
 
-- registry type: npm
-- identifier: `wwdc-mcp-server`
-- the exact published package version
-- transport: stdio
+## 4. Runtime-test the published MCPB
 
-Do not add a remote Registry URL unless a stable, intentionally public Streamable HTTP endpoint exists. Local/self-hosted HTTP support by itself is not a public hosted service.
+Download the **published** MCPB release asset and initialize it over stdio. Do not treat schema validation alone as runtime proof.
 
-## 4. Validate before publishing
+At minimum verify:
+
+- launcher starts
+- MCP initialize returns the expected server name/version
+- the package URL resolves
+- npm 11 and npm 12 can install the pinned remote tarball
+- no unexpected browser/account credentials are required
+
+## 5. Publish the official MCP Registry entry
+
+Validate:
 
 ```bash
-mcp-publisher validate
+mcp-publisher validate server.json
 ```
 
-Tagging `vX.Y.Z` triggers `.github/workflows/publish.yml`, which verifies version parity, validates `server.json` against the official Registry, publishes npm with npm trusted-publishing OIDC, authenticates to the MCP Registry with GitHub OIDC, and then publishes the Registry entry. Do not create the tag until npm recognizes this repository/workflow as an authorized publisher; otherwise the workflow will correctly fail at `npm publish`.
+Then authenticate and publish:
 
-Do not bypass namespace/package verification.
+```bash
+mcp-publisher login github
+mcp-publisher publish server.json
+```
 
-### Trusted publishing
+CI normally uses `github-oidc` instead.
 
-The checked-in workflow already requests `id-token: write`, runs on GitHub-hosted Ubuntu, upgrades npm, and performs a token-free `npm publish`. Keep the npm package's trusted-publisher settings pinned to repository `jabbertones-cloud/wwdc-mcp-server` and workflow `publish.yml`. Do not reintroduce a long-lived npm automation token unless npm's bootstrap rules make a one-time manual publish unavoidable.
+Verify independently through the Registry REST API:
 
-## 5. Update public install docs
+```text
+GET https://registry.modelcontextprotocol.io/v0.1/servers/io.github.jabbertones-cloud%2Fwwdc/versions/X.Y.Z
+```
 
-Only after npm and Registry verification succeed:
+Confirm:
 
-- add the `npx -y wwdc-mcp-server@latest` quickstart
-- add npm + Registry badges/links
-- add client configs that use `npx` where appropriate
-- update `docs/SOURCE-OF-TRUTH.md`
+- status = active
+- isLatest = true
+- package URL matches the GitHub Release MCPB asset
+- `fileSha256` matches the uploaded bytes
+
+## 6. Deprecate a bad Registry version
+
+Registry metadata is immutable except lifecycle status. If a published version is defective:
+
+```bash
+mcp-publisher status \
+  --status deprecated \
+  --message "Superseded by vX.Y.Z: <reason>" \
+  io.github.jabbertones-cloud/wwdc OLD.VERSION
+```
+
+Never replace an old release asset while leaving the Registry SHA unchanged.
+
+## 7. Optional npm publication
+
+npm remains optional.
+
+The first npm publish requires an authenticated npm owner because trusted publishing cannot create a brand-new package. After that bootstrap:
+
+1. configure npm Trusted Publishing for `jabbertones-cloud/wwdc-mcp-server`
+2. pin the GitHub Actions workflow
+3. keep `id-token: write`
+4. avoid long-lived npm automation tokens
+5. enable repository variable `ENABLE_NPM_PUBLISH=true` only after trusted publishing is working
+
+Do not document `npx wwdc-mcp-server@latest` as supported until anonymous npm lookup/install succeeds.
+
+## 8. Update public docs
+
+After release verification:
+
+- update README distribution status and versioned install examples
 - update `CHANGELOG.md`
-- tag the exact release commit
+- update `docs/SOURCE-OF-TRUTH.md`
+- update `docs/HANDOFF.md`
+- update GitHub Release notes
+- update Cursor plugin/config version
+- update Apple Notes handoff
 
-## 6. Release proof
-
-A release is complete only when all intended layers agree:
-
-- GitHub source/tag
-- `package.json` version
-- runtime `SERVER_VERSION`
-- npm artifact version
-- MCP Registry version/namespace
-- README install instructions
-
-A successful local build does not prove the npm or Registry release is live. Verify each layer independently.
-
-## Trusted Publishing preflight
-
-Before creating the first public tag:
-
-1. Create or claim the `wwdc-mcp-server` package on npm under the intended maintainer account if npm requires an initial package setup.
-2. In npm package settings, add a **GitHub Actions** trusted publisher for repository `jabbertones-cloud/wwdc-mcp-server` and workflow `publish.yml`.
-3. Keep GitHub Actions permission `id-token: write`; do not add a long-lived npm automation token.
-4. Confirm the exact release candidate is green in CI, then create the matching `vX.Y.Z` tag.
-5. Verify npm publication before MCP Registry publication. The workflow enforces that order.
+A successful build is evidence only for the tested layer. A release is complete only when the GitHub assets, Registry record, runtime handshake, docs, and intended client install path all agree.
