@@ -1,6 +1,6 @@
 {
   "name": "wwdc-mcp-server",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Apple developer intelligence for coding agents: WWDC26, docs, HIG, Swift, App Review, API intelligence, and source-grounded app audits",
   "main": "dist/index.js",
   "type": "module",
