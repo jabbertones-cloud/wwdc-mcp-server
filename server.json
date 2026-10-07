@@ -13,7 +13,7 @@
       "registryType": "mcpb",
       "identifier": "https://github.com/jabbertones-cloud/wwdc-mcp-server/releases/download/v0.2.1/WWDC-MCP-v0.2.1.mcpb",
       "version": "0.2.1",
-      "fileSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "fileSha256": "0ad362082b60cec8a14c745665cad9fb151b0340beef76ea2b9cc6fc9938654a",
       "transport": {
         "type": "stdio"
       }
