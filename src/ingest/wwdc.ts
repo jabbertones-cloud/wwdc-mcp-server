@@ -14,7 +14,7 @@ import { APPLE_BASE, APPLE_WWDC_BASE, REQUEST_CONCURRENCY, WWDC_YEARS } from "..
 import { httpGet } from "../services/http.js";
 import type { WwdcSession } from "../types.js";
 import { upsertSession, upsertSampleCode, recordIngest } from "../db/queries.js";
-import { checkEmbeddings, embed, storeEmbedding } from "../services/ollama.js";
+import { checkEmbeddings, embed, storeEmbedding } from "../services/embeddings.js";
 
 interface DiscoveredSession {
   year: number;
