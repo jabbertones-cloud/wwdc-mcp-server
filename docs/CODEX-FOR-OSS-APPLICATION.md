@@ -33,14 +33,14 @@ Generic model memory can be stale or incomplete. This project gives coding agent
 The server is intentionally local-first:
 
 - SQLite + FTS5 for durable local indexing
-- optional local Ollama embeddings for semantic reranking
+- optional local Hugging Face Transformers/ONNX embeddings for semantic reranking
 - MCP stdio by default
 - optional authenticated stateless Streamable HTTP for self-hosted/remote use
-- no paid API dependency for baseline retrieval
+- no paid API dependency for core ingest, search, audits, or semantic reranking
 - read-only MCP tool surface
 - content-safety metadata for untrusted retrieved text
 
-The project does not require Apple Developer account credentials for its public-source retrieval workflow.
+The project does not require Apple Developer account credentials for its public-source retrieval workflow. Optional `session-summaries` is separate from the core path: when a maintainer explicitly supplies `ANTHROPIC_API_KEY`, it sends bounded WWDC session metadata/transcript excerpts to Anthropic and may incur API cost.
 
 ## How Codex helps maintain the project
 
@@ -103,6 +103,6 @@ npm audit --audit-level=high
 
 I maintain `wwdc-mcp-server`, an MIT-licensed, local-first MCP server for Apple-platform development. It turns public Apple and Swift source material — including WWDC sessions, Apple Developer Documentation, Human Interface Guidelines, Swift Evolution, the Swift language reference, and App Store Review Guidelines — into 45 read-only tools that Codex and other coding agents can query before changing Swift code.
 
-The project focuses on source grounding and verification rather than generic summarization. It supports transcript search and timestamped WWDC deep links, API introduction/availability/deprecation research, App Review guidance, and a `swift_app_audit` workflow that gathers relevant Apple evidence and validation steps before implementation. SQLite FTS5 works without a paid API, while local Ollama embeddings are optional.
+The project focuses on source grounding and verification rather than generic summarization. It supports transcript search and timestamped WWDC deep links, API introduction/availability/deprecation research, App Review guidance, and a `swift_app_audit` workflow that gathers relevant Apple evidence and validation steps before implementation. SQLite FTS5 works without a paid API, while optional semantic reranking runs locally with `nomic-ai/nomic-embed-text-v1.5` through Hugging Face Transformers/ONNX.
 
 I use Codex for open-source maintenance tasks such as parser-drift diagnosis, PR review, test failure analysis, search regression work, release checks, and documentation consistency. The repository also has explicit trust controls for agent use: a read-only tool surface, content-safety handling for retrieved text, a security manifest, deterministic protocol tests, and fail-closed authentication for the optional Streamable HTTP transport.
