@@ -1,0 +1,16 @@
+.git
+.github
+.cursor
+.cursor-plugin
+.wrangler
+node_modules
+reports
+tests
+src
+commands
+rules
+docs
+packaging
+*.log
+.deploy-data/*
+!.deploy-data/wwdc.db
