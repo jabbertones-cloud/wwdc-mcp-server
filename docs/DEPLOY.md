@@ -4,7 +4,6 @@
 
 - Node.js `>=22.14.0`
 - npm
-- Optional: Ollama for semantic reranking
 
 As of 2026-10-07 the npm package is not published, so deploy from a GitHub checkout.
 
@@ -16,13 +15,7 @@ npm run build
 npm run health:native
 ```
 
-Optional semantic search:
-
-```bash
-ollama pull nomic-embed-text
-```
-
-Without Ollama, FTS5 keyword search still works.
+Semantic search needs no separate service. The first semantic use lazily downloads and caches the local `nomic-ai/nomic-embed-text-v1.5` ONNX model through `@huggingface/transformers`. Set `WWDC_SKIP_EMBEDDINGS=1` for deterministic keyword-only/FTS5 operation.
 
 ## 2. Ingest
 
@@ -50,6 +43,9 @@ Default data locations:
 - Linux: `~/.local/share/wwdc-mcp-server/wwdc.db`
 - override: `WWDC_MCP_DB=/absolute/path/to/wwdc.db`
 - data-root override: `WWDC_MCP_DATA_DIR=/absolute/path/to/data`
+- keyword-only mode: `WWDC_SKIP_EMBEDDINGS=1`
+- docs crawl bound: `WWDC_DOCS_MAX_PAGES=2500`
+- tutorial crawl bound: `WWDC_TUTORIAL_MAX_PAGES=250`
 
 `ingest:all` covers the core WWDC/tutorial/pathway/HIG/Swift Evolution/Apple docs/Swift Book/App Store sources. Optional release-note, forum, summary, graph, and deprecation enrichment is invoked through `npm run ingest -- --source ...`; see the README.
 
