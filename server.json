@@ -10,10 +10,10 @@
   "version": "0.2.0",
   "packages": [
     {
-      "registryType": "npm",
-      "registryBaseUrl": "https://registry.npmjs.org",
-      "identifier": "wwdc-mcp-server",
+      "registryType": "mcpb",
+      "identifier": "https://github.com/jabbertones-cloud/wwdc-mcp-server/releases/download/v0.2.0/WWDC-MCP-v0.2.0.mcpb",
       "version": "0.2.0",
+      "fileSha256": "b8600ee91125e010a2370c5729a36f58134c97fbc062647d6ab59a600ded8af4",
       "transport": {
         "type": "stdio"
       }
