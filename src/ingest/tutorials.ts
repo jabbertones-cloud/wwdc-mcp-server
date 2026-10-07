@@ -10,7 +10,7 @@ import { APPLE_BASE, APPLE_TUTORIALS_DATA } from "../constants.js";
 import { httpGet } from "../services/http.js";
 import type { Tutorial } from "../types.js";
 import { upsertTutorial, recordIngest } from "../db/queries.js";
-import { storeEmbedding, embed, checkEmbeddings } from "../services/ollama.js";
+import { storeEmbedding, embed, checkEmbeddings } from "../services/embeddings.js";
 
 /** Seed slugs — top-level tutorial packs Apple publishes. */
 export const TUTORIAL_SEEDS: readonly string[] = [
