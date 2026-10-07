@@ -2,9 +2,9 @@
   "manifest_version": "0.3",
   "name": "wwdc-mcp",
   "display_name": "WWDC MCP",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Apple developer intelligence for coding agents: WWDC20-WWDC26, HIG, Swift, App Review, API history, and source-grounded app audits.",
-  "long_description": "WWDC MCP gives coding agents 45 read-only tools for current Apple-platform research: WWDC sessions and transcripts, Apple Developer Documentation, Human Interface Guidelines, Swift Evolution, App Store Review Guidelines, API availability/deprecation, and source-grounded Swift app audits. The bundle launches the pinned v0.2.0 release artifact and preserves stdio MCP transport.",
+  "long_description": "WWDC MCP gives coding agents 45 read-only tools for current Apple-platform research: WWDC sessions and transcripts, Apple Developer Documentation, Human Interface Guidelines, Swift Evolution, App Store Review Guidelines, API availability/deprecation, and source-grounded Swift app audits. The bundle launches the pinned v0.2.1 release artifact and preserves stdio MCP transport.",
   "author": {
     "name": "Scott Manthey",
     "url": "https://github.com/jabbertones-cloud"
