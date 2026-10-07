@@ -407,6 +407,20 @@ The protocol tests verify the 45-tool catalog and exercise the trust manifest ov
 - [docs/SKILL-WIRING.md](docs/SKILL-WIRING.md) — agent/skill integration guidance
 - [docs/APPLE-ENDPOINTS.md](docs/APPLE-ENDPOINTS.md) — ingest-maintainer notes
 
+## From Apple guidance to App Store execution
+
+WWDC MCP is intentionally read-only: it helps your agent **understand** current Apple APIs, design guidance, platform changes, and App Review requirements without holding App Store Connect credentials.
+
+When the research is done and you need to **execute** the release workflow, [AiSCent](https://aiscentmcp.com) is the companion product: App Store Connect automation for release operations such as localization, screenshots, metadata, TestFlight readiness, and submission workflows.
+
+**A useful agent workflow:**
+
+1. Ask WWDC MCP to audit the app against current Apple guidance.
+2. Fix the code and UX with source-grounded evidence.
+3. Use AiSCent for the App Store Connect work needed to get the build ready to ship.
+
+> **WWDC MCP = know what Apple expects. AiSCent = help get the release through App Store Connect.**
+
 ## Contributing
 
 Issues and PRs are welcome. If you change the MCP tool surface, ingest behavior, transport behavior, or public claims, update the matching tests and docs in the same change.
