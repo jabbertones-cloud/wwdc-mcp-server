@@ -128,9 +128,26 @@ If npm distribution is desired:
 
 Do not claim npm is live until anonymous lookup/install is verified.
 
-## Optional future remote-directory work
+## Remote-directory readiness
 
-ChatGPT/Claude public connector directories may prefer a stable remote MCP endpoint. The server already supports authenticated Streamable HTTP, but a deliberately public hosted deployment should be treated as a separate distribution project.
+Current `main` (`5ea328c5aa4604b025a9375cf8f31f9b668317e7`) now supports an explicit anonymous public read-only HTTP mode:
+
+```bash
+WWDC_MCP_HTTP_HOST=0.0.0.0 \
+WWDC_MCP_PUBLIC_READ_ONLY=1 \
+npm run start:http
+```
+
+This was verified on exact `main` alongside the bearer-authenticated path:
+
+- authenticated HTTP still enforces bearer auth;
+- `WWDC_MCP_PUBLIC_READ_ONLY=1` permits anonymous MCP initialize/listTools for the same 45 read-only tools;
+- with neither bearer auth nor the public flag, HTTP still fails closed with `503 auth_not_configured`;
+- full tests pass and npm audit reports 0 vulnerabilities.
+
+The remaining ChatGPT/Codex/Grok-style public connector gap is infrastructure, not server code: deploy this mode behind a stable TLS hostname, edge rate limits/monitoring, then certify the public URL and submit it to the relevant directory.
+
+A deliberately public hosted deployment should remain separate from the local MCPB release path.
 
 Guardrails:
 
