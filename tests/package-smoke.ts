@@ -67,8 +67,8 @@ assert.equal(registryPackage?.version, pkg.version, "Registry package version mu
 assert.equal(registryPackage?.transport?.type, "stdio");
 assert.match(
   registryPackage?.identifier ?? "",
-  /\/releases\/download\/v0\.2\.0\/WWDC-MCP-v0\.2\.0\.mcpb$/,
-  "Registry MCPB identifier must point at the immutable v0.2.0 GitHub release asset",
+  /\/releases\/download\/v0\.2\.1\/WWDC-MCP-v0\.2\.1\.mcpb$/,
+  "Registry MCPB identifier must point at the immutable v0.2.1 GitHub release asset",
 );
 assert.match(
   registryPackage?.fileSha256 ?? "",
