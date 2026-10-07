@@ -1,143 +1,159 @@
-# wwdc-mcp-server — Deploy runbook
+# wwdc-mcp-server deployment guide
 
-## 1. Fix a stuck Git index lock (one-time, Scott's local shell)
+## 1. Requirements
 
-If a previous process left behind `.git/index.lock`, remove only that lock file.
-Do not remove `.git`; that deletes local repository history and branch state.
-From **Scott's real terminal** (not the sandbox):
+- Node.js `>=22.14.0`
+- npm
+- Optional: Ollama for semantic reranking
 
-```bash
-cd ~/path/to/claw-repos/wwdc-mcp-server
-rm -f .git/index.lock
-git status
-```
-
-If the local checkout is corrupt, make a fresh clone beside it and copy only
-uncommitted working files after review:
+As of 2026-10-07 the npm package is not published, so deploy from a GitHub checkout.
 
 ```bash
-git clone https://github.com/jabbertones-cloud/wwdc-mcp-server.git wwdc-mcp-server-clean
-```
-
-## 2. First-time install
-
-```bash
-npm install
+git clone https://github.com/jabbertones-cloud/wwdc-mcp-server.git
+cd wwdc-mcp-server
+npm ci
 npm run build
-npm run health:native        # verifies better-sqlite3 native addon loads
-ollama pull nomic-embed-text   # enables semantic search; FTS-only if skipped
+npm run health:native
 ```
 
-## 3. Ingest
+Optional semantic search:
 
 ```bash
-npm run ingest:all              # full sweep (~15–30 min first run)
-npm run ingest:wwdc -- --year 2024 --year 2025
-npm run ingest:tutorials
-npm run ingest:hig
-npm run ingest:evolution -- --limit 50
+ollama pull nomic-embed-text
 ```
 
-DB lands at:
+Without Ollama, FTS5 keyword search still works.
 
-- macOS default: `~/Library/Application Support/wwdc-mcp-server/wwdc.db`
-- Linux default: `~/.local/share/wwdc-mcp-server/wwdc.db`
+## 2. Ingest
+
+Core corpus:
+
+```bash
+npm run ingest:all
+```
+
+WWDC26-only refresh:
+
+```bash
+npm run ingest:wwdc -- --year 2026
+```
+
+Multiple years:
+
+```bash
+npm run ingest:wwdc -- --year 2025 --year 2026
+```
+
+Default data locations:
+
+- macOS: `~/Library/Application Support/wwdc-mcp-server/wwdc.db`
+- Linux: `~/.local/share/wwdc-mcp-server/wwdc.db`
 - override: `WWDC_MCP_DB=/absolute/path/to/wwdc.db`
+- data-root override: `WWDC_MCP_DATA_DIR=/absolute/path/to/data`
 
-## 4. Register with Claude Code / Claude Desktop
+`ingest:all` covers the core WWDC/tutorial/pathway/HIG/Swift Evolution/Apple docs/Swift Book/App Store sources. Optional release-note, forum, summary, graph, and deprecation enrichment is invoked through `npm run ingest -- --source ...`; see the README.
 
-Add to `~/.config/Claude/claude_desktop_config.json` (or your Claude Code MCP config):
+## 3. Default stdio deployment
+
+Point an MCP client at:
+
+```text
+node /ABSOLUTE/PATH/TO/wwdc-mcp-server/dist/index.js
+```
+
+Example:
 
 ```json
 {
   "mcpServers": {
     "wwdc": {
       "command": "node",
-      "args": ["/ABSOLUTE/PATH/TO/wwdc-mcp-server/dist/index.js"],
-      "env": {
-        "OLLAMA_BASE": "http://127.0.0.1:11434",
-        "OLLAMA_EMBED_MODEL": "nomic-embed-text",
-        "WWDC_MCP_DB": "/ABSOLUTE/PATH/TO/wwdc-mcp-server/data/wwdc.db"
-      }
+      "args": ["/ABSOLUTE/PATH/TO/wwdc-mcp-server/dist/index.js"]
     }
   }
 }
 ```
 
-Restart the client. The 45 canonical tools (`wwdc_search`, `wwdc_get_session`,
-`wwdc_session_deep_link`, `apple_doc_lookup`, `swift_app_audit`,
-`apple_swift_book_get`, `appstore_guidelines_search`, `wwdc_security_manifest`, …) should appear in the tool call trace.
+The built server should expose exactly 45 read-only tools.
 
-## 5. Wire into the 6 target skills
+## 4. Remote Streamable HTTP
 
-Paste the block from `docs/SKILL-WIRING.md` near the top of each of:
-
-- `/Users/<you>/.claude/skills/ios-swift-builder/SKILL.md`
-- `/Users/<you>/.claude/skills/swift-ios-dev/SKILL.md`
-- `/Users/<you>/.claude/skills/veritap-ios-builder/SKILL.md`
-- `/Users/<you>/.claude/skills/game-center-ios/SKILL.md`
-- `/Users/<you>/.claude/skills/screenshot-notes-ios/SKILL.md`
-- `/Users/<you>/.claude/skills/deep-linking/SKILL.md`
-
-(Sandbox builds don't have write access to `.claude/skills/`, which is why this step is manual.)
-
-## 6. Scheduled re-ingest
-
-```cron
-# Daily sweep
-0 6 * * * cd /abs/path/to/wwdc-mcp-server && npm run ingest:all
-
-# WWDC week burst — uncomment during the conference
-# */30 * * * 1-5 cd /abs/path/to/wwdc-mcp-server && npm run ingest:wwdc
-```
-
-## 7. Verify
-
-```bash
-npm run build                   # TypeScript strict typecheck
-npm test                        # smoke + parse + MCP e2e + package smoke
-npm audit --audit-level=high
-npx tsx tests/wwdc-live.ts      # live pipeline: discover + ingest 3 sessions
-```
-
-## 8. MCP response controls
-
-Current public release supports richer `wwdc_search` filters for session year ranges, topics,
-platforms, transcript presence, judgment metadata, and output detail level. `wwdc_get_session`
-supports transcript character caps plus toggles for chapters, sample code, related docs, and
-session judgment metadata. Use these source tools with app specs, OSS benchmark patterns,
-and patent/opportunity radar outputs for broader app-improvement workflows.
-For Swift/SwiftUI/macOS/iOS app work, call `swift_app_audit` before code changes to gather
-WWDC, HIG, tutorial, and Swift Evolution context plus validation steps.
-
-## 9. Evaluation harness
-
-10 stable QA pairs live at `tests/evaluation.xml` for use with the MCP builder evaluation
-harness. Example questions: which tool returns session chapter deep-links, which Ollama
-model is used, default CHARACTER_LIMIT, default port.
-
-## 10. Remote Streamable HTTP
-
-The same 45-tool server can run as an authenticated remote MCP:
+Generate a secret and start the HTTP entry point:
 
 ```bash
 export WWDC_MCP_BEARER_TOKEN="$(openssl rand -hex 32)"
 export WWDC_MCP_HTTP_HOST=127.0.0.1
 export WWDC_MCP_HTTP_PORT=8789
+export WWDC_MCP_DEPLOYED_SHA="$(git rev-parse HEAD)"
 npm run start:http
 ```
 
-Remote routes are `/healthz` (GET) and `/mcp` (POST). The MCP route fails
-closed with `503 auth_not_configured` unless either `WWDC_MCP_BEARER_TOKEN`
-or `WWDC_MCP_BEARER_TOKEN_SHA256` is configured.
+Routes:
 
-When WWDC shares a reverse-proxy hostname with another service, set a path
-prefix instead of requiring another DNS record:
+- `GET /healthz`
+- `POST /mcp`
+
+The MCP route returns `503 auth_not_configured` if neither `WWDC_MCP_BEARER_TOKEN` nor `WWDC_MCP_BEARER_TOKEN_SHA256` is set.
+
+The server is stateless at the MCP transport layer: each HTTP request receives a fresh MCP server/transport instance while sharing the local SQLite database.
+
+### Shared reverse proxy path
 
 ```bash
 export WWDC_MCP_PATH_PREFIX=/wwdc
 ```
 
-That moves the routes to `/wwdc/healthz` and `/wwdc/mcp`. The prefix is
-part of the server contract, so reverse proxies should forward the path
-unchanged rather than rewrite it.
+Routes become:
+
+- `GET /wwdc/healthz`
+- `POST /wwdc/mcp`
+
+Forward the prefix unchanged.
+
+### Internet exposure
+
+The Node HTTP server does not provide TLS. If remote access is required, terminate TLS at a reverse proxy and keep the origin private where possible. Treat bearer tokens as secrets.
+
+## 5. Scheduled ingest
+
+Regular daily refresh:
+
+```cron
+0 6 * * * cd /abs/path/to/wwdc-mcp-server && npm run ingest:all
+```
+
+During WWDC week, a tighter WWDC-only refresh can pick up newly published sessions:
+
+```cron
+*/30 * * * 1-5 cd /abs/path/to/wwdc-mcp-server && npm run ingest:wwdc -- --year 2026
+```
+
+Adjust the year when future conferences arrive.
+
+## 6. Verification
+
+Before deployment:
+
+```bash
+npm run build
+npm test
+npm audit --audit-level=high
+```
+
+The deterministic suite covers:
+
+- SQLite/FTS smoke checks
+- ingest parsers
+- security manifest and content-safety behavior
+- stdio MCP protocol
+- search regressions
+- npm package shape
+- authenticated Streamable HTTP MCP protocol
+
+For source-layout changes, also run the smallest applicable live ingest test.
+
+## 7. Health and release identity
+
+When `WWDC_MCP_DEPLOYED_SHA` or `GIT_SHA` is configured, `/healthz` returns the deployment SHA alongside service name, version, protocol, auth state, path prefix, and endpoint paths.
+
+Use that value to prove which commit is live rather than assuming a process restart deployed the intended build.
