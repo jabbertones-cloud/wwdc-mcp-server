@@ -2,7 +2,7 @@
 import { spawn } from "node:child_process";
 
 const PACKAGE_URL =
-  "https://github.com/jabbertones-cloud/wwdc-mcp-server/releases/download/v0.2.0/wwdc-mcp-server-0.2.0.tgz";
+  "https://github.com/jabbertones-cloud/wwdc-mcp-server/releases/download/v0.2.1/wwdc-mcp-server-0.2.1.tgz";
 
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 const args = [
@@ -38,7 +38,7 @@ process.on("SIGTERM", () => forward("SIGTERM"));
 
 child.on("error", (error) => {
   console.error(
-    "[wwdc-mcp] failed to launch the pinned v0.2.0 package through npm:",
+    "[wwdc-mcp] failed to launch the pinned v0.2.1 package through npm:",
     error instanceof Error ? error.message : String(error),
   );
   process.exitCode = 1;
