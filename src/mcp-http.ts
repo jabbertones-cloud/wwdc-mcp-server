@@ -14,7 +14,7 @@ const DEPLOYED_SHA = (
   ""
 ).trim();
 
-function normalizePathPrefix(value: string | undefined): string {
+const CORPUS_SHA256 = (process.env.WWDC_MCP_CORPUS_SHA256 ?? "").trim().toLowerCase();\n\nfunction normalizePathPrefix(value: string | undefined): string {
   const raw = (value ?? "").trim();
   if (!raw || raw === "/") return "";
   const prefix = `/${raw.replace(/^\/+|\/+$/g, "")}`;
