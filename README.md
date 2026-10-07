@@ -55,7 +55,7 @@ The server instructions teach connected agents this routing automatically; the c
 - Node.js **22.14 or newer**
 - npm
 
-> **Distribution status (October 7, 2026):** `main` is prepared for the first npm/MCP Registry release, but `wwdc-mcp-server` is not yet published on npm. Source checkout remains the working install path until the one-time npm account bootstrap publish is completed. The release pipeline and Registry manifest are already validated.
+> **Distribution status (October 7, 2026):** the official MCP Registry namespace is `io.github.jabbertones-cloud/wwdc`, distributed through a GitHub-hosted MCPB release asset. v0.2.1 is the current patch line. npm publication is optional secondary distribution and is not required for Registry or Cursor installs.
 
 ### 1. Clone and build
 
@@ -66,20 +66,23 @@ npm ci
 npm run build
 ```
 
-After the npm release, the package exposes two executables:
+The release package exposes two executables:
 
 ```text
 wwdc-mcp-server   # stdio MCP server
 wwdc-mcp-ingest   # build/update the local Apple knowledge index
 ```
 
-For a global install after publication:
+Run the immutable GitHub release package directly:
 
 ```bash
-npm install --global wwdc-mcp-server
-wwdc-mcp-ingest --source wwdc --year 2026
-wwdc-mcp-server
+PKG="https://github.com/jabbertones-cloud/wwdc-mcp-server/releases/download/v0.2.1/wwdc-mcp-server-0.2.1.tgz"
+
+npm exec --yes --allow-remote=all --package="$PKG" -- wwdc-mcp-ingest --source wwdc --year 2026
+npm exec --yes --allow-remote=all --package="$PKG" -- wwdc-mcp-server
 ```
+
+Clients that support MCP Bundles can use the `WWDC-MCP-v0.2.1.mcpb` asset from the GitHub v0.2.1 release / official MCP Registry.
 
 ### 2. Build a useful local index
 
