@@ -11,7 +11,7 @@ import { APPLE_DOCS_BASE, APPLE_DOCS_JSON, APPLE_DOC_SEEDS } from "../constants.
 import { httpGet } from "../services/http.js";
 import type { AppleDocPage } from "../types.js";
 import { recordIngest, upsertAppleDoc } from "../db/queries.js";
-import { checkOllama, embed, storeEmbedding } from "../services/ollama.js";
+import { checkEmbeddings, embed, storeEmbedding } from "../services/ollama.js";
 
 type DoccNode = {
   metadata?: {
@@ -131,7 +131,7 @@ export async function ingestAppleDocs(
   let ingested = 0;
   let errors = 0;
   const maxPages = Math.max(1, parseInt(process.env.WWDC_DOCS_MAX_PAGES ?? "2500", 10));
-  const ollamaOn = await checkOllama();
+  const embeddingsOn = await checkEmbeddings();
   const visited = new Set<string>();
   const queued = new Set<string>();
   const queue = seeds.map(normalizeDocPath);
@@ -150,7 +150,7 @@ export async function ingestAppleDocs(
     upsertAppleDoc(db, page);
     ingested++;
 
-    if (ollamaOn) {
+    if (embeddingsOn) {
       const vec = await embed(`${page.title}\n${page.abstract}\n${page.body}`.slice(0, 4000));
       if (vec) storeEmbedding(db, `doc:${page.id}`, "doc", vec);
     }
