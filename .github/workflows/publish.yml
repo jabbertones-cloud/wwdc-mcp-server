@@ -40,15 +40,15 @@ jobs:
           test "$PACKAGE_VERSION" = "$REGISTRY_VERSION"
           test "$PACKAGE_VERSION" = "$PACKAGE_REGISTRY_VERSION"
 
+      - name: Install MCP publisher and validate Registry manifest
+        run: |
+          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
+          ./mcp-publisher validate server.json
+
       - name: Publish npm package
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Install MCP publisher
-        run: |
-          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
-          ./mcp-publisher validate server.json
 
       - name: Authenticate to official MCP Registry
         run: ./mcp-publisher login github-oidc
