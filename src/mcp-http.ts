@@ -14,6 +14,20 @@ const DEPLOYED_SHA = (
   ""
 ).trim();
 
+function normalizePathPrefix(value: string | undefined): string {
+  const raw = (value ?? "").trim();
+  if (!raw || raw === "/") return "";
+  const prefix = `/${raw.replace(/^\/+|\/+$/g, "")}`;
+  if (!/^\/[A-Za-z0-9._~!$&'()*+,;=:@/-]+$/.test(prefix)) {
+    throw new Error(`Invalid WWDC_MCP_PATH_PREFIX: ${raw}`);
+  }
+  return prefix;
+}
+
+const PATH_PREFIX = normalizePathPrefix(process.env.WWDC_MCP_PATH_PREFIX);
+const HEALTH_PATH = `${PATH_PREFIX}/healthz`;
+const MCP_PATH = `${PATH_PREFIX}/mcp`;
+
 function json(
   res: ServerResponse,
   status: number,
@@ -94,7 +108,7 @@ export function createHttpServer() {
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
 
-    if (url.pathname === "/healthz") {
+    if (url.pathname === HEALTH_PATH) {
       if (req.method !== "GET") {
         json(res, 405, { error: "method_not_allowed" }, { allow: "GET" });
         return;
@@ -105,12 +119,14 @@ export function createHttpServer() {
         version: SERVER_VERSION,
         protocol: "streamable-http",
         authConfigured: authConfigured(),
+        pathPrefix: PATH_PREFIX || null,
+        endpoints: { health: HEALTH_PATH, mcp: MCP_PATH },
         release: { sha: DEPLOYED_SHA || null },
       });
       return;
     }
 
-    if (url.pathname !== "/mcp") {
+    if (url.pathname !== MCP_PATH) {
       json(res, 404, { error: "not_found" });
       return;
     }
@@ -149,9 +165,6 @@ export function createHttpServer() {
       return;
     }
 
-    // Stateless MCP means one fresh server and one fresh transport per HTTP
-    // request. Reusing either instance across requests can leak cross-client
-    // response state and fails with current MCP SDK lifecycle guards.
     const mcpServer = createWwdcServer(db);
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
@@ -203,7 +216,7 @@ async function main(): Promise<void> {
     const actualPort =
       typeof address === "object" && address ? address.port : PORT;
     process.stderr.write(
-      `[wwdc-mcp-server] remote MCP ready at http://${HOST}:${actualPort}/mcp (auth=${authConfigured() ? "configured" : "missing"})\n`,
+      `[wwdc-mcp-server] remote MCP ready at http://${HOST}:${actualPort}${MCP_PATH} (auth=${authConfigured() ? "configured" : "missing"})\n`,
     );
   });
 
