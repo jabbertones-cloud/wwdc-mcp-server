@@ -11,7 +11,7 @@ import { APPLE_DOCS_BASE, APPLE_DOCS_JSON, APPLE_DOC_SEEDS } from "../constants.
 import { httpGet } from "../services/http.js";
 import type { AppleDocPage } from "../types.js";
 import { recordIngest, upsertAppleDoc } from "../db/queries.js";
-import { checkEmbeddings, embed, storeEmbedding } from "../services/ollama.js";
+import { checkEmbeddings, embed, storeEmbedding } from "../services/embeddings.js";
 
 type DoccNode = {
   metadata?: {
