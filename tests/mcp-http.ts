@@ -13,6 +13,7 @@ async function main(): Promise<void> {
   process.env.WWDC_MCP_DB = path.join(dir, "wwdc.db");
   process.env.WWDC_MCP_BEARER_TOKEN = token;
   process.env.WWDC_MCP_DEPLOYED_SHA = "http-test-sha";
+  process.env.WWDC_MCP_PATH_PREFIX = "/wwdc/";
 
   const { createHttpServer } = await import("../src/mcp-http.js");
   const server = createHttpServer();
@@ -26,16 +27,22 @@ async function main(): Promise<void> {
   assert.ok(address && typeof address === "object");
   const base = `http://127.0.0.1:${address.port}`;
 
-  const health = await fetch(`${base}/healthz`);
+  const rootHealth = await fetch(`${base}/healthz`);
+  assert.equal(rootHealth.status, 404);
+
+  const health = await fetch(`${base}/wwdc/healthz`);
   assert.equal(health.status, 200);
   const healthBody = (await health.json()) as any;
   assert.equal(healthBody.ok, true);
   assert.equal(healthBody.version, "0.1.3");
   assert.equal(healthBody.protocol, "streamable-http");
   assert.equal(healthBody.authConfigured, true);
+  assert.equal(healthBody.pathPrefix, "/wwdc");
+  assert.equal(healthBody.endpoints.health, "/wwdc/healthz");
+  assert.equal(healthBody.endpoints.mcp, "/wwdc/mcp");
   assert.equal(healthBody.release.sha, "http-test-sha");
 
-  const unauthorized = await fetch(`${base}/mcp`, {
+  const unauthorized = await fetch(`${base}/wwdc/mcp`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -55,7 +62,7 @@ async function main(): Promise<void> {
   assert.equal(unauthorized.status, 401);
   assert.match(unauthorized.headers.get("www-authenticate") ?? "", /Bearer/);
 
-  const transport = new StreamableHTTPClientTransport(new URL(`${base}/mcp`), {
+  const transport = new StreamableHTTPClientTransport(new URL(`${base}/wwdc/mcp`), {
     requestInit: {
       headers: {
         authorization: `Bearer ${token}`,
@@ -90,7 +97,7 @@ async function main(): Promise<void> {
     assert.equal(payload.tool_count, 45);
     assert.ok(payload.tools.includes("wwdc_search"));
 
-    console.log("[mcp-http] auth, initialize, 45-tool catalog, and tool call pass");
+    console.log("[mcp-http] prefixed route, auth, initialize, 45-tool catalog, and tool call pass");
   } finally {
     await client.close().catch(() => undefined);
     await new Promise<void>((resolve) => server.close(() => resolve()));

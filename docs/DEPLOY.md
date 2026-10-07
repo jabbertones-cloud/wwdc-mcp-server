@@ -115,3 +115,29 @@ WWDC, HIG, tutorial, and Swift Evolution context plus validation steps.
 10 stable QA pairs live at `tests/evaluation.xml` for use with the MCP builder evaluation
 harness. Example questions: which tool returns session chapter deep-links, which Ollama
 model is used, default CHARACTER_LIMIT, default port.
+
+## 10. Remote Streamable HTTP
+
+The same 45-tool server can run as an authenticated remote MCP:
+
+```bash
+export WWDC_MCP_BEARER_TOKEN="$(openssl rand -hex 32)"
+export WWDC_MCP_HTTP_HOST=127.0.0.1
+export WWDC_MCP_HTTP_PORT=8789
+npm run start:http
+```
+
+Remote routes are `/healthz` (GET) and `/mcp` (POST). The MCP route fails
+closed with `503 auth_not_configured` unless either `WWDC_MCP_BEARER_TOKEN`
+or `WWDC_MCP_BEARER_TOKEN_SHA256` is configured.
+
+When WWDC shares a reverse-proxy hostname with another service, set a path
+prefix instead of requiring another DNS record:
+
+```bash
+export WWDC_MCP_PATH_PREFIX=/wwdc
+```
+
+That moves the routes to `/wwdc/healthz` and `/wwdc/mcp`. The prefix is
+part of the server contract, so reverse proxies should forward the path
+unchanged rather than rewrite it.
