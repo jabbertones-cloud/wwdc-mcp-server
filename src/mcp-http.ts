@@ -14,7 +14,9 @@ const DEPLOYED_SHA = (
   ""
 ).trim();
 
-const CORPUS_SHA256 = (process.env.WWDC_MCP_CORPUS_SHA256 ?? "").trim().toLowerCase();\n\nfunction normalizePathPrefix(value: string | undefined): string {
+const CORPUS_SHA256 = (process.env.WWDC_MCP_CORPUS_SHA256 ?? "").trim().toLowerCase();
+
+function normalizePathPrefix(value: string | undefined): string {
   const raw = (value ?? "").trim();
   if (!raw || raw === "/") return "";
   const prefix = `/${raw.replace(/^\/+|\/+$/g, "")}`;
@@ -185,7 +187,8 @@ export function createHttpServer() {
     });
 
     transport.onerror = (error) => {
-      process.stderr.write(`[wwdc-mcp-server] HTTP transport error: ${error.message}\n`);
+      process.stderr.write(`[wwdc-mcp-server] HTTP transport error: ${error.message}
+`);
     };
 
     try {
@@ -193,7 +196,8 @@ export function createHttpServer() {
       await transport.handleRequest(req, res, body);
     } catch (error) {
       process.stderr.write(
-        `[wwdc-mcp-server] HTTP request failed: ${error instanceof Error ? error.stack ?? error.message : String(error)}\n`,
+        `[wwdc-mcp-server] HTTP request failed: ${error instanceof Error ? error.stack ?? error.message : String(error)}
+`,
       );
       if (!res.headersSent) {
         json(res, 500, {
@@ -230,7 +234,8 @@ async function main(): Promise<void> {
     const actualPort =
       typeof address === "object" && address ? address.port : PORT;
     process.stderr.write(
-      `[wwdc-mcp-server] remote MCP ready at http://${HOST}:${actualPort}${mcpPath} (auth=${publicReadOnlyEnabled() ? "public-read-only" : authConfigured() ? "configured" : "missing"})\n`,
+      `[wwdc-mcp-server] remote MCP ready at http://${HOST}:${actualPort}${mcpPath} (auth=${publicReadOnlyEnabled() ? "public-read-only" : authConfigured() ? "configured" : "missing"})
+`,
     );
   });
 
@@ -244,7 +249,8 @@ async function main(): Promise<void> {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((error) => {
     process.stderr.write(
-      `[wwdc-mcp-server] fatal: ${error instanceof Error ? error.stack ?? error.message : String(error)}\n`,
+      `[wwdc-mcp-server] fatal: ${error instanceof Error ? error.stack ?? error.message : String(error)}
+`,
     );
     process.exit(1);
   });
