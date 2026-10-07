@@ -1,0 +1,52 @@
+{
+  "manifest_version": "0.3",
+  "name": "wwdc-mcp",
+  "display_name": "WWDC MCP",
+  "version": "0.2.0",
+  "description": "Apple developer intelligence for coding agents: WWDC20-WWDC26, HIG, Swift, App Review, API history, and source-grounded app audits.",
+  "long_description": "WWDC MCP gives coding agents 45 read-only tools for current Apple-platform research: WWDC sessions and transcripts, Apple Developer Documentation, Human Interface Guidelines, Swift Evolution, App Store Review Guidelines, API availability/deprecation, and source-grounded Swift app audits. The bundle launches the pinned v0.2.0 release artifact and preserves stdio MCP transport.",
+  "author": {
+    "name": "Scott Manthey",
+    "url": "https://github.com/jabbertones-cloud"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jabbertones-cloud/wwdc-mcp-server.git"
+  },
+  "homepage": "https://github.com/jabbertones-cloud/wwdc-mcp-server",
+  "documentation": "https://github.com/jabbertones-cloud/wwdc-mcp-server#readme",
+  "support": "https://github.com/jabbertones-cloud/wwdc-mcp-server/issues",
+  "license": "MIT",
+  "keywords": [
+    "apple",
+    "wwdc26",
+    "swift",
+    "swiftui",
+    "xcode",
+    "app-store",
+    "ios",
+    "macos",
+    "mcp"
+  ],
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/server/index.js"
+      ]
+    }
+  },
+  "tools_generated": true,
+  "compatibility": {
+    "platforms": [
+      "darwin",
+      "win32",
+      "linux"
+    ],
+    "runtimes": {
+      "node": ">=22.14.0"
+    }
+  }
+}
