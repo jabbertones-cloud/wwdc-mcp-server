@@ -23,7 +23,7 @@ Include the smallest prompt/tool call, command, source URL, or ingest step that 
 - Node version:
 - WWDC MCP commit/version:
 - Transport: stdio / Streamable HTTP
-- Ollama enabled: yes / no
+- Semantic embeddings: enabled / `WWDC_SKIP_EMBEDDINGS=1`
 - Relevant source/year:
 
 ## Evidence
