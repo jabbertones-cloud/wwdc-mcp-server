@@ -9,7 +9,7 @@ For **public behavior and release claims, the repository is the source of truth*
 - Repository: `https://github.com/jabbertones-cloud/wwdc-mcp-server`
 - Package name reserved in source: `wwdc-mcp-server`
 - MCP Registry namespace: `io.github.jabbertones-cloud/wwdc`
-- Current source version: `0.2.0`
+- Current source version: `0.2.1`
 - Runtime: Node.js `>=22.14.0`, TypeScript
 - Default transport: MCP stdio
 - Optional transport: authenticated stateless Streamable HTTP
@@ -18,9 +18,11 @@ For **public behavior and release claims, the repository is the source of truth*
 
 ## Distribution status
 
-As of 2026-10-07, the npm package `wwdc-mcp-server` is **not published**. The supported public install path is a GitHub source checkout.
+As of 2026-10-07, the official MCP Registry entry `io.github.jabbertones-cloud/wwdc` is published through a GitHub-hosted MCPB bundle. GitHub source checkout and the signed release assets are public distribution paths.
 
-Do not claim that `npx wwdc-mcp-server` works until the npm artifact exists. `server.json` may be committed and pre-validated before release, but do not publish its Registry entry until the matching npm package version is live and its `mcpName` matches the Registry server name.
+The npm package `wwdc-mcp-server` is still **not published**. npm is optional secondary distribution and must not be described as live until an authenticated first publish succeeds.
+
+Registry versions are immutable. v0.2.0 is historical and should be deprecated after the fixed v0.2.1 MCPB is verified live.
 
 ## Public capability claims
 
@@ -60,12 +62,12 @@ If a tool is added, removed, or renamed, update the manifest, both protocol test
 On 2026-10-07:
 
 - a fresh-clone deterministic run passed `npm ci`, `npm run build`, `npm test`, and `npm audit --audit-level=high`
-- stdio and authenticated Streamable HTTP both exposed the 45-tool contract and v0.2.0 server instructions
+- stdio and authenticated Streamable HTTP both exposed the 45-tool contract and v0.2.1 server instructions
 - Apple WWDC 2026 discovery returned 138 sessions
 - a live WWDC26 session parse returned transcript text, timestamp chapters, and related Apple documentation
 - the bounded live ingest suite passed WWDC26 sessions, SwiftUI tutorials, a HIG leaf, Swift Evolution, and pathways
-- the official `mcp-publisher validate server.json` endpoint accepted the v0.2.0 Registry manifest
-- npm still returned 404 for `wwdc-mcp-server`, so source checkout remains the supported install path until the release workflow publishes the package
+- the official `mcp-publisher validate server.json` endpoint accepted the v0.2.1 MCPB Registry manifest
+- npm still returned 404 for `wwdc-mcp-server`; this does not block the official MCP Registry because Registry distribution uses the GitHub-hosted MCPB bundle
 
 ## Verification before a public claim
 
