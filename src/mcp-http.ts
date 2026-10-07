@@ -19,14 +19,19 @@ function normalizePathPrefix(value: string | undefined): string {
   if (!raw || raw === "/") return "";
   const prefix = `/${raw.replace(/^\/+|\/+$/g, "")}`;
   if (!/^\/[A-Za-z0-9._~!$&'()*+,;=:@/-]+$/.test(prefix)) {
-    throw new Error(`Invalid WWDC_MCP_PATH_PREFIX: ${raw}`);
+    throw new Error(`Invalid WWDC_mcpPath_PREFIX: ${raw}`);
   }
   return prefix;
 }
 
-const PATH_PREFIX = normalizePathPrefix(process.env.WWDC_MCP_PATH_PREFIX);
-const HEALTH_PATH = `${PATH_PREFIX}/healthz`;
-const MCP_PATH = `${PATH_PREFIX}/mcp`;
+function httpPaths() {
+  const pathPrefix = normalizePathPrefix(process.env.WWDC_mcpPath_PREFIX);
+  return {
+    pathPrefix,
+    healthPath: `${pathPrefix}/healthz`,
+    mcpPath: `${pathPrefix}/mcp`,
+  };
+}
 
 function json(
   res: ServerResponse,
@@ -108,11 +113,12 @@ async function readJsonBody(req: IncomingMessage): Promise<unknown> {
 
 export function createHttpServer() {
   const db = openWwdcDatabase();
+  const { pathPrefix, healthPath, mcpPath } = httpPaths();
 
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
 
-    if (url.pathname === HEALTH_PATH) {
+    if (url.pathname === healthPath) {
       if (req.method !== "GET") {
         json(res, 405, { error: "method_not_allowed" }, { allow: "GET" });
         return;
@@ -124,14 +130,14 @@ export function createHttpServer() {
         protocol: "streamable-http",
         authConfigured: authConfigured(),
         publicReadOnly: publicReadOnlyEnabled(),
-        pathPrefix: PATH_PREFIX || null,
-        endpoints: { health: HEALTH_PATH, mcp: MCP_PATH },
+        pathPrefix: pathPrefix || null,
+        endpoints: { health: healthPath, mcp: mcpPath },
         release: { sha: DEPLOYED_SHA || null },
       });
       return;
     }
 
-    if (url.pathname !== MCP_PATH) {
+    if (url.pathname !== mcpPath) {
       json(res, 404, { error: "not_found" });
       return;
     }
@@ -223,7 +229,7 @@ async function main(): Promise<void> {
     const actualPort =
       typeof address === "object" && address ? address.port : PORT;
     process.stderr.write(
-      `[wwdc-mcp-server] remote MCP ready at http://${HOST}:${actualPort}${MCP_PATH} (auth=${publicReadOnlyEnabled() ? "public-read-only" : authConfigured() ? "configured" : "missing"})\n`,
+      `[wwdc-mcp-server] remote MCP ready at http://${HOST}:${actualPort}${mcpPath} (auth=${publicReadOnlyEnabled() ? "public-read-only" : authConfigured() ? "configured" : "missing"})\n`,
     );
   });
 
