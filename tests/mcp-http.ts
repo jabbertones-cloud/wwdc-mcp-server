@@ -38,6 +38,7 @@ async function main(): Promise<void> {
   assert.equal(healthBody.version, SERVER_VERSION);
   assert.equal(healthBody.protocol, "streamable-http");
   assert.equal(healthBody.authConfigured, true);
+  assert.equal(healthBody.publicReadOnly, false);
   assert.equal(healthBody.pathPrefix, "/wwdc");
   assert.equal(healthBody.endpoints.health, "/wwdc/healthz");
   assert.equal(healthBody.endpoints.mcp, "/wwdc/mcp");
@@ -104,8 +105,75 @@ async function main(): Promise<void> {
   } finally {
     await client.close().catch(() => undefined);
     await new Promise<void>((resolve) => server.close(() => resolve()));
-    fs.rmSync(dir, { recursive: true, force: true });
   }
+
+  delete process.env.WWDC_MCP_BEARER_TOKEN;
+  process.env.WWDC_MCP_PUBLIC_READ_ONLY = "1";
+  process.env.WWDC_MCP_PATH_PREFIX = "";
+  const publicServer = createHttpServer();
+  await new Promise<void>((resolve, reject) => {
+    publicServer.once("error", reject);
+    publicServer.listen(0, "127.0.0.1", resolve);
+  });
+  const publicAddress = publicServer.address();
+  assert.ok(publicAddress && typeof publicAddress === "object");
+  const publicBase = `http://127.0.0.1:${publicAddress.port}`;
+
+  const publicHealth = await fetch(`${publicBase}/healthz`);
+  assert.equal(publicHealth.status, 200);
+  const publicHealthBody = (await publicHealth.json()) as any;
+  assert.equal(publicHealthBody.authConfigured, false);
+  assert.equal(publicHealthBody.publicReadOnly, true);
+
+  const publicTransport = new StreamableHTTPClientTransport(
+    new URL(`${publicBase}/mcp`),
+  );
+  const publicClient = new Client(
+    { name: "wwdc-http-public-e2e", version: "0.0.1" },
+    { capabilities: {} },
+  );
+  try {
+    await publicClient.connect(publicTransport);
+    assert.equal(publicClient.getServerVersion()?.version, SERVER_VERSION);
+    const listed = await publicClient.listTools();
+    assert.equal(listed.tools.length, 45);
+    console.log("[mcp-http] explicit public-read-only mode allows anonymous 45-tool MCP access");
+  } finally {
+    await publicClient.close().catch(() => undefined);
+    await new Promise<void>((resolve) => publicServer.close(() => resolve()));
+  }
+
+  delete process.env.WWDC_MCP_PUBLIC_READ_ONLY;
+  const closedServer = createHttpServer();
+  await new Promise<void>((resolve, reject) => {
+    closedServer.once("error", reject);
+    closedServer.listen(0, "127.0.0.1", resolve);
+  });
+  const closedAddress = closedServer.address();
+  assert.ok(closedAddress && typeof closedAddress === "object");
+  const closedBase = `http://127.0.0.1:${closedAddress.port}`;
+  const closed = await fetch(`${closedBase}/mcp`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      accept: "application/json, text/event-stream",
+    },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 2,
+      method: "initialize",
+      params: {
+        protocolVersion: "2025-03-26",
+        capabilities: {},
+        clientInfo: { name: "fail-closed-test", version: "0.0.1" },
+      },
+    }),
+  });
+  assert.equal(closed.status, 503);
+  await new Promise<void>((resolve) => closedServer.close(() => resolve()));
+  console.log("[mcp-http] no auth and no public flag remains fail-closed");
+
+  fs.rmSync(dir, { recursive: true, force: true });
 }
 
 main().catch((error) => {
