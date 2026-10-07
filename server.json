@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.jabbertones-cloud/wwdc",
   "title": "WWDC MCP",
-  "description": "Source-grounded Apple developer knowledge for coding agents: WWDC26, Apple docs, HIG, Swift Evolution, App Review guidance, API intelligence, transcripts, and Swift app audits.",
+  "description": "Apple developer knowledge for coding agents: WWDC26, docs, HIG, Swift Evolution, and App Review.",
   "repository": {
     "url": "https://github.com/jabbertones-cloud/wwdc-mcp-server",
     "source": "github"
