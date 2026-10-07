@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="WWDC MCP">
+  <defs>
+    <linearGradient id="bg" x1="112" y1="96" x2="900" y2="932" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#111827"/>
+      <stop offset="0.52" stop-color="#312E81"/>
+      <stop offset="1" stop-color="#0F172A"/>
+    </linearGradient>
+    <linearGradient id="beam" x1="264" y1="762" x2="774" y2="260" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22D3EE"/>
+      <stop offset="0.5" stop-color="#8B5CF6"/>
+      <stop offset="1" stop-color="#F472B6"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="18" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="1024" height="1024" rx="232" fill="url(#bg)"/>
+  <path d="M246 360 112 512l134 152" fill="none" stroke="#E2E8F0" stroke-width="54" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="m778 360 134 152-134 152" fill="none" stroke="#E2E8F0" stroke-width="54" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M384 736 640 288" fill="none" stroke="url(#beam)" stroke-width="66" stroke-linecap="round" filter="url(#glow)"/>
+  <circle cx="512" cy="512" r="78" fill="#0F172A" stroke="url(#beam)" stroke-width="26"/>
+  <circle cx="512" cy="512" r="22" fill="#F8FAFC"/>
+</svg>

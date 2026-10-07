@@ -1,6 +1,7 @@
 name: Publish public release
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - "v*"
@@ -27,6 +28,7 @@ jobs:
       - run: npm audit --audit-level=high
 
       - name: Verify tag, package, runtime, and Registry versions agree
+        if: github.event_name == 'push'
         shell: bash
         run: |
           set -euo pipefail
@@ -34,21 +36,35 @@ jobs:
           PACKAGE_VERSION="$(node -p "require('./package.json').version")"
           SERVER_VERSION="$(node -e "import('./dist/server.js').then(m=>process.stdout.write(m.SERVER_VERSION))")"
           REGISTRY_VERSION="$(node -p "require('./server.json').version")"
-          PACKAGE_REGISTRY_VERSION="$(node -p "require('./server.json').packages[0].version")"
           test "$TAG_VERSION" = "$PACKAGE_VERSION"
           test "$PACKAGE_VERSION" = "$SERVER_VERSION"
           test "$PACKAGE_VERSION" = "$REGISTRY_VERSION"
-          test "$PACKAGE_VERSION" = "$PACKAGE_REGISTRY_VERSION"
 
       - name: Install MCP publisher and validate Registry manifest
         run: |
           curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
           ./mcp-publisher validate server.json
 
-      - name: Publish npm package
-        run: npm publish --access public
+      - name: Publish npm package when credentials are configured
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "NPM_TOKEN not configured; skipping optional npm publication."
+            exit 0
+          fi
+          npm publish --access public
+
+      - name: Verify public remote is directory-ready
+        run: |
+          curl --fail --silent --show-error --retry 3 https://fabric-origin.smatdesigns.com/wwdc/healthz | tee /tmp/wwdc-health.json
+          node -e '
+            const fs = require("fs");
+            const h = JSON.parse(fs.readFileSync("/tmp/wwdc-health.json", "utf8"));
+            if (!h.ok || h.service !== "wwdc-mcp-server" || h.authMode !== "public-readonly" || h.readOnly !== true) {
+              throw new Error("WWDC public endpoint is not directory-ready");
+            }
+          '
 
       - name: Authenticate to official MCP Registry
         run: ./mcp-publisher login github-oidc

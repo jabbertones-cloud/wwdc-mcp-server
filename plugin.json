@@ -1,0 +1,94 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "wwdc-mcp",
+  "version": "0.2.0",
+  "description": "Current Apple platform research for coding agents: WWDC sessions, Apple documentation, Human Interface Guidelines, Swift Evolution, App Review guidance, API availability, deprecations, and cross-references.",
+  "author": {
+    "name": "SMAT Designs",
+    "url": "https://github.com/jabbertones-cloud"
+  },
+  "homepage": "https://github.com/jabbertones-cloud/wwdc-mcp-server",
+  "repository": "https://github.com/jabbertones-cloud/wwdc-mcp-server",
+  "license": "MIT",
+  "keywords": ["apple", "wwdc", "swift", "swiftui", "ios", "macos", "xcode", "mcp", "developer-tools"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "WWDC MCP",
+        "shortDescription": "Current Apple docs for agents",
+        "longDescription": "Search and cross-reference WWDC sessions, Apple Developer Documentation, Human Interface Guidelines, Swift Evolution, App Review guidance, release notes, API availability and deprecations. WWDC MCP is read-only and designed to ground iOS, macOS, visionOS, watchOS, tvOS, and Swift engineering work in current first-party sources.",
+        "developerName": "SMAT Designs",
+        "category": "Developer Tools",
+        "capabilities": [
+          "Search WWDC sessions and transcripts",
+          "Read Apple Developer Documentation",
+          "Search Human Interface Guidelines",
+          "Check API availability and deprecations",
+          "Search App Review Guidelines",
+          "Research Swift Evolution",
+          "Cross-reference Apple platform guidance"
+        ],
+        "websiteURL": "https://github.com/jabbertones-cloud/wwdc-mcp-server",
+        "supportURL": "https://github.com/jabbertones-cloud/wwdc-mcp-server/issues",
+        "privacyPolicyURL": "https://github.com/jabbertones-cloud/wwdc-mcp-server/blob/main/PRIVACY.md",
+        "termsOfServiceURL": "https://github.com/jabbertones-cloud/wwdc-mcp-server/blob/main/TERMS.md",
+        "defaultPrompt": [
+          "Find the current Apple guidance for this API and cite the sources.",
+          "Audit this Swift code against current WWDC and Apple documentation.",
+          "What changed in this Apple framework across recent WWDC releases?"
+        ],
+        "brandColor": "#6750A4",
+        "brandColorDark": "#D0BCFF",
+        "composerIcon": "./assets/wwdc-mcp-icon.svg",
+        "logo": "./assets/wwdc-mcp-icon.svg"
+      },
+      "onboardingSkill": "./skills/wwdc-research/SKILL.md",
+      "review": {
+        "test_cases": {
+          "positive": [
+            {
+              "description": "Research a current Apple API",
+              "prompt": "Find current Apple guidance for NavigationSplitView and cite the strongest sources.",
+              "tools_triggered": "apple_search_all, apple_doc_lookup",
+              "expected_behavior": "Return current first-party Apple guidance with source links and avoid unsupported claims."
+            },
+            {
+              "description": "Find API introduction history",
+              "prompt": "When was NavigationSplitView introduced and which WWDC sessions explain it?",
+              "tools_triggered": "wwdc_find_api_introduction, wwdc_sessions_for_api",
+              "expected_behavior": "Identify introduction history and relevant WWDC sessions with links."
+            },
+            {
+              "description": "Search App Review guidance",
+              "prompt": "What do the current App Review Guidelines say about in-app purchase?",
+              "tools_triggered": "appstore_guidelines_search",
+              "expected_behavior": "Summarize the relevant current guideline sections and link to Apple."
+            },
+            {
+              "description": "Check availability and deprecation",
+              "prompt": "Check the availability and deprecation status of UIWebView and what replaced it.",
+              "tools_triggered": "apple_api_availability, apple_api_deprecation, apple_what_replaced",
+              "expected_behavior": "Report documented availability and deprecation plus the supported replacement without inventing dates."
+            },
+            {
+              "description": "Compare recent WWDC guidance",
+              "prompt": "Summarize how Apple guidance on Swift concurrency changed across recent WWDC sessions.",
+              "tools_triggered": "wwdc_search, wwdc_what_changed",
+              "expected_behavior": "Compare relevant sessions across years and cite the session sources."
+            }
+          ],
+          "negative": [
+            {"description": "Unsupported App Store mutation", "prompt": "Submit my app to App Store Connect and release it."},
+            {"description": "Unsupported source-code mutation", "prompt": "Rewrite my Xcode project files directly."},
+            {"description": "Unsupported destructive action", "prompt": "Delete all indexed Apple documentation from the server."}
+          ]
+        },
+        "commerce": false,
+        "commerce_description": "WWDC MCP provides read-only developer research and does not sell products or process payments."
+      },
+      "publication": {
+        "release_notes": "Public remote and frontier-directory release for ChatGPT, Codex, Claude, Cursor, Grok, and the official MCP Registry."
+      }
+    }
+  }
+}

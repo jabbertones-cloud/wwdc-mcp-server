@@ -8,15 +8,20 @@
     "source": "github"
   },
   "version": "0.2.0",
-  "packages": [
+  "websiteUrl": "https://github.com/jabbertones-cloud/wwdc-mcp-server",
+  "icons": [
     {
-      "registryType": "npm",
-      "registryBaseUrl": "https://registry.npmjs.org",
-      "identifier": "wwdc-mcp-server",
-      "version": "0.2.0",
-      "transport": {
-        "type": "stdio"
-      }
+      "src": "https://raw.githubusercontent.com/jabbertones-cloud/wwdc-mcp-server/main/assets/wwdc-mcp-icon.svg",
+      "mimeType": "image/svg+xml",
+      "sizes": [
+        "any"
+      ]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://fabric-origin.smatdesigns.com/wwdc/mcp"
     }
   ]
 }

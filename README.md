@@ -39,13 +39,26 @@ The promoted entry point for repo-level Apple work is `swift_app_audit`. The pro
 
 ## Quick start
 
+### Hosted remote
+
+Use the public read-only MCP from any Streamable HTTP client:
+
+~~~text
+https://fabric-origin.smatdesigns.com/wwdc/mcp
+~~~
+
+No API key is required. The hosted endpoint is rate-limited. See docs/CLIENTS.md for exact ChatGPT, Claude, Cursor, Codex, and Grok setup.
+
+### Local source
+
+
 ### Requirements
 
 - Node.js **22.14 or newer**
 - npm
 - Optional: [Ollama](https://ollama.com/) with `nomic-embed-text` for semantic reranking
 
-> **Distribution status (October 7, 2026):** source checkout is the supported install path. The `wwdc-mcp-server` package is not yet published on npm, so `npx wwdc-mcp-server` will not work yet. The package now carries an MCP Registry namespace, but Registry publication should wait until the npm artifact exists.
+> **Distribution status (October 7, 2026):** the public Streamable HTTP endpoint is the recommended zero-install path and is prepared for the official MCP Registry plus ChatGPT, Claude, Cursor, Codex, and Grok. npm remains an optional distribution layer.
 
 ### 1. Clone and build
 
@@ -96,6 +109,19 @@ Then ask your agent:
 > Use WWDC MCP to audit this app against current Apple guidance before changing code.
 
 ## Client setup
+
+### Hosted zero-install setup
+
+The canonical public endpoint is:
+
+~~~text
+https://fabric-origin.smatdesigns.com/wwdc/mcp
+~~~
+
+The repository also includes a portable Agent Plugin using plugin.json plus mcp.json for ChatGPT, Codex, and Cursor. Claude and Grok can connect to the same URL directly. See docs/CLIENTS.md for exact commands and configuration.
+
+The local stdio configurations below remain useful for private, offline, or self-hosted use.
+
 
 <details>
 <summary><strong>OpenAI Codex</strong></summary>
@@ -357,33 +383,34 @@ Defaults:
 
 ## Remote Streamable HTTP
 
-Stdio remains the default and simplest transport. The same 45-tool server can also run as an authenticated, stateless Streamable HTTP MCP:
+Stdio remains available for local and private use. The hosted public endpoint uses the same 45-tool read-only server over stateless Streamable HTTP:
 
-```bash
+~~~text
+https://fabric-origin.smatdesigns.com/wwdc/mcp
+~~~
+
+For a private deployment, configure bearer authentication:
+
+~~~bash
 export WWDC_MCP_BEARER_TOKEN="$(openssl rand -hex 32)"
 export WWDC_MCP_HTTP_HOST=127.0.0.1
 export WWDC_MCP_HTTP_PORT=8789
 npm run start:http
-```
+~~~
 
-Routes:
+For an intentionally public directory endpoint, enable explicit public-readonly mode:
 
-- `GET /healthz`
-- `POST /mcp`
-
-The MCP route fails closed with `503 auth_not_configured` if neither `WWDC_MCP_BEARER_TOKEN` nor `WWDC_MCP_BEARER_TOKEN_SHA256` is configured.
-
-To mount the service behind a shared reverse proxy without path rewriting:
-
-```bash
+~~~bash
+export WWDC_MCP_PUBLIC_READONLY=1
+export WWDC_MCP_PUBLIC_RATE_LIMIT_PER_MINUTE=120
+export WWDC_MCP_HTTP_HOST=127.0.0.1
 export WWDC_MCP_PATH_PREFIX=/wwdc
-```
+npm run start:http
+~~~
 
-Routes become `/wwdc/healthz` and `/wwdc/mcp`.
+Without public-readonly mode or bearer credentials, the MCP route fails closed. Public-readonly mode keeps the tool surface read-only and applies a per-client rate limit. Put internet-facing deployments behind HTTPS and reverse-proxy abuse controls.
 
-The built-in HTTP server does **not** terminate TLS. If you expose it outside localhost, put it behind a TLS reverse proxy and treat the bearer token as a secret.
-
-See [docs/DEPLOY.md](docs/DEPLOY.md) for the full runbook.
+See docs/DEPLOY.md for the full runbook.
 
 ## Trust and security model
 

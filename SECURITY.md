@@ -41,6 +41,8 @@ The MCP route **fails closed** with `503 auth_not_configured` unless one of thes
 
 Requests without a valid bearer token return `401`.
 
+For a deliberately public directory endpoint, set WWDC_MCP_PUBLIC_READONLY=1. In that mode, bearer authentication is not required, every exposed MCP tool remains read-only, and the HTTP entry point applies a per-client request limit controlled by WWDC_MCP_PUBLIC_RATE_LIMIT_PER_MINUTE (default 120 per minute). Public mode must be an explicit operator choice; without public mode or bearer credentials the MCP route still fails closed.
+
 The built-in HTTP server does not terminate TLS. If you expose it beyond localhost, use a TLS reverse proxy, keep the bearer token secret, and restrict network access.
 
 `WWDC_MCP_PATH_PREFIX` can mount the routes under a prefix such as `/wwdc`.
@@ -69,10 +71,10 @@ Ollama, when enabled, defaults to localhost.
 
 Before exposing HTTP remotely:
 
-1. Generate a strong bearer token.
+1. Choose one access mode: private bearer authentication, or explicit public-readonly mode for directory distribution.
 2. Bind to localhost unless a reverse proxy requires otherwise.
 3. Terminate TLS at the reverse proxy.
-4. Do not log bearer tokens.
+4. Do not log bearer secrets; for public mode, configure rate limits and reverse-proxy abuse controls.
 5. Keep `/healthz` free of secrets.
 6. Run `npm test` and `npm audit --audit-level=high`.
 7. Verify the deployed commit identity through the health response when `WWDC_MCP_DEPLOYED_SHA` is configured.

@@ -95,6 +95,18 @@ Routes:
 
 The MCP route returns `503 auth_not_configured` if neither `WWDC_MCP_BEARER_TOKEN` nor `WWDC_MCP_BEARER_TOKEN_SHA256` is set.
 
+For a deliberately public read-only directory endpoint:
+
+~~~bash
+export WWDC_MCP_PUBLIC_READONLY=1
+export WWDC_MCP_PUBLIC_RATE_LIMIT_PER_MINUTE=120
+export WWDC_MCP_HTTP_HOST=127.0.0.1
+export WWDC_MCP_PATH_PREFIX=/wwdc
+npm run start:http
+~~~
+
+Public-readonly mode intentionally omits bearer authentication, keeps the existing read-only tool surface, and enforces a per-client rate limit. Keep TLS termination and reverse-proxy abuse controls in front of the origin.
+
 The server is stateless at the MCP transport layer: each HTTP request receives a fresh MCP server/transport instance while sharing the local SQLite database.
 
 ### Shared reverse proxy path

@@ -47,14 +47,19 @@ const registry = JSON.parse(fs.readFileSync(path.join(ROOT, "server.json"), "utf
   name: string;
   version: string;
   description: string;
+  remotes?: Array<{ url?: string; type?: string }>;
   packages?: Array<{ identifier?: string; version?: string; transport?: { type?: string } }>;
 };
 assert.equal(registry.name, pkg.mcpName, "Registry name must match package mcpName");
 assert.equal(registry.version, pkg.version, "Registry version must match package version");
 assert.ok(registry.description.length <= 100, "Registry description must be <= 100 characters");
-assert.equal(registry.packages?.[0]?.identifier, pkg.name, "Registry npm identifier must match package name");
-assert.equal(registry.packages?.[0]?.version, pkg.version, "Registry package version must match package version");
-assert.equal(registry.packages?.[0]?.transport?.type, "stdio");
+assert.equal(registry.remotes?.[0]?.url, "https://fabric-origin.smatdesigns.com/wwdc/mcp", "Registry remote URL must match the public MCP endpoint");
+assert.equal(registry.remotes?.[0]?.type, "streamable-http", "Registry remote must use Streamable HTTP");
+if (registry.packages?.length) {
+  assert.equal(registry.packages[0]?.identifier, pkg.name, "Registry npm identifier must match package name");
+  assert.equal(registry.packages[0]?.version, pkg.version, "Registry package version must match package version");
+  assert.equal(registry.packages[0]?.transport?.type, "stdio");
+}
 assert.ok(pkg.bin?.["wwdc-mcp-server"], "package bin must expose wwdc-mcp-server");
 
 const binPath = path.join(ROOT, pkg.bin["wwdc-mcp-server"]);
@@ -75,4 +80,4 @@ assert.ok(files.has("CHANGELOG.md"), "packed artifact must include CHANGELOG.md"
 assert.ok(files.has("LICENSE"), "packed artifact must include LICENSE");
 assert.ok(![...files].some((file) => file.startsWith("tests/")), "packed artifact should not include tests");
 
-console.log("[package-smoke] npm, runtime, lockfile, User-Agent, and MCP Registry metadata agree");
+console.log("[package-smoke] npm artifact, runtime, lockfile, User-Agent, and remote MCP Registry metadata agree");

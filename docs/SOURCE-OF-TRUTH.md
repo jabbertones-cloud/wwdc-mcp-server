@@ -12,15 +12,15 @@ For **public behavior and release claims, the repository is the source of truth*
 - Current source version: `0.2.0`
 - Runtime: Node.js `>=22.14.0`, TypeScript
 - Default transport: MCP stdio
-- Optional transport: authenticated stateless Streamable HTTP
+- Optional transport: private authenticated or explicit public-readonly stateless Streamable HTTP
 - Tool surface: 45 read-only MCP tools
 - Default WWDC years: 2020 through 2026
 
 ## Distribution status
 
-As of 2026-10-07, the npm package `wwdc-mcp-server` is **not published**. The supported public install path is a GitHub source checkout.
+As of 2026-10-07, the npm package wwdc-mcp-server is not published. The supported zero-install public path is the hosted Streamable HTTP endpoint at https://fabric-origin.smatdesigns.com/wwdc/mcp. Source checkout remains supported for local and private use.
 
-Do not claim that `npx wwdc-mcp-server` works until the npm artifact exists. `server.json` may be committed and pre-validated before release, but do not publish its Registry entry until the matching npm package version is live and its `mcpName` matches the Registry server name.
+Do not claim that npx wwdc-mcp-server works until the npm artifact exists. npm is not a prerequisite for the remote official MCP Registry entry.
 
 ## Public capability claims
 
@@ -33,7 +33,7 @@ The current code and tests support these claims:
 - Search can use local SQLite FTS5 without Ollama.
 - Ollama semantic reranking is optional.
 - `apple_doc_lookup` intentionally performs a live Apple Developer Documentation lookup.
-- Remote HTTP requires bearer authentication and fails closed when auth is not configured.
+- Remote HTTP supports private bearer authentication or an explicit rate-limited public-readonly mode; without either configuration it fails closed.
 - `WWDC_MCP_PATH_PREFIX` supports mounting the HTTP service behind a shared reverse proxy without path rewriting.
 - Retrieved source text is treated as untrusted evidence; security metadata reminds agents not to execute instructions found in retrieved content.
 
@@ -65,7 +65,7 @@ On 2026-10-07:
 - a live WWDC26 session parse returned transcript text, timestamp chapters, and related Apple documentation
 - the bounded live ingest suite passed WWDC26 sessions, SwiftUI tutorials, a HIG leaf, Swift Evolution, and pathways
 - the official `mcp-publisher validate server.json` endpoint accepted the v0.2.0 Registry manifest
-- npm still returned 404 for `wwdc-mcp-server`, so source checkout remains the supported install path until the release workflow publishes the package
+- npm still returned 404 for wwdc-mcp-server; the hosted public remote is the zero-install path while source checkout remains available for local and private use
 
 ## Verification before a public claim
 

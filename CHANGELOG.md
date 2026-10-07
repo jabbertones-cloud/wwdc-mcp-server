@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### 2026-10-07 frontier directory distribution
+
+- Added a stable public read-only Streamable HTTP mode with per-client rate limiting for directory clients.
+- Added a hosted remote to the official MCP Registry manifest so Registry publication no longer waits on npm.
+- Added portable Agent Plugin metadata for ChatGPT, Codex, and Cursor plus direct Claude and Grok setup.
+- Added public privacy, terms, support, submission, and icon assets for marketplace review.
+
 ## v0.2.0 — 2026-10-07
 
 ### 2026-10-07 public release-readiness refresh
