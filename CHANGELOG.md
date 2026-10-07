@@ -1,8 +1,11 @@
 # Changelog
 
-## Unreleased
+## v0.2.0 — 2026-10-07
 
 ### 2026-10-07 public release-readiness refresh
+
+- Added `server.json` for official MCP Registry publication and a tag-driven npm → Registry GitHub Actions workflow using GitHub OIDC.
+- Added an AiSCent companion workflow to the README so WWDC research naturally hands off to App Store Connect execution.
 
 - Added authenticated, stateless **Streamable HTTP** transport alongside the default stdio transport.
 - Added `GET /healthz` with service/version/protocol/auth state, endpoint paths, optional path prefix, and deployed commit identity.
