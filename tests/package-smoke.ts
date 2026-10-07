@@ -69,10 +69,21 @@ const raw = execFileSync("npm", ["pack", "--dry-run", "--json"], {
   encoding: "utf8",
   stdio: ["ignore", "pipe", "pipe"],
 });
+type PackManifest = { files: Array<{ path: string }> };
 const parsedPack = JSON.parse(raw) as
-  | { files: Array<{ path: string }> }
-  | Array<{ files: Array<{ path: string }> }>;
-const pack = Array.isArray(parsedPack) ? parsedPack[0] : parsedPack;
+  | PackManifest
+  | PackManifest[]
+  | Record<string, PackManifest>;
+
+let pack: PackManifest | undefined;
+if (Array.isArray(parsedPack)) {
+  pack = parsedPack[0];
+} else if (Array.isArray((parsedPack as PackManifest).files)) {
+  pack = parsedPack as PackManifest;
+} else {
+  pack = Object.values(parsedPack as Record<string, PackManifest>)[0];
+}
+
 assert.ok(pack && Array.isArray(pack.files), "npm pack --json must return a file manifest");
 const files = new Set(pack.files.map((file) => file.path));
 
