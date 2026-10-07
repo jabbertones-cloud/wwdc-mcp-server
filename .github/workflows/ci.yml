@@ -38,6 +38,15 @@ jobs:
       - name: Parse test
         run: npm run test:parse
 
+      - name: Security evaluation
+        run: npm run test:security
+
+      - name: Search regression
+        run: npm run test:search-regression
+
+      - name: Retrieval evaluation
+        run: npm run eval
+
       - name: E2E test (stdio MCP protocol)
         run: npm run test:e2e
 
