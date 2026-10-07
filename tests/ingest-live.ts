@@ -21,6 +21,8 @@ import {
 } from "../src/db/queries.js";
 
 async function main(): Promise<void> {
+  // Exercise live source parsing without downloading/running the local embedding model.
+  process.env.WWDC_SKIP_EMBEDDINGS = "1";
   const dbPath = path.join(process.env.TMPDIR ?? "/tmp", `wwdc-live-${process.pid}.db`);
   if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
   const db = openDb(dbPath);
