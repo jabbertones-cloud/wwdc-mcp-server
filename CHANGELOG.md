@@ -1,8 +1,18 @@
 # Changelog
 
-## v0.2.0 — 2026-10-07
+## v0.2.0 — release candidate (unpublished)
 
 ### 2026-10-07 public release-readiness refresh
+
+- Migrated semantic reranking from the old Ollama-backed path to a local Hugging Face Transformers/ONNX engine using `nomic-ai/nomic-embed-text-v1.5`; Ollama is no longer required.
+- Added `services/embeddings.ts` as the current implementation and retained `services/ollama.ts` only as a deprecated compatibility shim.
+- Added MCP server instructions so compatible clients receive first-party tool-selection/trust guidance at initialization.
+- Added release-parity tests for package/runtime/lockfile/User-Agent/MCP Registry versions and Registry description constraints.
+- Moved the live source guard to WWDC26 and bounded HIG coverage to a single leaf; verified live ingest across WWDC26, tutorials, HIG, Swift Evolution, and pathways.
+- Added first-class Codex configuration guidance and clarified the source-only install status while npm remains unpublished.
+- Validated `server.json` against the official MCP Registry before npm publication and reordered the release workflow to fail before creating a half-release.
+- Documented that optional `session-summaries` uses Anthropic only when `ANTHROPIC_API_KEY` is explicitly configured.
+
 
 - Added `server.json` for official MCP Registry publication and a tag-driven npm → Registry GitHub Actions workflow using GitHub OIDC.
 - Added an AiSCent companion workflow to the README so WWDC research naturally hands off to App Store Connect execution.
