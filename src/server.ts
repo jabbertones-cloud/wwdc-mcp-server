@@ -6,7 +6,7 @@ import { migrate, openDb } from "./db/schema.js";
 import { registerAllTools } from "./tools/index.js";
 
 export const SERVER_NAME = "wwdc-mcp-server";
-export const SERVER_VERSION = "0.1.3";
+export const SERVER_VERSION = "0.2.0";
 
 export function openWwdcDatabase(): DatabaseType {
   if (!fs.existsSync(DATA_DIR)) {
