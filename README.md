@@ -32,7 +32,7 @@ The promoted entry point for repo-level Apple work is `swift_app_audit`. The pro
 - **Source-grounded app audits** — `swift_app_audit` combines WWDC, HIG, tutorials, Swift Evolution, pathways, Apple doc hints, caveats, and validation steps.
 - **API intelligence** — availability, deprecation, replacement, introduction history, and WWDC mentions.
 - **Transcript-native** — search complete session transcripts, read them in chunks, and generate timestamped deep links.
-- **Local-first** — SQLite + FTS5 works without a paid API; Ollama semantic reranking is optional.
+- **Local-first** — SQLite + FTS5 plus optional local ONNX semantic reranking; no separate embedding service or paid API is required for core search.
 - **Trust-aware** — conservative judgment metadata, a content-safety tripwire, and a security manifest help agents distinguish evidence from instructions.
 - **Two transports** — stdio by default, plus authenticated stateless Streamable HTTP for remote/self-hosted use.
 - **Read-only MCP surface** — the 45 tools retrieve and analyze source material; they do not mutate your Apple account or source repo.
@@ -43,16 +43,15 @@ The promoted entry point for repo-level Apple work is `swift_app_audit`. The pro
 
 - Node.js **22.14 or newer**
 - npm
-- Optional: [Ollama](https://ollama.com/) with `nomic-embed-text` for semantic reranking
 
-> **Distribution status (October 7, 2026):** source checkout is the supported install path. The `wwdc-mcp-server` package is not yet published on npm, so `npx wwdc-mcp-server` will not work yet. The package now carries an MCP Registry namespace, but Registry publication should wait until the npm artifact exists.
+> **Distribution status (October 7, 2026):** `main` is prepared as the **v0.2.0 release candidate**, but the latest published GitHub release is still v0.1.3 and `wwdc-mcp-server` is not yet on npm. Source checkout is therefore the supported install path; `npx wwdc-mcp-server` will not work until the tag-driven release workflow publishes npm and then the validated MCP Registry entry.
 
 ### 1. Clone and build
 
 ```bash
 git clone https://github.com/jabbertones-cloud/wwdc-mcp-server.git
 cd wwdc-mcp-server
-npm install
+npm ci
 npm run build
 ```
 
@@ -336,24 +335,29 @@ npm run ingest -- --source deprecation-backfill
 npm run ingest -- --source export-deprecation-qa
 ```
 
+`session-summaries` is the one optional enrichment lane that uses an external model API. It runs only when `ANTHROPIC_API_KEY` is set, sends bounded WWDC session metadata/transcript excerpts to Anthropic, and may incur API cost. Core ingest, search, audits, and local semantic reranking do not require that key.
+
 During WWDC week, re-run the WWDC ingest periodically to pick up newly published sessions.
 
-## Optional semantic search with Ollama
+## Local semantic search — no Ollama required
 
-FTS5 keyword search works without Ollama. For local semantic reranking:
+FTS5 keyword search works immediately. When semantic reranking is enabled, WWDC MCP lazily loads `nomic-ai/nomic-embed-text-v1.5` through `@huggingface/transformers` and runs the ONNX model locally. The model is cached under `~/.cache/huggingface/hub`; the first semantic use may need network access to download model files.
+
+If the model cannot initialize, search falls back to FTS5 for that process. To force keyword-only behavior:
 
 ```bash
-ollama pull nomic-embed-text
+export WWDC_SKIP_EMBEDDINGS=1
 ```
 
-Defaults:
+### Local/index configuration
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `OLLAMA_BASE` | `http://127.0.0.1:11434` | Local Ollama endpoint |
-| `OLLAMA_EMBED_MODEL` | `nomic-embed-text` | Embedding model |
 | `WWDC_MCP_DATA_DIR` | OS app-data directory | Database/cache directory |
 | `WWDC_MCP_DB` | `<data-dir>/wwdc.db` | SQLite database path |
+| `WWDC_SKIP_EMBEDDINGS` | unset | Set to `1` to disable local model loading and semantic reranking |
+| `WWDC_DOCS_MAX_PAGES` | `2500` | Bound Apple Developer Documentation crawl size |
+| `WWDC_TUTORIAL_MAX_PAGES` | `250` | Bound Apple tutorial crawl size |
 
 ## Remote Streamable HTTP
 
@@ -394,6 +398,8 @@ See [docs/DEPLOY.md](docs/DEPLOY.md) for the full runbook.
 - Remote HTTP requires bearer authentication and fails closed if auth is not configured.
 - The default stdio server opens no network listener.
 - Ingest fetches public Apple/Swift sources. `apple_doc_lookup` performs live public Apple documentation requests.
+- Local semantic reranking uses a Hugging Face Transformers/ONNX model and may download its model files on first use.
+- Optional `session-summaries` sends bounded session metadata/transcript excerpts to Anthropic only when `ANTHROPIC_API_KEY` is explicitly configured.
 - No Apple Developer account credentials are required or stored.
 
 For vulnerability reporting and deployment cautions, see [SECURITY.md](SECURITY.md).
@@ -416,7 +422,7 @@ The protocol tests verify the 45-tool catalog and exercise the trust manifest ov
 - **Default transport:** MCP stdio
 - **Optional transport:** authenticated stateless Streamable HTTP
 - **Storage:** SQLite + FTS5
-- **Semantic reranking:** optional local Ollama embeddings
+- **Semantic reranking:** local `nomic-ai/nomic-embed-text-v1.5` via Hugging Face Transformers/ONNX
 - **Response budget:** bounded tool responses, with compact envelopes for oversized JSON
 - **Ingest:** public Apple/Swift sources with bounded concurrency, retries, and a stable User-Agent
 - **Safety:** content-safety metadata, read-only tool contract, security manifest, fail-closed remote auth
