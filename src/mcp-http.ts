@@ -90,7 +90,6 @@ async function readJsonBody(req: IncomingMessage): Promise<unknown> {
 
 export function createHttpServer() {
   const db = openWwdcDatabase();
-  const mcpServer = createWwdcServer(db);
 
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
@@ -150,6 +149,10 @@ export function createHttpServer() {
       return;
     }
 
+    // Stateless MCP means one fresh server and one fresh transport per HTTP
+    // request. Reusing either instance across requests can leak cross-client
+    // response state and fails with current MCP SDK lifecycle guards.
+    const mcpServer = createWwdcServer(db);
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,
@@ -158,10 +161,6 @@ export function createHttpServer() {
     transport.onerror = (error) => {
       process.stderr.write(`[wwdc-mcp-server] HTTP transport error: ${error.message}\n`);
     };
-
-    res.on("close", () => {
-      void transport.close();
-    });
 
     try {
       await mcpServer.connect(transport);
@@ -177,11 +176,12 @@ export function createHttpServer() {
           id: null,
         });
       }
+    } finally {
+      await mcpServer.close().catch(() => undefined);
     }
   });
 
   server.on("close", () => {
-    void mcpServer.close().catch(() => undefined);
     try {
       db.close();
     } catch {
