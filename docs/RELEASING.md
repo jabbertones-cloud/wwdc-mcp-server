@@ -16,7 +16,7 @@ As of 2026-10-07:
 - `package.json` carries `mcpName: io.github.jabbertones-cloud/wwdc`.
 - `server.json` is checked in and version-locked to the npm artifact.
 - `.github/workflows/publish.yml` publishes npm first, then authenticates to the official MCP Registry with GitHub OIDC and publishes the validated manifest.
-- The npm package is not yet published, so the release workflow must not be triggered until npm publishing credentials are configured.
+- The npm package is not yet published. Before the first tag, configure npm Trusted Publishing for this GitHub repository and the `publish.yml` workflow; no long-lived npm token is required.
 
 ## 1. Preflight
 
@@ -111,3 +111,13 @@ A release is complete only when all intended layers agree:
 - README install instructions
 
 A successful local build does not prove the npm or Registry release is live. Verify each layer independently.
+
+## Trusted Publishing preflight
+
+Before creating the first public tag:
+
+1. Create or claim the `wwdc-mcp-server` package on npm under the intended maintainer account if npm requires an initial package setup.
+2. In npm package settings, add a **GitHub Actions** trusted publisher for repository `jabbertones-cloud/wwdc-mcp-server` and workflow `publish.yml`.
+3. Keep GitHub Actions permission `id-token: write`; do not add a long-lived npm automation token.
+4. Confirm the exact release candidate is green in CI, then create the matching `vX.Y.Z` tag.
+5. Verify npm publication before MCP Registry publication. The workflow enforces that order.
