@@ -13,7 +13,7 @@ import { SWIFT_BOOK_DATA_JSON, SWIFT_BOOK_BASE } from "../constants.js";
 import { httpGet } from "../services/http.js";
 import type { SwiftBookChapter } from "../types.js";
 import { upsertSwiftBookChapter, recordIngest } from "../db/queries.js";
-import { checkOllama, embed, storeEmbedding } from "../services/ollama.js";
+import { checkEmbeddings, embed, storeEmbedding } from "../services/ollama.js";
 
 type DoccRef = { url?: string; title?: string; abstract?: Array<{ text?: string }> };
 type DoccNode = {
@@ -136,7 +136,7 @@ export async function ingestSwiftBook(
 ): Promise<{ ingested: number; errors: number }> {
   let ingested = 0;
   let errors = 0;
-  const ollamaOn = await checkOllama();
+  const embeddingsOn = await checkEmbeddings();
 
   const slugs = await fetchNavigation();
   console.log(`[swiftbook] ${slugs.length} chapters to fetch`);
@@ -170,7 +170,7 @@ export async function ingestSwiftBook(
     upsertSwiftBookChapter(db, chapter);
     ingested++;
 
-    if (ollamaOn) {
+    if (embeddingsOn) {
       const vec = await embed(`${title}\n${section}\n${body}`.slice(0, 4000));
       if (vec) storeEmbedding(db, `swiftbook:${slug}`, "swiftbook", vec);
     }
