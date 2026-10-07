@@ -1,0 +1,22 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.jabbertones-cloud/wwdc",
+  "title": "WWDC MCP",
+  "description": "Source-grounded Apple developer knowledge for coding agents: WWDC26, Apple docs, HIG, Swift Evolution, App Review guidance, API intelligence, transcripts, and Swift app audits.",
+  "repository": {
+    "url": "https://github.com/jabbertones-cloud/wwdc-mcp-server",
+    "source": "github"
+  },
+  "version": "0.2.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "wwdc-mcp-server",
+      "version": "0.2.0",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}
