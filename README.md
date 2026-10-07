@@ -55,7 +55,7 @@ The server instructions teach connected agents this routing automatically; the c
 - Node.js **22.14 or newer**
 - npm
 
-> **Distribution status (October 7, 2026):** `main` is prepared as the **v0.2.0 release candidate**, but the latest published GitHub release is still v0.1.3 and `wwdc-mcp-server` is not yet on npm. Source checkout is therefore the supported install path; `npx wwdc-mcp-server` will not work until the tag-driven release workflow publishes npm and then the validated MCP Registry entry.
+> **Distribution status (October 7, 2026):** `main` is prepared for the first npm/MCP Registry release, but `wwdc-mcp-server` is not yet published on npm. Source checkout remains the working install path until the one-time npm account bootstrap publish is completed. The release pipeline and Registry manifest are already validated.
 
 ### 1. Clone and build
 
@@ -64,6 +64,21 @@ git clone https://github.com/jabbertones-cloud/wwdc-mcp-server.git
 cd wwdc-mcp-server
 npm ci
 npm run build
+```
+
+After the npm release, the package exposes two executables:
+
+```text
+wwdc-mcp-server   # stdio MCP server
+wwdc-mcp-ingest   # build/update the local Apple knowledge index
+```
+
+For a global install after publication:
+
+```bash
+npm install --global wwdc-mcp-server
+wwdc-mcp-ingest --source wwdc --year 2026
+wwdc-mcp-server
 ```
 
 ### 2. Build a useful local index
