@@ -1,9 +1,10 @@
 #!/usr/bin/env tsx
 /**
- * Package smoke test — validates npm package metadata before release.
+ * Package smoke test — validates npm + MCP Registry release metadata before release.
  *
- * This catches the common MCP server failure mode where package.json points the
- * `bin` field at dist/index.js but the packed artifact does not include it.
+ * This catches common public-MCP failures: a missing executable in the tarball,
+ * a drifted Registry namespace, or package metadata that no longer matches the
+ * supported runtime.
  */
 
 import fs from "node:fs";
@@ -18,11 +19,17 @@ const ROOT = path.resolve(__dirname, "..");
 
 const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8")) as {
   name: string;
+  mcpName?: string;
   bin?: Record<string, string>;
   files?: string[];
+  engines?: { node?: string };
+  publishConfig?: { access?: string };
 };
 
 assert.equal(pkg.name, "wwdc-mcp-server");
+assert.equal(pkg.mcpName, "io.github.jabbertones-cloud/wwdc");
+assert.equal(pkg.engines?.node, ">=22.14.0");
+assert.equal(pkg.publishConfig?.access, "public");
 assert.ok(pkg.bin?.["wwdc-mcp-server"], "package bin must expose wwdc-mcp-server");
 
 const binPath = path.join(ROOT, pkg.bin["wwdc-mcp-server"]);
@@ -39,7 +46,8 @@ const files = new Set(pack.files.map((file) => file.path));
 
 assert.ok(files.has("dist/index.js"), "packed artifact must include dist/index.js");
 assert.ok(files.has("README.md"), "packed artifact must include README.md");
+assert.ok(files.has("CHANGELOG.md"), "packed artifact must include CHANGELOG.md");
 assert.ok(files.has("LICENSE"), "packed artifact must include LICENSE");
 assert.ok(![...files].some((file) => file.startsWith("tests/")), "packed artifact should not include tests");
 
-console.log("[package-smoke] npm package metadata and packed files look good");
+console.log("[package-smoke] npm package and MCP Registry metadata look good");
