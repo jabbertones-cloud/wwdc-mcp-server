@@ -56,6 +56,15 @@ export class WwdcContainer extends DurableObject {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    const origin = request.headers.get("origin");
+    if (origin) {
+      let allowed = false;
+      try {
+        const parsed = new URL(origin);
+        allowed = parsed.origin === url.origin || parsed.origin === "https://chatgpt.com";
+      } catch {}
+      if (!allowed) return new Response("Forbidden", { status: 403 });
+    }
     if (url.pathname !== "/mcp" && url.pathname !== "/healthz") {
       return new Response("Not Found", { status: 404 });
     }
