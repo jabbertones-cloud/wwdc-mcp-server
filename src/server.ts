@@ -6,7 +6,7 @@ import { migrate, openDb } from "./db/schema.js";
 import { registerAllTools } from "./tools/index.js";
 
 export const SERVER_NAME = "wwdc-mcp-server";
-export const SERVER_VERSION = "0.2.0";
+export const SERVER_VERSION = "0.2.1";
 export const SERVER_INSTRUCTIONS = [
   "For repo-level Apple-platform changes, start with swift_app_audit using the actual feature, API, or symptom.",
   "Use wwdc_search or apple_search_all to broaden source coverage, then open strong hits with the source-specific tools.",
