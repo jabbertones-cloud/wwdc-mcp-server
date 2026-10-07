@@ -6,7 +6,8 @@
       "args": [
         "exec",
         "--yes",
-        "--package=https://github.com/jabbertones-cloud/wwdc-mcp-server/releases/download/v0.2.0/wwdc-mcp-server-0.2.0.tgz",
+        "--allow-remote=all",
+        "--package=https://github.com/jabbertones-cloud/wwdc-mcp-server/releases/download/v0.2.1/wwdc-mcp-server-0.2.1.tgz",
         "--",
         "wwdc-mcp-server"
       ]
