@@ -30,8 +30,8 @@ The current code and tests support these claims:
 - `WWDC_YEARS` includes 2020–2026.
 - `swift_app_audit` is the promoted Apple-platform audit entry point.
 - `wwdc_security_manifest` is the promoted trust/attestation entry point.
-- Search can use local SQLite FTS5 without Ollama.
-- Ollama semantic reranking is optional.
+- Search always has local SQLite FTS5 available.
+- Optional semantic reranking runs locally through `@huggingface/transformers` using `nomic-ai/nomic-embed-text-v1.5`; no Ollama service is required.
 - `apple_doc_lookup` intentionally performs a live Apple Developer Documentation lookup.
 - Remote HTTP requires bearer authentication and fails closed when auth is not configured.
 - `WWDC_MCP_PATH_PREFIX` supports mounting the HTTP service behind a shared reverse proxy without path rewriting.
