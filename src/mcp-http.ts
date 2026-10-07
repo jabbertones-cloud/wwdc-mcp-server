@@ -63,6 +63,10 @@ function authConfigured(): boolean {
   );
 }
 
+function publicReadOnlyEnabled(): boolean {
+  return process.env.WWDC_MCP_PUBLIC_READ_ONLY === "1";
+}
+
 function authorized(req: IncomingMessage): boolean {
   const token = bearer(req);
   if (!token) return false;
@@ -119,6 +123,7 @@ export function createHttpServer() {
         version: SERVER_VERSION,
         protocol: "streamable-http",
         authConfigured: authConfigured(),
+        publicReadOnly: publicReadOnlyEnabled(),
         pathPrefix: PATH_PREFIX || null,
         endpoints: { health: HEALTH_PATH, mcp: MCP_PATH },
         release: { sha: DEPLOYED_SHA || null },
@@ -136,12 +141,14 @@ export function createHttpServer() {
       return;
     }
 
-    if (!authConfigured()) {
+    const publicReadOnly = publicReadOnlyEnabled();
+
+    if (!publicReadOnly && !authConfigured()) {
       json(res, 503, { error: "auth_not_configured" });
       return;
     }
 
-    if (!authorized(req)) {
+    if (!publicReadOnly && !authorized(req)) {
       json(
         res,
         401,
@@ -216,7 +223,7 @@ async function main(): Promise<void> {
     const actualPort =
       typeof address === "object" && address ? address.port : PORT;
     process.stderr.write(
-      `[wwdc-mcp-server] remote MCP ready at http://${HOST}:${actualPort}${MCP_PATH} (auth=${authConfigured() ? "configured" : "missing"})\n`,
+      `[wwdc-mcp-server] remote MCP ready at http://${HOST}:${actualPort}${MCP_PATH} (auth=${publicReadOnlyEnabled() ? "public-read-only" : authConfigured() ? "configured" : "missing"})\n`,
     );
   });
 
