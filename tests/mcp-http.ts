@@ -15,6 +15,7 @@ async function main(): Promise<void> {
   process.env.WWDC_MCP_DEPLOYED_SHA = "http-test-sha";
   process.env.WWDC_MCP_PATH_PREFIX = "/wwdc/";
 
+  const { SERVER_INSTRUCTIONS, SERVER_VERSION } = await import("../src/server.js");
   const { createHttpServer } = await import("../src/mcp-http.js");
   const server = createHttpServer();
 
@@ -34,7 +35,7 @@ async function main(): Promise<void> {
   assert.equal(health.status, 200);
   const healthBody = (await health.json()) as any;
   assert.equal(healthBody.ok, true);
-  assert.equal(healthBody.version, "0.1.3");
+  assert.equal(healthBody.version, SERVER_VERSION);
   assert.equal(healthBody.protocol, "streamable-http");
   assert.equal(healthBody.authConfigured, true);
   assert.equal(healthBody.pathPrefix, "/wwdc");
@@ -76,6 +77,8 @@ async function main(): Promise<void> {
 
   try {
     await client.connect(transport);
+    assert.equal(client.getServerVersion()?.version, SERVER_VERSION);
+    assert.equal(client.getInstructions(), SERVER_INSTRUCTIONS);
 
     const listed = await client.listTools();
     assert.equal(listed.tools.length, 45);
@@ -97,7 +100,7 @@ async function main(): Promise<void> {
     assert.equal(payload.tool_count, 45);
     assert.ok(payload.tools.includes("wwdc_search"));
 
-    console.log("[mcp-http] prefixed route, auth, initialize, 45-tool catalog, and tool call pass");
+    console.log("[mcp-http] prefixed route, auth, version/instructions, 45-tool catalog, and tool call pass");
   } finally {
     await client.close().catch(() => undefined);
     await new Promise<void>((resolve) => server.close(() => resolve()));
