@@ -27,6 +27,7 @@ const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"))
   engines?: { node?: string };
   publishConfig?: { access?: string };
   version: string;
+  description?: string;
 };
 
 assert.equal(pkg.name, "wwdc-mcp-server");
@@ -34,6 +35,7 @@ assert.equal(pkg.mcpName, "io.github.jabbertones-cloud/wwdc");
 assert.equal(pkg.engines?.node, ">=22.14.0");
 assert.equal(pkg.publishConfig?.access, "public");
 assert.equal(pkg.version, SERVER_VERSION, "package and runtime versions must match");
+assert.match(pkg.description ?? "", /Apple developer intelligence/i, "npm description should lead with the product value");
 assert.ok(USER_AGENT.includes(`wwdc-mcp-server/${pkg.version}`), "User-Agent must match package version");
 
 const lock = JSON.parse(fs.readFileSync(path.join(ROOT, "package-lock.json"), "utf8")) as {
@@ -52,6 +54,7 @@ const registry = JSON.parse(fs.readFileSync(path.join(ROOT, "server.json"), "utf
 assert.equal(registry.name, pkg.mcpName, "Registry name must match package mcpName");
 assert.equal(registry.version, pkg.version, "Registry version must match package version");
 assert.ok(registry.description.length <= 100, "Registry description must be <= 100 characters");
+assert.match(registry.description, /Apple developer intelligence/i, "Registry description should lead with the product value");
 assert.equal(registry.packages?.[0]?.identifier, pkg.name, "Registry npm identifier must match package name");
 assert.equal(registry.packages?.[0]?.version, pkg.version, "Registry package version must match package version");
 assert.equal(registry.packages?.[0]?.transport?.type, "stdio");
