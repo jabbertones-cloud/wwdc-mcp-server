@@ -1,27 +1,10 @@
 /**
- * MCP tool registrations.
+ * Canonical MCP tool registrations.
  *
- * Exposes canonical WWDC/Apple source tools:
- *   - wwdc_search
- *   - wwdc_list_years
- *   - wwdc_list_topics
- *   - wwdc_list_pathways
- *   - wwdc_get_pathway
- *   - wwdc_get_session
- *   - wwdc_session_deep_link
- *   - wwdc_list_session_code
- *   - wwdc_sample_code_grep
- *   - apple_doc_lookup
- *   - apple_tutorial_get
- *   - apple_hig_search
- *   - apple_swift_evolution_get
- *   - apple_swift_evolution_list
- *   - apple_doc_get
- *   - apple_swift_pattern_find
- *   - swift_app_audit
- *   - apple_swift_book_get         (new — Swift Language Reference)
- *   - appstore_guidelines_search   (new — App Store Review Guidelines)
- *   - wwdc_ingest_status
+ * The public surface is intentionally tested as an exact 45-tool read-only
+ * contract. Do not maintain a partial tool list in this source header; use
+ * tools/list at runtime and wwdc_security_manifest for the canonical names,
+ * trust posture, and manifest hash.
  */
 
 import { z } from "zod";
