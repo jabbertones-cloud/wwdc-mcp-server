@@ -27,12 +27,12 @@ async function main(): Promise<void> {
   migrate(db);
 
   // ── 1) WWDC ingest (tiny slice: 3 discovered sessions) ───────────────────
-  console.log("[live] 1/5 WWDC sessions (year=2024, 3 sessions)");
-  const discovered = await discoverSessionsForYear(2024);
-  assert.ok(discovered.length > 50, `expected many WWDC 2024 sessions, got ${discovered.length}`);
+  console.log("[live] 1/5 WWDC sessions (year=2026, 3 sessions)");
+  const discovered = await discoverSessionsForYear(2026);
+  assert.ok(discovered.length > 50, `expected many WWDC 2026 sessions, got ${discovered.length}`);
   // ingest only the first 3 to keep the test fast
   const { ingestWwdc: _ } = { ingestWwdc };
-  const patchedYears = [2024] as const;
+  const patchedYears = [2026] as const;
   const origFetch = (globalThis as any).fetch;
   // NB: the ingestWwdc iterates all sessions; limit via the `--year` arg isn't enough.
   // Instead we'll call the pipeline with a monkey-patched discovered list by directly
@@ -60,7 +60,7 @@ async function main(): Promise<void> {
     // BUG #1 GUARD: live-title should no longer contain the SEO suffix.
     assert.ok(!/\bApple\s+Developer\s*$/i.test(s.title), `SEO suffix leaked into title: ${s.title!}`);
     assert.ok(!/\-\s*WWDC\d{2,4}\b/i.test(s.title), `WWDC-year marker leaked into title: ${s.title!}`);
-    // BUG #2 GUARD: deep-link extraction from 2024+ supplement <li> format
+    // BUG #2 GUARD: current WWDC chapter/deep-link extraction
     for (const dl of s.deepLinks) {
       assert.ok(dl.url.includes(`?time=${dl.seconds}`), `deep-link url missing time param: ${dl.url}`);
       assert.ok(dl.label && dl.label.length <= 120, `bad chapter label: "${dl.label}"`);
@@ -71,7 +71,7 @@ async function main(): Promise<void> {
   assert.ok(totalChapters >= 3, `expected at least 3 chapters across 3 sessions, got ${totalChapters}`);
   console.log(`[live] WWDC chapters extracted: ${totalChapters}`);
   const years = listYears(db);
-  assert.ok(years.find((y) => y.year === 2024), "year 2024 present");
+  assert.ok(years.find((y) => y.year === 2026), "year 2026 present");
 
   // ── 2) Tutorials ingest (only the swiftui seed, to stay fast) ─────────────
   console.log("[live] 2/5 Tutorials (seed=swiftui only)");
