@@ -19,13 +19,13 @@ function normalizePathPrefix(value: string | undefined): string {
   if (!raw || raw === "/") return "";
   const prefix = `/${raw.replace(/^\/+|\/+$/g, "")}`;
   if (!/^\/[A-Za-z0-9._~!$&'()*+,;=:@/-]+$/.test(prefix)) {
-    throw new Error(`Invalid WWDC_mcpPath_PREFIX: ${raw}`);
+    throw new Error(`Invalid WWDC_MCP_PATH_PREFIX: ${raw}`);
   }
   return prefix;
 }
 
 function httpPaths() {
-  const pathPrefix = normalizePathPrefix(process.env.WWDC_mcpPath_PREFIX);
+  const pathPrefix = normalizePathPrefix(process.env.WWDC_MCP_PATH_PREFIX);
   return {
     pathPrefix,
     healthPath: `${pathPrefix}/healthz`,
@@ -223,6 +223,7 @@ async function main(): Promise<void> {
     throw new Error(`Invalid WWDC_MCP_HTTP_PORT/PORT: ${String(PORT)}`);
   }
 
+  const { mcpPath } = httpPaths();
   const server = createHttpServer();
   server.listen(PORT, HOST, () => {
     const address = server.address();
