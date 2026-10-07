@@ -4,7 +4,7 @@
 
 | Version | Supported |
 | --- | --- |
-| current `main` / 0.2.0 release candidate | Yes |
+| current `main` / 0.2.1 | Yes |
 | 0.1.x | Yes |
 
 ## Reporting a vulnerability
