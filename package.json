@@ -1,7 +1,7 @@
 {
   "name": "wwdc-mcp-server",
   "version": "0.2.0",
-  "description": "Local-first MCP server for WWDC26, Apple developer docs, HIG, Swift Evolution, App Review guidance, API intelligence, and Swift app audits",
+  "description": "Apple developer intelligence for coding agents: WWDC26, docs, HIG, Swift, App Review, API intelligence, and source-grounded app audits",
   "main": "dist/index.js",
   "type": "module",
   "bin": {
