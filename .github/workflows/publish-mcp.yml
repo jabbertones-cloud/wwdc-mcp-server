@@ -1,0 +1,39 @@
+name: Publish to MCP Registry
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  validate-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out exact release
+        uses: actions/checkout@v5
+
+      - name: Confirm public remote is healthy
+        run: |
+          curl --fail --silent --show-error --retry 3 https://fabric-origin.smatdesigns.com/wwdc/healthz | tee /tmp/wwdc-health.json
+          node -e 'const fs=require("fs"); const h=JSON.parse(fs.readFileSync("/tmp/wwdc-health.json","utf8")); if(!h.ok||h.service!=="wwdc-mcp-server"||h.authMode!=="public-readonly"){throw new Error("WWDC public endpoint is not registry-ready")}'
+
+      - name: Install mcp-publisher
+        run: |
+          set -eu
+          archive="mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz"
+          curl --fail --location --silent --show-error "https://github.com/modelcontextprotocol/registry/releases/latest/download/${archive}" | tar xz mcp-publisher
+          ./mcp-publisher --help >/dev/null
+
+      - name: Validate server metadata
+        run: ./mcp-publisher validate server.json
+
+      - name: Authenticate with GitHub OIDC
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish official Registry entry
+        run: ./mcp-publisher publish server.json

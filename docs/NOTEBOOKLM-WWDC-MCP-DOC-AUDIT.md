@@ -31,7 +31,7 @@ As of 2026-10-07:
 - authenticated stateless Streamable HTTP is also supported
 - `swift_app_audit` is one of the 45 canonical tools
 - `wwdc_security_manifest` is the trust/attestation entry point
-- the npm package is not yet published, so source checkout is the supported install path
+- the npm package is not yet published, while the hosted Streamable HTTP endpoint is the supported zero-install public path and source checkout remains available for local use
 - official MCP Registry publication should follow npm publication and package verification
 - public repository code/tests, not an external notebook, determine release truth
 

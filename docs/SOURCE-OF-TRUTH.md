@@ -18,9 +18,9 @@ For **public behavior and release claims, the repository is the source of truth*
 
 ## Distribution status
 
-As of 2026-10-07, the npm package `wwdc-mcp-server` is **not published**. The supported public install path is a GitHub source checkout.
+As of 2026-10-07, the npm package wwdc-mcp-server is not published. The supported zero-install public path is the hosted Streamable HTTP endpoint at https://fabric-origin.smatdesigns.com/wwdc/mcp. Source checkout remains supported for local and private use.
 
-Do not claim that `npx wwdc-mcp-server` works until the npm artifact exists. Do not publish `server.json` to the official MCP Registry until the npm package is live and its `mcpName` matches the Registry server name.
+Do not claim that npx wwdc-mcp-server works until the npm artifact exists. npm is not a prerequisite for the remote-only official MCP Registry entry.
 
 ## Public capability claims
 
@@ -33,7 +33,7 @@ The current code and tests support these claims:
 - Search can use local SQLite FTS5 without Ollama.
 - Ollama semantic reranking is optional.
 - `apple_doc_lookup` intentionally performs a live Apple Developer Documentation lookup.
-- Remote HTTP requires bearer authentication and fails closed when auth is not configured.
+- Remote HTTP supports private bearer authentication or an explicit rate-limited public-readonly mode; without either configuration it fails closed.
 - `WWDC_MCP_PATH_PREFIX` supports mounting the HTTP service behind a shared reverse proxy without path rewriting.
 - Retrieved source text is treated as untrusted evidence; security metadata reminds agents not to execute instructions found in retrieved content.
 

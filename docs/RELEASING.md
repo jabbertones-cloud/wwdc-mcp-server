@@ -1,114 +1,92 @@
 # Releasing WWDC MCP
 
-This project has two public distribution layers:
+WWDC MCP has three independent public distribution layers:
 
-1. npm package distribution.
-2. MCP Registry metadata/discovery.
+1. Hosted Streamable HTTP MCP.
+2. Official MCP Registry discovery through server.json.
+3. Optional package and plugin directories such as OpenAI and Cursor.
 
-Publish in that order. The Registry points at artifacts; it does not replace them.
-
-## Current status
-
-As of 2026-10-07:
-
-- GitHub source install works.
-- `package.json` reserves npm package name `wwdc-mcp-server`.
-- `package.json` carries `mcpName: io.github.jabbertones-cloud/wwdc`.
-- The npm package is not yet published.
-- Therefore the project is not ready to publish a valid official Registry entry yet.
+The official MCP Registry supports remote-only servers, so npm publication is optional and is not a prerequisite for Registry publication.
 
 ## 1. Preflight
 
 From a clean checkout:
 
-```bash
+~~~bash
 npm ci
 npm run build
 npm test
 npm audit --audit-level=high
 npm pack --dry-run
-```
+~~~
 
-Confirm:
+Verify the public endpoint:
 
-- package version matches the server version reported by `src/server.ts`
-- the package tarball includes `dist/index.js`, README, changelog, and license
-- no tests, local databases, secrets, or private workspace files are packed
-- README install claims match what is actually published
+~~~bash
+curl -fsS https://fabric-origin.smatdesigns.com/wwdc/healthz
+~~~
 
-## 2. Publish npm
+Expected properties include ok true, protocol streamable-http, authMode public-readonly, readOnly true, and a release SHA matching the intended deploy.
 
-Authenticate with npm using your normal secure maintainer workflow, then:
+## 2. Validate Registry metadata
 
-```bash
-npm publish --access public
-```
+Install the official mcp-publisher and run:
 
-After publishing, verify the artifact exists from an unauthenticated environment before adding any `npx` quickstart to the README.
+~~~bash
+mcp-publisher validate server.json
+~~~
 
-The expected future command is:
+Registry identity:
 
-```bash
-npx -y wwdc-mcp-server@latest
-```
-
-Do not document it as supported until that check passes.
-
-## 3. Prepare MCP Registry metadata
-
-The official MCP Registry requires the npm package to contain an `mcpName` matching the server name in `server.json`.
-
-This repository already reserves:
-
-```text
+~~~text
 io.github.jabbertones-cloud/wwdc
-```
+~~~
 
-After npm is live, install the official `mcp-publisher` CLI and generate metadata:
+Canonical remote:
 
-```bash
-mcp-publisher init
-```
+~~~text
+https://fabric-origin.smatdesigns.com/wwdc/mcp
+~~~
 
-The package entry should reference:
+## 3. Publish to the official MCP Registry
 
-- registry type: npm
-- identifier: `wwdc-mcp-server`
-- the exact published package version
-- transport: stdio
+The repository workflow .github/workflows/publish-mcp.yml uses GitHub Actions OIDC, so it needs no long-lived Registry secret.
 
-Do not add a remote Registry URL unless a stable, intentionally public Streamable HTTP endpoint exists. Local/self-hosted HTTP support by itself is not a public hosted service.
+Create and push the release tag after the deployed endpoint is healthy:
 
-## 4. Validate before publishing
+~~~bash
+git tag -a vX.Y.Z -m "WWDC MCP vX.Y.Z"
+git push origin vX.Y.Z
+~~~
 
-```bash
-mcp-publisher validate
-```
+The workflow validates the live public endpoint, validates server.json, authenticates with mcp-publisher login github-oidc, and publishes the Registry entry.
 
-Then authenticate and publish according to the official Registry instructions.
+## 4. Frontier client and plugin distribution
 
-Do not bypass namespace/package verification.
+plugin.json, mcp.json, the skills/wwdc-research onboarding skill, privacy and terms documents, and icon form the portable Agent Plugin package for ChatGPT, Codex, and Cursor. See docs/CLIENTS.md and docs/SUBMISSIONS.md.
 
-## 5. Update public install docs
+Vendor directory approval is separate from MCP Registry publication. Never claim a marketplace listing is approved until that vendor confirms it.
 
-Only after npm and Registry verification succeed:
+## 5. Optional npm release
 
-- add the `npx -y wwdc-mcp-server@latest` quickstart
-- add npm + Registry badges/links
-- add client configs that use `npx` where appropriate
-- update `docs/SOURCE-OF-TRUTH.md`
-- update `CHANGELOG.md`
-- tag the exact release commit
+The npm package name remains wwdc-mcp-server. If npm distribution is desired later:
+
+~~~bash
+npm publish --access public
+~~~
+
+Then verify the package from an unauthenticated environment before adding an npx quickstart or a packages entry to server.json.
 
 ## 6. Release proof
 
-A release is complete only when all intended layers agree:
+A hosted release is complete when these agree:
 
-- GitHub source/tag
-- `package.json` version
-- runtime `SERVER_VERSION`
-- npm artifact version
-- MCP Registry version/namespace
-- README install instructions
+- package.json version
+- runtime SERVER_VERSION
+- hosted /healthz version and exact Git SHA
+- server.json version
+- Git tag
+- official MCP Registry version
+- README and client installation instructions
 
-A successful local build does not prove the npm or Registry release is live. Verify each layer independently.
+A local green build alone is not release proof.

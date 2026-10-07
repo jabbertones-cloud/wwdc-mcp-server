@@ -39,13 +39,26 @@ The promoted entry point for repo-level Apple work is `swift_app_audit`. The pro
 
 ## Quick start
 
+### Hosted remote
+
+Use the public read-only MCP from any Streamable HTTP client:
+
+~~~text
+https://fabric-origin.smatdesigns.com/wwdc/mcp
+~~~
+
+See docs/CLIENTS.md for ChatGPT, Claude, Cursor, Codex, and Grok.
+
+### Local source
+
+
 ### Requirements
 
 - Node.js **22.14 or newer**
 - npm
 - Optional: [Ollama](https://ollama.com/) with `nomic-embed-text` for semantic reranking
 
-> **Distribution status (October 7, 2026):** source checkout is the supported install path. The `wwdc-mcp-server` package is not yet published on npm, so `npx wwdc-mcp-server` will not work yet. The package now carries an MCP Registry namespace, but Registry publication should wait until the npm artifact exists.
+> **Distribution status (October 7, 2026):** the hosted Streamable HTTP endpoint is the recommended zero-install path. npm is not published yet, but npm is optional for the remote-only official MCP Registry entry.
 
 ### 1. Clone and build
 
@@ -97,109 +110,15 @@ Then ask your agent:
 
 ## Client setup
 
-<details>
-<summary><strong>Claude Desktop</strong></summary>
+For the hosted MCP, use the same public URL in ChatGPT, Claude, Cursor, Codex, and Grok:
 
-`~/Library/Application Support/Claude/claude_desktop_config.json`
+~~~text
+https://fabric-origin.smatdesigns.com/wwdc/mcp
+~~~
 
-```json
-{
-  "mcpServers": {
-    "wwdc": {
-      "command": "node",
-      "args": ["/absolute/path/to/wwdc-mcp-server/dist/index.js"]
-    }
-  }
-}
-```
+Exact commands and configuration files are in docs/CLIENTS.md.
 
-</details>
-
-<details>
-<summary><strong>Claude Code</strong></summary>
-
-Use your normal MCP configuration flow and point the server command at:
-
-```text
-node /absolute/path/to/wwdc-mcp-server/dist/index.js
-```
-
-</details>
-
-<details>
-<summary><strong>VS Code</strong></summary>
-
-`.vscode/mcp.json`:
-
-```json
-{
-  "servers": {
-    "wwdc": {
-      "type": "stdio",
-      "command": "node",
-      "args": ["/absolute/path/to/wwdc-mcp-server/dist/index.js"]
-    }
-  }
-}
-```
-
-</details>
-
-<details>
-<summary><strong>Cursor</strong></summary>
-
-`~/.cursor/mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "wwdc": {
-      "command": "node",
-      "args": ["/absolute/path/to/wwdc-mcp-server/dist/index.js"]
-    }
-  }
-}
-```
-
-</details>
-
-<details>
-<summary><strong>Windsurf</strong></summary>
-
-`~/.codeium/windsurf/mcp_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "wwdc": {
-      "command": "node",
-      "args": ["/absolute/path/to/wwdc-mcp-server/dist/index.js"]
-    }
-  }
-}
-```
-
-</details>
-
-<details>
-<summary><strong>Zed</strong></summary>
-
-`.zed/settings.json`:
-
-```json
-{
-  "context_servers": {
-    "wwdc": {
-      "command": {
-        "path": "node",
-        "args": ["/absolute/path/to/wwdc-mcp-server/dist/index.js"]
-      }
-    }
-  }
-}
-```
-
-</details>
+For local and private development, point a stdio client at node and dist/index.js from this repository.
 
 ## Apple sources
 
@@ -348,6 +267,16 @@ Routes:
 
 The MCP route fails closed with `503 auth_not_configured` if neither `WWDC_MCP_BEARER_TOKEN` nor `WWDC_MCP_BEARER_TOKEN_SHA256` is configured.
 
+
+For a public read-only directory endpoint, enable the explicit public mode at the origin:
+
+~~~bash
+export WWDC_MCP_PUBLIC_READONLY=1
+export WWDC_MCP_PUBLIC_RATE_LIMIT_PER_MINUTE=120
+~~~
+
+Public mode intentionally skips bearer authentication but keeps the same read-only tool surface and applies a per-client request limit. Use it only behind HTTPS and a reverse proxy with abuse controls.
+
 To mount the service behind a shared reverse proxy without path rewriting:
 
 ```bash
@@ -366,7 +295,7 @@ See [docs/DEPLOY.md](docs/DEPLOY.md) for the full runbook.
 - Retrieved web text is treated as **untrusted evidence**, not executable instruction.
 - Search responses can include `content_safety` metadata.
 - `wwdc_security_manifest` reports the canonical tool surface, manifest hash, read-only posture, and prompt-injection handling.
-- Remote HTTP requires bearer authentication and fails closed if auth is not configured.
+- Remote HTTP supports private bearer authentication or an explicit public-readonly mode; the public mode is rate-limited and all 45 tools remain read-only.
 - The default stdio server opens no network listener.
 - Ingest fetches public Apple/Swift sources. `apple_doc_lookup` performs live public Apple documentation requests.
 - No Apple Developer account credentials are required or stored.

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.4 - 2026-10-07
+
+- Added an explicit rate-limited public read-only Streamable HTTP mode for hosted directory clients.
+- Added remote-only server.json metadata and GitHub OIDC publishing to the official MCP Registry.
+- Added a portable Agent Plugin package for ChatGPT, Codex, and Cursor plus Claude and Grok setup instructions.
+- Added public privacy, terms, support, submission, and branding assets for marketplace review.
+
 ## Unreleased
 
 ### 2026-10-07 public release-readiness refresh
@@ -14,7 +21,7 @@
 - Rebuilt the public README around Apple-source grounding, WWDC26, source-grounded app audits, API intelligence, trust metadata, current transports, and concrete agent prompts.
 - Removed the stale `npx wwdc-mcp-server` quickstart because the npm package is not yet published.
 - Expanded npm discovery keywords and package description.
-- Added `mcpName: io.github.jabbertones-cloud/wwdc` in preparation for official MCP Registry publication after the npm artifact exists.
+- Added mcpName: io.github.jabbertones-cloud/wwdc and remote-only Registry metadata; npm is optional for the hosted Registry release.
 - Replaced private/internal documentation assumptions with public repo truth in `docs/SOURCE-OF-TRUTH.md`, `docs/DEPLOY.md`, and `docs/SKILL-WIRING.md`.
 - Updated `SECURITY.md` for remote bearer auth, TLS/reverse-proxy expectations, untrusted retrieved content, and live Apple documentation lookup behavior.
 - Updated `CONTRIBUTING.md` for the current 45-tool architecture and deterministic stdio/HTTP/security test gates.

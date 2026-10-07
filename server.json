@@ -1,0 +1,25 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.jabbertones-cloud/wwdc",
+  "title": "WWDC MCP",
+  "description": "Search WWDC, Apple docs, HIG, Swift Evolution, App Review guidance, and API history.",
+  "version": "0.1.4",
+  "websiteUrl": "https://github.com/jabbertones-cloud/wwdc-mcp-server",
+  "repository": {
+    "url": "https://github.com/jabbertones-cloud/wwdc-mcp-server",
+    "source": "github"
+  },
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/jabbertones-cloud/wwdc-mcp-server/main/assets/wwdc-mcp-icon.svg",
+      "mimeType": "image/svg+xml",
+      "sizes": ["any"]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://fabric-origin.smatdesigns.com/wwdc/mcp"
+    }
+  ]
+}

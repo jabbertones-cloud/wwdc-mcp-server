@@ -2,8 +2,19 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import type { Server } from "node:http";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+
+async function listen(server: Server): Promise<string> {
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  const address = server.address();
+  assert.ok(address && typeof address === "object");
+  return `http://127.0.0.1:${address.port}`;
+}
 
 async function main(): Promise<void> {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "wwdc-http-"));
@@ -14,18 +25,12 @@ async function main(): Promise<void> {
   process.env.WWDC_MCP_BEARER_TOKEN = token;
   process.env.WWDC_MCP_DEPLOYED_SHA = "http-test-sha";
   process.env.WWDC_MCP_PATH_PREFIX = "/wwdc/";
+  delete process.env.WWDC_MCP_PUBLIC_READONLY;
 
   const { createHttpServer } = await import("../src/mcp-http.js");
+
   const server = createHttpServer();
-
-  await new Promise<void>((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(0, "127.0.0.1", resolve);
-  });
-
-  const address = server.address();
-  assert.ok(address && typeof address === "object");
-  const base = `http://127.0.0.1:${address.port}`;
+  const base = await listen(server);
 
   const rootHealth = await fetch(`${base}/healthz`);
   assert.equal(rootHealth.status, 404);
@@ -34,9 +39,11 @@ async function main(): Promise<void> {
   assert.equal(health.status, 200);
   const healthBody = (await health.json()) as any;
   assert.equal(healthBody.ok, true);
-  assert.equal(healthBody.version, "0.1.3");
+  assert.equal(healthBody.version, "0.1.4");
   assert.equal(healthBody.protocol, "streamable-http");
   assert.equal(healthBody.authConfigured, true);
+  assert.equal(healthBody.authMode, "bearer");
+  assert.equal(healthBody.readOnly, true);
   assert.equal(healthBody.pathPrefix, "/wwdc");
   assert.equal(healthBody.endpoints.health, "/wwdc/healthz");
   assert.equal(healthBody.endpoints.mcp, "/wwdc/mcp");
@@ -96,13 +103,45 @@ async function main(): Promise<void> {
     const payload = JSON.parse(text);
     assert.equal(payload.tool_count, 45);
     assert.ok(payload.tools.includes("wwdc_search"));
-
-    console.log("[mcp-http] prefixed route, auth, initialize, 45-tool catalog, and tool call pass");
   } finally {
     await client.close().catch(() => undefined);
     await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+
+  process.env.WWDC_MCP_PUBLIC_READONLY = "1";
+  process.env.WWDC_MCP_PUBLIC_RATE_LIMIT_PER_MINUTE = "3";
+  delete process.env.WWDC_MCP_BEARER_TOKEN;
+
+  const publicServer = createHttpServer();
+  const publicBase = await listen(publicServer);
+
+  try {
+    const publicHealth = await fetch(`${publicBase}/wwdc/healthz`);
+    assert.equal(publicHealth.status, 200);
+    const publicHealthBody = (await publicHealth.json()) as any;
+    assert.equal(publicHealthBody.authConfigured, true);
+    assert.equal(publicHealthBody.authMode, "public-readonly");
+    assert.equal(publicHealthBody.readOnly, true);
+    assert.equal(publicHealthBody.publicRateLimitPerMinute, 3);
+
+    const publicTransport = new StreamableHTTPClientTransport(new URL(`${publicBase}/wwdc/mcp`));
+    const publicClient = new Client(
+      { name: "wwdc-http-public-e2e", version: "0.0.1" },
+      { capabilities: {} },
+    );
+    try {
+      await publicClient.connect(publicTransport);
+      const listed = await publicClient.listTools();
+      assert.equal(listed.tools.length, 45);
+    } finally {
+      await publicClient.close().catch(() => undefined);
+    }
+  } finally {
+    await new Promise<void>((resolve) => publicServer.close(() => resolve()));
     fs.rmSync(dir, { recursive: true, force: true });
   }
+
+  console.log("[mcp-http] bearer and explicit public-readonly modes, prefixed route, 45-tool catalog pass");
 }
 
 main().catch((error) => {
