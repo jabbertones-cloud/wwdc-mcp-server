@@ -6,34 +6,25 @@ on:
       - "v*"
 
 jobs:
-  publish:
+  verify:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
     steps:
       - uses: actions/checkout@v5
 
       - uses: actions/setup-node@v5
         with:
           node-version: "24.x"
-          registry-url: "https://registry.npmjs.org"
           package-manager-cache: false
 
-      - name: Upgrade npm for trusted publishing
+      - name: Upgrade npm
         run: npm install --global npm@latest
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
-        run: npm run build
-
-      - name: Test
-        run: npm test
-
-      - name: Audit
-        run: npm audit --audit-level=high
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - run: npm audit --audit-level=high
 
       - name: Verify tag and release metadata
         shell: bash
@@ -44,49 +35,50 @@ jobs:
           LOCK_VERSION="$(node -p "require('./package-lock.json').version")"
           SERVER_VERSION="$(node -e "import('./dist/server.js').then(m=>process.stdout.write(m.SERVER_VERSION))")"
           REGISTRY_VERSION="$(node -p "require('./server.json').version")"
-          PACKAGE_REGISTRY_VERSION="$(node -p "require('./server.json').packages[0].version")"
+          REGISTRY_PACKAGE_VERSION="$(node -p "require('./server.json').packages[0].version")"
           test "$TAG_VERSION" = "$PACKAGE_VERSION"
           test "$PACKAGE_VERSION" = "$LOCK_VERSION"
           test "$PACKAGE_VERSION" = "$SERVER_VERSION"
           test "$PACKAGE_VERSION" = "$REGISTRY_VERSION"
-          test "$PACKAGE_VERSION" = "$PACKAGE_REGISTRY_VERSION"
+          test "$PACKAGE_VERSION" = "$REGISTRY_PACKAGE_VERSION"
 
-      - name: Install MCP publisher and validate Registry manifest
+  registry:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install MCP publisher
         run: |
           curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
-          ./mcp-publisher validate server.json
 
-      - name: Refuse an already-published npm version
-        shell: bash
-        run: |
-          set -euo pipefail
-          VERSION="$(node -p "require('./package.json').version")"
-          if npm view "wwdc-mcp-server@$VERSION" version >/dev/null 2>&1; then
-            echo "::error::wwdc-mcp-server@$VERSION already exists on npm"
-            exit 1
-          fi
-
-      - name: Publish npm package with OIDC
-        run: npm publish --access public
-
-      - name: Verify npm anonymously
-        shell: bash
-        run: |
-          set -euo pipefail
-          VERSION="$(node -p "require('./package.json').version")"
-          for attempt in 1 2 3 4 5 6; do
-            PUBLISHED="$(npm view "wwdc-mcp-server@$VERSION" version 2>/dev/null || true)"
-            if [ "$PUBLISHED" = "$VERSION" ]; then
-              echo "Verified wwdc-mcp-server@$VERSION on npm."
-              exit 0
-            fi
-            sleep 5
-          done
-          echo "::error::npm publication did not become publicly visible"
-          exit 1
+      - name: Validate Registry manifest
+        run: ./mcp-publisher validate server.json
 
       - name: Authenticate to official MCP Registry
         run: ./mcp-publisher login github-oidc
 
-      - name: Publish to official MCP Registry
+      - name: Publish official MCP Registry entry
         run: ./mcp-publisher publish server.json
+
+  npm:
+    needs: verify
+    if: ${{ vars.ENABLE_NPM_PUBLISH == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24.x"
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
+      - run: npm install --global npm@latest
+      - run: npm ci
+      - name: Publish optional npm distribution with OIDC
+        run: npm publish --access public
