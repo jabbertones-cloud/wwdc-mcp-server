@@ -45,6 +45,8 @@ The promoted entry point for repo-level Apple work is `swift_app_audit`. The pro
 - npm
 - Optional: [Ollama](https://ollama.com/) with `nomic-embed-text` for semantic reranking
 
+> **Distribution status (October 7, 2026):** source checkout is the supported install path. The `wwdc-mcp-server` package is not yet published on npm, so `npx wwdc-mcp-server` will not work yet. The package now carries an MCP Registry namespace, but Registry publication should wait until the npm artifact exists.
+
 ### 1. Clone and build
 
 ```bash
