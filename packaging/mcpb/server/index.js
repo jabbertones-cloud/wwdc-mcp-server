@@ -8,6 +8,7 @@ const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 const args = [
   "exec",
   "--yes",
+  "--allow-remote=all",
   `--package=${PACKAGE_URL}`,
   "--",
   "wwdc-mcp-server",
