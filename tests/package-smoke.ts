@@ -49,15 +49,32 @@ const registry = JSON.parse(fs.readFileSync(path.join(ROOT, "server.json"), "utf
   name: string;
   version: string;
   description: string;
-  packages?: Array<{ identifier?: string; version?: string; transport?: { type?: string } }>;
+  packages?: Array<{
+    registryType?: string;
+    identifier?: string;
+    version?: string;
+    fileSha256?: string;
+    transport?: { type?: string };
+  }>;
 };
 assert.equal(registry.name, pkg.mcpName, "Registry name must match package mcpName");
 assert.equal(registry.version, pkg.version, "Registry version must match package version");
 assert.ok(registry.description.length <= 100, "Registry description must be <= 100 characters");
 assert.match(registry.description, /Apple developer intelligence/i, "Registry description should lead with the product value");
-assert.equal(registry.packages?.[0]?.identifier, pkg.name, "Registry npm identifier must match package name");
-assert.equal(registry.packages?.[0]?.version, pkg.version, "Registry package version must match package version");
-assert.equal(registry.packages?.[0]?.transport?.type, "stdio");
+const registryPackage = registry.packages?.[0];
+assert.equal(registryPackage?.registryType, "mcpb", "official Registry distribution must use MCPB");
+assert.equal(registryPackage?.version, pkg.version, "Registry package version must match package version");
+assert.equal(registryPackage?.transport?.type, "stdio");
+assert.match(
+  registryPackage?.identifier ?? "",
+  /\/releases\/download\/v0\.2\.0\/WWDC-MCP-v0\.2\.0\.mcpb$/,
+  "Registry MCPB identifier must point at the immutable v0.2.0 GitHub release asset",
+);
+assert.match(
+  registryPackage?.fileSha256 ?? "",
+  /^[a-f0-9]{64}$/,
+  "Registry MCPB package must include a SHA-256 integrity hash",
+);
 assert.ok(pkg.bin?.["wwdc-mcp-server"], "package bin must expose wwdc-mcp-server");
 assert.ok(pkg.bin?.["wwdc-mcp-ingest"], "package bin must expose wwdc-mcp-ingest");
 
@@ -99,4 +116,4 @@ assert.ok(files.has("CHANGELOG.md"), "packed artifact must include CHANGELOG.md"
 assert.ok(files.has("LICENSE"), "packed artifact must include LICENSE");
 assert.ok(![...files].some((file) => file.startsWith("tests/")), "packed artifact should not include tests");
 
-console.log("[package-smoke] npm, runtime, lockfile, User-Agent, and MCP Registry metadata agree");
+console.log("[package-smoke] npm package, runtime, MCPB Registry metadata, and release identity agree");
