@@ -13,7 +13,7 @@ import { SWIFT_BOOK_DATA_JSON, SWIFT_BOOK_BASE } from "../constants.js";
 import { httpGet } from "../services/http.js";
 import type { SwiftBookChapter } from "../types.js";
 import { upsertSwiftBookChapter, recordIngest } from "../db/queries.js";
-import { checkEmbeddings, embed, storeEmbedding } from "../services/ollama.js";
+import { checkEmbeddings, embed, storeEmbedding } from "../services/embeddings.js";
 
 type DoccRef = { url?: string; title?: string; abstract?: Array<{ text?: string }> };
 type DoccNode = {
