@@ -402,6 +402,7 @@ The protocol tests verify the 45-tool catalog and exercise the trust manifest ov
 - [CONTRIBUTING.md](CONTRIBUTING.md) — contribution workflow
 - [SECURITY.md](SECURITY.md) — security model and vulnerability reporting
 - [docs/DEPLOY.md](docs/DEPLOY.md) — stdio and remote deployment
+- [docs/RELEASING.md](docs/RELEASING.md) — npm + MCP Registry release checklist
 - [docs/SOURCE-OF-TRUTH.md](docs/SOURCE-OF-TRUTH.md) — repository truth and verification rules
 - [docs/SKILL-WIRING.md](docs/SKILL-WIRING.md) — agent/skill integration guidance
 - [docs/APPLE-ENDPOINTS.md](docs/APPLE-ENDPOINTS.md) — ingest-maintainer notes
