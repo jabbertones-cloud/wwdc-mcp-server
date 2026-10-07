@@ -10,7 +10,7 @@ import { APPLE_BASE, APPLE_TUTORIALS_DATA } from "../constants.js";
 import { httpGet } from "../services/http.js";
 import type { Tutorial } from "../types.js";
 import { upsertTutorial, recordIngest } from "../db/queries.js";
-import { storeEmbedding, embed, checkOllama } from "../services/ollama.js";
+import { storeEmbedding, embed, checkEmbeddings } from "../services/ollama.js";
 
 /** Seed slugs — top-level tutorial packs Apple publishes. */
 export const TUTORIAL_SEEDS: readonly string[] = [
@@ -80,7 +80,7 @@ export async function ingestTutorials(
   let ingested = 0;
   let errors = 0;
   const maxPages = Math.max(1, parseInt(process.env.WWDC_TUTORIAL_MAX_PAGES ?? "250", 10));
-  const ollamaOn = await checkOllama();
+  const embeddingsOn = await checkEmbeddings();
   const visited = new Set<string>();
   const queued = new Set<string>();
   const queue = [...seeds];
@@ -97,8 +97,8 @@ export async function ingestTutorials(
     upsertTutorial(db, slug, tut, body, humanUrlForTutorial(slug));
     ingested++;
 
-    // Store embedding if Ollama is up
-    if (ollamaOn) {
+    // Store embedding if local embeddings are available
+    if (embeddingsOn) {
       const textForEmb = `${tut.metadata.title}\n${body}`.slice(0, 4000);
       const vec = await embed(textForEmb);
       if (vec) storeEmbedding(db, `tutorial:${slug}`, "tutorial", vec);
