@@ -213,6 +213,10 @@ async function main(): Promise<void> {
   await client.connect(transport);
 
   try {
+    const { SERVER_INSTRUCTIONS, SERVER_VERSION } = await import("../src/server.js");
+    assert.equal(client.getServerVersion()?.version, SERVER_VERSION);
+    assert.equal(client.getInstructions(), SERVER_INSTRUCTIONS);
+
     // 0) listTools must return all tools
     const listed = await client.listTools();
     const names = new Set(listed.tools.map((t) => t.name));
