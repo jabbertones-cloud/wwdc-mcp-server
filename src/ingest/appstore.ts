@@ -21,7 +21,7 @@ import { APPSTORE_GUIDELINES_URL } from "../constants.js";
 import { httpGet } from "../services/http.js";
 import type { AppStoreGuidelineEntry } from "../types.js";
 import { upsertAppStoreGuideline, recordIngest } from "../db/queries.js";
-import { checkEmbeddings, embed, storeEmbedding } from "../services/ollama.js";
+import { checkEmbeddings, embed, storeEmbedding } from "../services/embeddings.js";
 
 // Minimal HTML text extraction without a full DOM parser.
 function stripTags(html: string): string {
