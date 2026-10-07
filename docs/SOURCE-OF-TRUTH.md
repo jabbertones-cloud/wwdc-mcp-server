@@ -22,7 +22,7 @@ As of 2026-10-07, the official MCP Registry entry `io.github.jabbertones-cloud/w
 
 The npm package `wwdc-mcp-server` is still **not published**. npm is optional secondary distribution and must not be described as live until an authenticated first publish succeeds.
 
-Registry versions are immutable. v0.2.0 is historical and should be deprecated after the fixed v0.2.1 MCPB is verified live.
+Registry versions are immutable. v0.2.1 is active/latest. v0.2.0 is deprecated because its initial MCPB launcher did not opt into npm 12 remote-tarball fetching.
 
 ## Public capability claims
 
@@ -66,7 +66,9 @@ On 2026-10-07:
 - Apple WWDC 2026 discovery returned 138 sessions
 - a live WWDC26 session parse returned transcript text, timestamp chapters, and related Apple documentation
 - the bounded live ingest suite passed WWDC26 sessions, SwiftUI tutorials, a HIG leaf, Swift Evolution, and pathways
-- the official `mcp-publisher validate server.json` endpoint accepted the v0.2.1 MCPB Registry manifest
+- the public v0.2.1 MCPB was downloaded back from GitHub Release, SHA-256 verified, and successfully completed an MCP `initialize` handshake
+- the official MCP Registry lists `io.github.jabbertones-cloud/wwdc` v0.2.1 as `active` and `isLatest=true`
+- the official MCP Registry lists v0.2.0 as `deprecated`
 - npm still returned 404 for `wwdc-mcp-server`; this does not block the official MCP Registry because Registry distribution uses the GitHub-hosted MCPB bundle
 
 ## Verification before a public claim
