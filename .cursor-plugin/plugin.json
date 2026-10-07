@@ -1,6 +1,6 @@
 {
   "name": "wwdc-mcp",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Apple developer intelligence for coding agents: WWDC20-WWDC26, HIG, Swift, App Review, API history, and source-grounded app audits.",
   "author": {
     "name": "Scott Manthey"
