@@ -130,7 +130,7 @@ Do not claim npm is live until anonymous lookup/install is verified.
 
 ## Remote-directory readiness
 
-Current `main` (`5ea328c5aa4604b025a9375cf8f31f9b668317e7`) now supports an explicit anonymous public read-only HTTP mode:
+Current `main` supports an explicit anonymous public read-only HTTP mode:
 
 ```bash
 WWDC_MCP_HTTP_HOST=0.0.0.0 \
@@ -154,7 +154,8 @@ Guardrails:
 - do not mirror/bundle Apple source content merely to satisfy a directory;
 - keep source-linked/local-index behavior;
 - keep the MCP tool surface read-only;
-- use TLS and fail-closed auth;
+- use TLS and edge rate limits/monitoring;
+- keep anonymous public mode explicit and opt-in; private HTTP remains fail-closed/bearer-authenticated;
 - do not conflate local MCPB distribution with a hosted public service.
 
 ## Do not regress
