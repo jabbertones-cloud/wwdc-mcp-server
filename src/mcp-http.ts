@@ -132,7 +132,7 @@ export function createHttpServer() {
         publicReadOnly: publicReadOnlyEnabled(),
         pathPrefix: pathPrefix || null,
         endpoints: { health: healthPath, mcp: mcpPath },
-        release: { sha: DEPLOYED_SHA || null },
+        release: { sha: DEPLOYED_SHA || null, corpusSha256: /^[a-f0-9]{64}$/.test(CORPUS_SHA256) ? CORPUS_SHA256 : null },
       });
       return;
     }
