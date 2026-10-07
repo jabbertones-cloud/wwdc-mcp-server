@@ -14,8 +14,9 @@ As of 2026-10-07:
 - GitHub source install works.
 - `package.json` reserves npm package name `wwdc-mcp-server`.
 - `package.json` carries `mcpName: io.github.jabbertones-cloud/wwdc`.
-- The npm package is not yet published.
-- Therefore the project is not ready to publish a valid official Registry entry yet.
+- `server.json` is checked in and version-locked to the npm artifact.
+- `.github/workflows/publish.yml` publishes npm first, then authenticates to the official MCP Registry with GitHub OIDC and publishes the validated manifest.
+- The npm package is not yet published, so the release workflow must not be triggered until npm publishing credentials are configured.
 
 ## 1. Preflight
 
@@ -64,13 +65,7 @@ This repository already reserves:
 io.github.jabbertones-cloud/wwdc
 ```
 
-After npm is live, install the official `mcp-publisher` CLI and generate metadata:
-
-```bash
-mcp-publisher init
-```
-
-The package entry should reference:
+`server.json` is committed and should be updated with every release. Its package entry references:
 
 - registry type: npm
 - identifier: `wwdc-mcp-server`
@@ -85,7 +80,7 @@ Do not add a remote Registry URL unless a stable, intentionally public Streamabl
 mcp-publisher validate
 ```
 
-Then authenticate and publish according to the official Registry instructions.
+Tagging `vX.Y.Z` triggers `.github/workflows/publish.yml`, which verifies version parity, publishes npm, validates `server.json`, authenticates with GitHub OIDC, and publishes to the official Registry. The workflow requires the repository's `NPM_TOKEN` secret (or an equivalent npm trusted-publishing change) before the first tag.
 
 Do not bypass namespace/package verification.
 
