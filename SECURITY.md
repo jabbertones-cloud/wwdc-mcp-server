@@ -35,14 +35,14 @@ Defaults:
 - MCP: `POST /mcp`
 - maximum request body: 1 MiB
 
-The MCP route **fails closed** with `503 auth_not_configured` unless one of these is configured:
+The MCP route **fails closed** with `503 auth_not_configured` unless one of these deployment modes is explicitly configured:
 
-- `WWDC_MCP_BEARER_TOKEN`
-- `WWDC_MCP_BEARER_TOKEN_SHA256`
+- private bearer mode: `WWDC_MCP_BEARER_TOKEN` or `WWDC_MCP_BEARER_TOKEN_SHA256`
+- public read-only mode: `WWDC_MCP_PUBLIC_READ_ONLY=1`
 
-Requests without a valid bearer token return `401`.
+In private mode, requests without a valid bearer token return `401`. Public mode changes authentication only; it exposes the same tested 45 read-only tools and does not add mutation capabilities.
 
-The built-in HTTP server does not terminate TLS. If you expose it beyond localhost, use a TLS reverse proxy, keep the bearer token secret, and restrict network access.
+The built-in HTTP server does not terminate TLS. If you expose it beyond localhost, use a TLS edge/reverse proxy. Keep bearer tokens secret in private mode. For public mode, add edge rate limiting, abuse monitoring, and deployment-SHA verification.
 
 `WWDC_MCP_PATH_PREFIX` can mount the routes under a prefix such as `/wwdc`.
 
@@ -72,10 +72,12 @@ Semantic reranking runs locally through `@huggingface/transformers` using `nomic
 
 Before exposing HTTP remotely:
 
-1. Generate a strong bearer token.
-2. Bind to localhost unless a reverse proxy requires otherwise.
-3. Terminate TLS at the reverse proxy.
-4. Do not log bearer tokens.
-5. Keep `/healthz` free of secrets.
-6. Run `npm test` and `npm audit --audit-level=high`.
-7. Verify the deployed commit identity through the health response when `WWDC_MCP_DEPLOYED_SHA` is configured.
+1. Choose one explicit mode: private bearer auth or public read-only.
+2. For private mode, generate a strong bearer token and do not log it.
+3. Bind to localhost unless the edge/container topology requires otherwise.
+4. Terminate TLS at the edge/reverse proxy.
+5. For public mode, enable rate limiting and abuse monitoring at the edge.
+6. Keep `/healthz` free of secrets.
+7. Run `npm test` and `npm audit --audit-level=high`.
+8. Verify the deployed commit identity through the health response when `WWDC_MCP_DEPLOYED_SHA` is configured.
+9. Verify `tools/list` still returns exactly 45 read-only tools.
