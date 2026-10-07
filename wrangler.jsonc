@@ -8,6 +8,8 @@
   "containers": [{
     "class_name": "WwdcContainer",
     "scheduling_policy": "durable_object",
+    "instance_type": "lite",
+    "max_instances": 1,
     "images": { "base": { "dockerfile": "./deploy/cloudflare/Dockerfile", "build_context": "." } }
   }],
   "durable_objects": { "bindings": [{ "name": "WWDC_CONTAINER", "class_name": "WwdcContainer" }] },
