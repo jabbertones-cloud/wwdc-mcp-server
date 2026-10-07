@@ -16,7 +16,7 @@ As of 2026-10-07:
 - `package.json` carries `mcpName: io.github.jabbertones-cloud/wwdc`.
 - `server.json` is checked in and version-locked to the npm artifact.
 - `.github/workflows/publish.yml` publishes npm first, then authenticates to the official MCP Registry with GitHub OIDC and publishes the validated manifest.
-- The npm package is not yet published. Before the first tag, configure npm Trusted Publishing for this GitHub repository and the `publish.yml` workflow; no long-lived npm token is required.
+- The npm package is not yet published. Use npm Trusted Publishing for this GitHub repository and `publish.yml` whenever npm permits it. If npm requires an authenticated bootstrap publish before trusted publishing can be configured, perform that one bootstrap release from an authenticated maintainer environment, verify it publicly, then configure trusted publishing before later tags.
 
 ## 1. Preflight
 
@@ -80,13 +80,13 @@ Do not add a remote Registry URL unless a stable, intentionally public Streamabl
 mcp-publisher validate
 ```
 
-Tagging `vX.Y.Z` triggers `.github/workflows/publish.yml`, which verifies version parity, validates `server.json` against the official Registry, publishes npm, authenticates to the MCP Registry with GitHub OIDC, and then publishes the Registry entry. The first npm release currently requires the repository's `NPM_TOKEN` secret.
+Tagging `vX.Y.Z` triggers `.github/workflows/publish.yml`, which verifies version parity, validates `server.json` against the official Registry, publishes npm with npm trusted-publishing OIDC, authenticates to the MCP Registry with GitHub OIDC, and then publishes the Registry entry. Do not create the tag until npm recognizes this repository/workflow as an authorized publisher; otherwise the workflow will correctly fail at `npm publish`.
 
 Do not bypass namespace/package verification.
 
-### After the first npm release: prefer npm trusted publishing
+### Trusted publishing
 
-npm's current guidance recommends OIDC trusted publishing for GitHub Actions instead of long-lived write tokens. Once the package exists on npm, configure this repository's `publish.yml` as the trusted publisher, allow direct `npm publish`, upgrade the workflow's npm CLI to a trusted-publishing-capable version, remove the `NPM_TOKEN` dependency, and keep `id-token: write`. Public GitHub Actions trusted publishing also produces npm provenance automatically.
+The checked-in workflow already requests `id-token: write`, runs on GitHub-hosted Ubuntu, upgrades npm, and performs a token-free `npm publish`. Keep the npm package's trusted-publisher settings pinned to repository `jabbertones-cloud/wwdc-mcp-server` and workflow `publish.yml`. Do not reintroduce a long-lived npm automation token unless npm's bootstrap rules make a one-time manual publish unavoidable.
 
 ## 5. Update public install docs
 
