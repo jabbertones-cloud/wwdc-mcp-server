@@ -47,6 +47,7 @@ The server instructions teach connected agents this routing automatically; the c
 - **Local-first** — SQLite + FTS5 plus optional local ONNX semantic reranking; no separate embedding service or paid API is required for core search.
 - **Trust-aware** — conservative judgment metadata, a content-safety tripwire, and a security manifest help agents distinguish evidence from instructions.
 - **Two transports** — stdio by default, plus authenticated stateless Streamable HTTP for remote/self-hosted use.
+- **Public-directory ready transport** — remote deployments can explicitly set `WWDC_MCP_PUBLIC_READ_ONLY=1` to allow anonymous access to the same read-only tool surface; without that flag or bearer auth, HTTP fails closed.
 - **Read-only MCP surface** — the 45 tools retrieve and analyze source material; they do not mutate your Apple account or source repo.
 
 ## Quick start
@@ -131,6 +132,30 @@ Generic stdio configuration:
 Then ask your agent:
 
 > Use WWDC MCP to audit this app against current Apple guidance before changing code.
+
+## Remote HTTP deployment modes
+
+The HTTP transport is deliberately fail-closed by default.
+
+Private/self-hosted bearer mode:
+
+```bash
+WWDC_MCP_HTTP_HOST=0.0.0.0 \
+WWDC_MCP_BEARER_TOKEN='<secret>' \
+npm run start:http
+```
+
+Explicit anonymous read-only mode for a public MCP directory/connector:
+
+```bash
+WWDC_MCP_HTTP_HOST=0.0.0.0 \
+WWDC_MCP_PUBLIC_READ_ONLY=1 \
+npm run start:http
+```
+
+In public mode, the MCP endpoint exposes the existing 45 read-only tools without requiring a shared bearer token. This mode is **opt-in**. If neither bearer authentication nor `WWDC_MCP_PUBLIC_READ_ONLY=1` is configured, `/mcp` returns `503 auth_not_configured`.
+
+For an internet-facing deployment, put the server behind TLS/reverse-proxy controls, keep the corpus/source policy unchanged, and monitor/rate-limit at the edge. The repo does not claim a hosted public endpoint until one is independently deployed and verified.
 
 ## Client setup
 
