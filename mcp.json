@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "wwdc": {
+      "type": "stdio",
+      "command": "npm",
+      "args": [
+        "exec",
+        "--yes",
+        "--package=https://github.com/jabbertones-cloud/wwdc-mcp-server/releases/download/v0.2.0/wwdc-mcp-server-0.2.0.tgz",
+        "--",
+        "wwdc-mcp-server"
+      ]
+    }
+  }
+}
