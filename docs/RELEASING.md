@@ -80,9 +80,13 @@ Do not add a remote Registry URL unless a stable, intentionally public Streamabl
 mcp-publisher validate
 ```
 
-Tagging `vX.Y.Z` triggers `.github/workflows/publish.yml`, which verifies version parity, publishes npm, validates `server.json`, authenticates with GitHub OIDC, and publishes to the official Registry. The workflow requires the repository's `NPM_TOKEN` secret (or an equivalent npm trusted-publishing change) before the first tag.
+Tagging `vX.Y.Z` triggers `.github/workflows/publish.yml`, which verifies version parity, validates `server.json` against the official Registry, publishes npm, authenticates to the MCP Registry with GitHub OIDC, and then publishes the Registry entry. The first npm release currently requires the repository's `NPM_TOKEN` secret.
 
 Do not bypass namespace/package verification.
+
+### After the first npm release: prefer npm trusted publishing
+
+npm's current guidance recommends OIDC trusted publishing for GitHub Actions instead of long-lived write tokens. Once the package exists on npm, configure this repository's `publish.yml` as the trusted publisher, allow direct `npm publish`, upgrade the workflow's npm CLI to a trusted-publishing-capable version, remove the `NPM_TOKEN` dependency, and keep `id-token: write`. Public GitHub Actions trusted publishing also produces npm provenance automatically.
 
 ## 5. Update public install docs
 
