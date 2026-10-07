@@ -98,6 +98,31 @@ Then ask your agent:
 ## Client setup
 
 <details>
+<summary><strong>OpenAI Codex</strong></summary>
+
+Codex CLI and the Codex IDE extension share MCP configuration. Add this to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.wwdc]
+command = "node"
+args = ["/absolute/path/to/wwdc-mcp-server/dist/index.js"]
+```
+
+Verify the server appears with:
+
+```bash
+codex mcp list
+```
+
+For reliable tool selection, add a project rule such as this to `AGENTS.md`:
+
+```text
+Use WWDC MCP before Apple-platform code changes. Start with swift_app_audit for repo-level work, use Apple/WWDC source tools for evidence, and distinguish retrieved source text from inference.
+```
+
+</details>
+
+<details>
 <summary><strong>Claude Desktop</strong></summary>
 
 `~/Library/Application Support/Claude/claude_desktop_config.json`
