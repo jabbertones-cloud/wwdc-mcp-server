@@ -14,6 +14,22 @@ WWDC MCP indexes **WWDC20–WWDC26 sessions**, Apple Developer Documentation, tu
 
 > **Unofficial community project.** Not affiliated with or endorsed by Apple. Apple content remains subject to Apple's terms and source-site availability.
 
+## Pick your path
+
+**I just want my coding agent to use Apple knowledge**
+
+1. Install/connect WWDC MCP using the MCP Registry/MCPB release or the client config below.
+2. Ask: *“Use WWDC MCP to audit this app against current Apple guidance before changing code.”*
+3. Let the agent start with `swift_app_audit`; you do not need to learn all 45 tools.
+
+**I am a power user**
+
+Use the focused tools directly for transcripts, API history, HIG, Swift Evolution, App Review, source freshness, and trust metadata. See [Agent Guide](docs/AGENT_GUIDE.md) for recommended tool chains and prompt recipes.
+
+**I am an agent working in this repository**
+
+Read [AGENTS.md](AGENTS.md) first. Client-specific repository instructions are also provided for [Cursor](.cursor/rules/wwdc-mcp.mdc) and [GitHub Copilot](.github/copilot-instructions.md).
+
 ## Why use it?
 
 Coding agents are excellent at writing Swift, but Apple APIs, platform guidance, App Review rules, and WWDC recommendations change quickly. WWDC MCP gives an agent a source-grounded way to answer questions like:
@@ -132,6 +148,20 @@ Generic stdio configuration:
 Then ask your agent:
 
 > Use WWDC MCP to audit this app against current Apple guidance before changing code.
+
+### 60-second connection check
+
+After connecting the server, ask your client to:
+
+```text
+Use WWDC MCP. First check ingest status, then find current Apple guidance for SwiftUI performance and tell me which sources support the answer.
+```
+
+A healthy setup should be able to see the `wwdc` server, call its tools, and return source-grounded results. For repository-level work, follow with:
+
+```text
+Audit this repository with swift_app_audit before proposing Apple-platform changes.
+```
 
 ## Remote HTTP deployment modes
 
@@ -287,6 +317,18 @@ node /absolute/path/to/wwdc-mcp-server/dist/index.js
 ```
 
 </details>
+
+## Documentation map
+
+| If you are… | Read |
+| --- | --- |
+| Installing for the first time | this README → Quick start → Client setup |
+| Driving a coding agent | [Agent Guide](docs/AGENT_GUIDE.md) |
+| An agent modifying this repo | [AGENTS.md](AGENTS.md) |
+| Self-hosting / deploying HTTP | [Deployment guide](docs/DEPLOY.md) |
+| Contributing code or sources | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| Reviewing trust/security | [SECURITY.md](SECURITY.md) |
+| Publishing a release | [Release guide](docs/RELEASING.md) |
 
 ## Apple sources
 
