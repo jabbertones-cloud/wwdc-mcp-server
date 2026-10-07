@@ -6,6 +6,7 @@ const INACTIVITY_MS = 15 * 60 * 1000;
 export class WwdcContainer extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
+    this.env = env;
     if (ctx.container?.running) {
       void ctx.blockConcurrencyWhile(() => ctx.container.setInactivityTimeout(INACTIVITY_MS));
     }
