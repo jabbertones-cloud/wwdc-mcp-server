@@ -78,7 +78,7 @@ import {
 import { httpGet } from "../services/http.js";
 import { APPLE_DOCS_BASE } from "../constants.js";
 import { formatResponse, errorText, truncate } from "../services/format.js";
-import { semanticSearch, checkEmbeddings } from "../services/ollama.js";
+import { semanticSearch, checkEmbeddings } from "../services/embeddings.js";
 import { DEFAULT_LIMIT, MAX_LIMIT } from "../constants.js";
 import { getSecurityManifest, scanUntrustedText } from "../security/manifest.js";
 
