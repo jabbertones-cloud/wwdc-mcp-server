@@ -59,10 +59,15 @@ assert.equal(registry.packages?.[0]?.identifier, pkg.name, "Registry npm identif
 assert.equal(registry.packages?.[0]?.version, pkg.version, "Registry package version must match package version");
 assert.equal(registry.packages?.[0]?.transport?.type, "stdio");
 assert.ok(pkg.bin?.["wwdc-mcp-server"], "package bin must expose wwdc-mcp-server");
+assert.ok(pkg.bin?.["wwdc-mcp-ingest"], "package bin must expose wwdc-mcp-ingest");
 
-const binPath = path.join(ROOT, pkg.bin["wwdc-mcp-server"]);
-assert.ok(fs.existsSync(binPath), `bin target missing: ${pkg.bin["wwdc-mcp-server"]}`);
-assert.match(fs.readFileSync(binPath, "utf8").slice(0, 80), /^#!\/usr\/bin\/env node/);
+for (const binName of ["wwdc-mcp-server", "wwdc-mcp-ingest"] as const) {
+  const target = pkg.bin?.[binName];
+  assert.ok(target, `package bin missing: ${binName}`);
+  const binPath = path.join(ROOT, target);
+  assert.ok(fs.existsSync(binPath), `bin target missing: ${target}`);
+  assert.match(fs.readFileSync(binPath, "utf8").slice(0, 80), /^#!\/usr\/bin\/env node/);
+}
 
 const raw = execFileSync("npm", ["pack", "--dry-run", "--json"], {
   cwd: ROOT,
@@ -88,6 +93,7 @@ assert.ok(pack && Array.isArray(pack.files), "npm pack --json must return a file
 const files = new Set(pack.files.map((file) => file.path));
 
 assert.ok(files.has("dist/index.js"), "packed artifact must include dist/index.js");
+assert.ok(files.has("dist/ingest/run.js"), "packed artifact must include dist/ingest/run.js");
 assert.ok(files.has("README.md"), "packed artifact must include README.md");
 assert.ok(files.has("CHANGELOG.md"), "packed artifact must include CHANGELOG.md");
 assert.ok(files.has("LICENSE"), "packed artifact must include LICENSE");
