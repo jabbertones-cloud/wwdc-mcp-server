@@ -424,7 +424,9 @@ export WWDC_SKIP_EMBEDDINGS=1
 
 ## Remote Streamable HTTP
 
-Stdio remains the default and simplest transport. The same 45-tool server can also run as an authenticated, stateless Streamable HTTP MCP:
+Stdio remains the default and simplest local transport. The same 45-tool server can also run as a stateless Streamable HTTP MCP in either **private bearer-authenticated** mode or an explicitly enabled **public read-only** mode.
+
+### Private bearer-authenticated mode
 
 ```bash
 export WWDC_MCP_BEARER_TOKEN="$(openssl rand -hex 32)"
@@ -438,7 +440,16 @@ Routes:
 - `GET /healthz`
 - `POST /mcp`
 
-The MCP route fails closed with `503 auth_not_configured` if neither `WWDC_MCP_BEARER_TOKEN` nor `WWDC_MCP_BEARER_TOKEN_SHA256` is configured.
+For a deliberately public, read-only connector endpoint:
+
+```bash
+export WWDC_MCP_PUBLIC_READ_ONLY=1
+export WWDC_MCP_HTTP_HOST=0.0.0.0
+export WWDC_MCP_HTTP_PORT=8789
+npm run start:http
+```
+
+The MCP route fails closed with `503 auth_not_configured` unless either bearer authentication is configured **or** `WWDC_MCP_PUBLIC_READ_ONLY=1` is explicitly enabled. Public mode does not add write capabilities: it exposes the same 45 read-only tools.
 
 To mount the service behind a shared reverse proxy without path rewriting:
 
@@ -448,7 +459,17 @@ export WWDC_MCP_PATH_PREFIX=/wwdc
 
 Routes become `/wwdc/healthz` and `/wwdc/mcp`.
 
-The built-in HTTP server does **not** terminate TLS. If you expose it outside localhost, put it behind a TLS reverse proxy and treat the bearer token as a secret.
+The built-in HTTP server does **not** terminate TLS. If you expose it outside localhost, put it behind a TLS edge/reverse proxy, rate-limit and monitor it, and treat bearer tokens as secrets.
+
+### Hosted public endpoint
+
+A Cloudflare-backed public endpoint is being prepared at:
+
+```text
+https://wwdc-mcp.smatdesigns.com/mcp
+```
+
+It will be marked **live** here only after the deployed endpoint passes health, MCP initialize, tool-catalog, and source-grounding verification. Until then, use the GitHub release/MCP Registry or self-hosted modes above.
 
 See [docs/DEPLOY.md](docs/DEPLOY.md) for the full runbook.
 
@@ -458,7 +479,7 @@ See [docs/DEPLOY.md](docs/DEPLOY.md) for the full runbook.
 - Retrieved web text is treated as **untrusted evidence**, not executable instruction.
 - Search responses can include `content_safety` metadata.
 - `wwdc_security_manifest` reports the canonical tool surface, manifest hash, read-only posture, and prompt-injection handling.
-- Remote HTTP requires bearer authentication and fails closed if auth is not configured.
+- Remote HTTP fails closed by default. Private mode requires bearer authentication; anonymous access exists only when the operator explicitly enables `WWDC_MCP_PUBLIC_READ_ONLY=1`.
 - The default stdio server opens no network listener.
 - Ingest fetches public Apple/Swift sources. `apple_doc_lookup` performs live public Apple documentation requests.
 - Local semantic reranking uses a Hugging Face Transformers/ONNX model and may download its model files on first use.
