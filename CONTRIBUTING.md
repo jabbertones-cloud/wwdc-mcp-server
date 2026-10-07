@@ -6,7 +6,7 @@ Contributions that improve Apple-source coverage, retrieval quality, parser resi
 
 - Node.js `>=22.14.0`
 - npm
-- Ollama is optional; the deterministic test suite does not require it
+- Local semantic embeddings use Hugging Face Transformers/ONNX; deterministic tests set `WWDC_SKIP_EMBEDDINGS=1` and do not download/run the model
 
 ## Setup
 
