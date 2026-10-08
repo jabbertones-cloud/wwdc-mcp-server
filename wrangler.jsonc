@@ -1,0 +1,39 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "wwdc-mcp",
+  "main": "deploy/cloudflare/worker.js",
+  "compatibility_date": "2026-10-07",
+  "observability": {
+    "enabled": true
+  },
+  "routes": [
+    {
+      "pattern": "wwdc-mcp.smatdesigns.com",
+      "custom_domain": true
+    }
+  ],
+  "containers": [
+    {
+      "class_name": "WwdcContainer",
+      "scheduling_policy": "default",
+      "image": "./deploy/cloudflare/Dockerfile",
+      "image_build_context": ".",
+      "instance_type": "basic",
+      "max_instances": 1
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "WWDC_CONTAINER",
+        "class_name": "WwdcContainer"
+      }
+    ]
+  },
+  "exports": {
+    "WwdcContainer": {
+      "type": "durable-object",
+      "storage": "sqlite"
+    }
+  }
+}
