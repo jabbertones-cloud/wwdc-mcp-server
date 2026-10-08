@@ -30,9 +30,14 @@ npm run test:e2e
 npm run test:http
 npm run test:search-regression
 npm run test:package
+npm run test:inspector
 ```
 
 `npm test` runs the full deterministic suite. `npm run test:live` touches live public sources and should be used only when a change depends on current source behavior.
+
+## AI-assisted work
+
+AI-assisted contributions are welcome, but generated output is not evidence. Read [docs/AI_CONTRIBUTIONS.md](docs/AI_CONTRIBUTIONS.md) before submitting agent-authored or agent-assisted changes.
 
 ## Pull requests
 
