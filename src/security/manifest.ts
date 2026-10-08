@@ -92,7 +92,7 @@ export function scanUntrustedText(text: string): ContentSafetyScan {
 
 export function getSecurityManifest() {
   const controls = {
-    transport: "stdio",
+    transport: "stdio by default; stateless Streamable HTTP also supported with bearer auth or explicit public read-only mode",
     default_posture: "read-only retrieval and analysis",
     network_policy: "Apple/public docs fetch only in lookup/ingest tools; no arbitrary URL fetch tools",
     database: "SQLite local index; parameterized queries; FTS query tokenization for user punctuation",

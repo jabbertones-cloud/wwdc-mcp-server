@@ -66,7 +66,38 @@ The server instructions teach connected agents this routing automatically; the c
 - **Public-directory ready transport** — remote deployments can explicitly set `WWDC_MCP_PUBLIC_READ_ONLY=1` to allow anonymous access to the same read-only tool surface; without that flag or bearer auth, HTTP fails closed.
 - **Read-only MCP surface** — the 45 tools retrieve and analyze source material; they do not mutate your Apple account or source repo.
 
-## Quick start
+## Install-path scorecard
+
+Choose the path that matches what you value. **Do not confuse “local-first” with “everyone must self-host.”**
+
+| Path | User work | Best for | Status |
+| --- | --- | --- | --- |
+| Hosted remote MCP | paste/connect one HTTPS MCP URL | ChatGPT, cloud/remote agents, fastest evaluation | endpoint prepared; not advertised live until verification passes |
+| MCPB / MCP Registry | install published bundle | clients with bundle/Registry support | v0.2.1 active |
+| Local stdio | clone/package + ingest + local client config | privacy, offline-ish retrieval, full local control | supported and tested |
+| Self-hosted HTTP | deploy + choose auth + TLS/edge | teams controlling their own infrastructure | supported and tested |
+
+When the hosted endpoint is live, the intended public URL is:
+
+```text
+https://wwdc-mcp.smatdesigns.com/mcp
+```
+
+For ChatGPT/custom remote MCP clients, that removes the local Node/index/config-path requirement. For Cursor, the same remote URL can be placed in `mcp.json` and can later back a one-click install/deeplink. Local stdio remains a first-class option rather than a fallback.
+
+### Friction budget
+
+A newcomer should be able to reach the **first source-grounded answer** with as few decisions as possible:
+
+- hosted: connect URL → ask the 60-second check;
+- Registry/MCPB: install → ask the 60-second check;
+- local: install → ingest → configure → ask the 60-second check.
+
+If a new distribution method adds steps before the first useful answer, treat that as an adoption regression unless it buys a clear privacy/security capability.
+
+## Local-first quick start
+
+Use this path when you want the corpus and server on your own machine. For hosted/Registry paths, use the scorecard above.
 
 ### Requirements
 
