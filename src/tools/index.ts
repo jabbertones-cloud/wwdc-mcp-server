@@ -43,7 +43,7 @@ import { httpGet } from "../services/http.js";
 import { APPLE_DOCS_BASE } from "../constants.js";
 import { formatResponse, errorText, truncate } from "../services/format.js";
 import { semanticSearch, checkOllama } from "../services/ollama.js";
-import { DEFAULT_LIMIT, MAX_LIMIT } from "../constants.js";
+import { DEFAULT_LIMIT, MAX_LIMIT, MAX_QUERY_CHARS, MAX_QUERY_TOKENS } from "../constants.js";
 
 const formatArg = z.enum(["markdown", "json"]).default("markdown").describe("Response format");
 const limitArg = z.number().int().min(1).max(MAX_LIMIT).default(DEFAULT_LIMIT);
@@ -53,13 +53,26 @@ const detailArg = z.enum(["compact", "standard", "detailed"]).default("standard"
 /** Quote an FTS5 query safely — quote each token (implicit AND), keep
  *  user-supplied "phrases" intact, escape stray quotes. Previously the whole
  *  query was wrapped in one phrase, so every multi-word search returned
- *  nothing. */
+ *  nothing.
+ *  Duplicate tokens are dropped (ANDing a token with itself is a no-op)
+ *  and the distinct-token count is capped, so repeated-token queries
+ *  cannot make FTS5 churn through thousands of identical terms. */
 export function ftsQuote(q: string): string {
   const parts = q.match(/"[^"]*"|\S+/g) ?? [];
-  return parts
-    .map((p) => (p.startsWith('"') ? p : `"${p.replace(/"/g, '""')}"`))
-    .join(" ");
+  const seen = new Set<string>();
+  const quoted: string[] = [];
+  for (const p of parts) {
+    const token = p.startsWith('"') ? p : `"${p.replace(/"/g, '""')}"`;
+    const key = token.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    quoted.push(token);
+    if (quoted.length >= MAX_QUERY_TOKENS) break;
+  }
+  return quoted.join(" ");
 }
+
+const queryArg = z.string().min(1).max(MAX_QUERY_CHARS).describe("Search query; supports multi-word phrases.");
 
 function documentationPathFromInput(input: string): { clean?: string; error?: string } {
   const trimmed = input.trim();
@@ -196,7 +209,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
       description:
         "Full-text + semantic search across WWDC sessions, tutorials, HIG, and Swift Evolution. Returns ranked hits with snippets. If Ollama is available, hybrid (FTS + vector) is used; otherwise FTS only.",
       inputSchema: {
-        query: z.string().min(1).describe("Search query; supports multi-word phrases."),
+        query: queryArg,
         kinds: z.array(z.enum(["session", "tutorial", "hig", "evolution"])).default(["session", "tutorial", "hig", "evolution"]),
         year: z.number().int().optional().describe("Restrict to a WWDC year."),
         year_min: z.number().int().optional().describe("Restrict WWDC sessions to this year or newer."),
@@ -443,7 +456,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
       title: "Grep WWDC sample-code URLs",
       description: "Filter all indexed sample-code refs by substring/regex (e.g. find sessions with `.zip` or `SwiftData`).",
       inputSchema: {
-        pattern: z.string().min(1).describe("Regex or literal substring."),
+        pattern: z.string().min(1).max(MAX_QUERY_CHARS).describe("Regex or literal substring."),
         is_regex: z.boolean().default(false),
         limit: limitArg,
         format: formatArg,
@@ -525,7 +538,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
     {
       title: "Search Human Interface Guidelines",
       description: "Keyword search across HIG topics (components, patterns, platforms).",
-      inputSchema: { query: z.string().min(1), limit: limitArg, format: formatArg },
+      inputSchema: { query: queryArg, limit: limitArg, format: formatArg },
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     async ({ query, limit, format }) => {
