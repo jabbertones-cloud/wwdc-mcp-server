@@ -35,7 +35,9 @@
     "test:package": "tsx tests/package-smoke.ts",
     "test:live": "tsx tests/ingest-live.ts",
     "eval": "tsx tests/eval.ts",
-    "test:search-regression": "tsx tests/search-regression.ts"
+    "test:search-regression": "tsx tests/search-regression.ts",
+    "test:inspector": "WWDC_SKIP_EMBEDDINGS=1 npx -y @modelcontextprotocol/inspector --cli node dist/index.js --method tools/list --format json > /tmp/wwdc-mcp-inspector.json && node -e \"const fs=require('fs');const x=JSON.parse(fs.readFileSync('/tmp/wwdc-mcp-inspector.json','utf8'));const tools=x.result?.tools||[];if(tools.length!==45)throw new Error('Expected 45 tools, got '+tools.length);console.log('[inspector] external MCP client sees 45 tools')\"",
+    "verify:corpus": "tsx scripts/verify-corpus.ts"
   },
   "files": [
     "dist",
