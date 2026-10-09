@@ -1,21 +1,86 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DB="${WWDC_MCP_DB:-.deploy-data/wwdc.db}"
-WRANGLER="${WRANGLER:-wrangler}"
+# Exact-source, independently verified release of the PUBLIC, READ-ONLY WWDC MCP.
+# This does not deploy AiSCent or touch any customer entitlements.
+ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+cd "$ROOT"
+SOURCE_DB="$(printenv WWDC_MCP_DB 2>/dev/null || printf '%s' '.deploy-data/wwdc.db')"
+STAGED_DB=".deploy-data/wwdc.db"
+PROOF=".deploy-data/corpus-proof.json"
+WRANGLER="$(printenv WRANGLER 2>/dev/null || printf '%s' 'wrangler')"
 SHA="$(git rev-parse HEAD)"
 
 git diff --quiet
 git diff --cached --quiet
+if [ ! -f "$SOURCE_DB" ]; then
+  echo "[release] Missing source corpus: $SOURCE_DB" >&2
+  exit 1
+fi
+
 npm run build
 npm test
 npm run test:inspector
-npm run verify:corpus -- "$DB" > /tmp/wwdc-corpus-proof.json
-CORPUS_SHA256="$(node -e "const p=require('/tmp/wwdc-corpus-proof.json');process.stdout.write(p.sha256)")"
 
-echo "[release] git_sha=$SHA"
-echo "[release] corpus_sha256=$CORPUS_SHA256"
+# SQLite online backup is used instead of copying an active WAL database.
+# The snapshot actually shipped in the container is the one verified below.
+mkdir -p .deploy-data
+WWDC_STAGE_SOURCE="$SOURCE_DB" WWDC_STAGE_OUTPUT="$STAGED_DB" node --input-type=module <<'NODE'
+import fs from "node:fs";
+import path from "node:path";
+import Database from "better-sqlite3";
+const source = path.resolve(process.env.WWDC_STAGE_SOURCE);
+const target = path.resolve(process.env.WWDC_STAGE_OUTPUT);
+if (source !== target) {
+  const temporary = target + ".new-" + process.pid;
+  const live = new Database(source, { readonly: true, fileMustExist: true });
+  try {
+    await live.backup(temporary);
+    fs.renameSync(temporary, target);
+  } finally {
+    live.close();
+    if (fs.existsSync(temporary)) fs.unlinkSync(temporary);
+  }
+}
+NODE
+
+./node_modules/.bin/tsx scripts/verify-corpus.ts "$STAGED_DB" --require-all > "$PROOF"
+CORPUS_SHA256="$(node -e 'const p=require("./.deploy-data/corpus-proof.json");if(!p.ok||!(/^[a-f0-9]{64}$/.test(p.corpusVersion)))process.exit(1);process.stdout.write(p.corpusVersion)')"
+FILE_SHA256="$(node -e 'const p=require("./.deploy-data/corpus-proof.json");process.stdout.write(p.sha256)')"
+echo "[release] source_git_sha=$SHA"
+echo "[release] staged_database_file_sha256=$FILE_SHA256"
+echo "[release] verified_logical_corpus_sha256=$CORPUS_SHA256"
+
+# The MCP health response exposes the LOGICAL corpus digest, not the byte-level
+# SQLite file digest. Never compare these two different types of hash.
 "$WRANGLER" deploy --var "DEPLOYED_SHA:$SHA" --var "CORPUS_SHA256:$CORPUS_SHA256"
 
-curl --fail --silent --show-error https://wwdc-mcp.smatdesigns.com/healthz > /tmp/wwdc-live-health.json
-node -e "const fs=require('fs');const h=JSON.parse(fs.readFileSync('/tmp/wwdc-live-health.json','utf8'));if(!h.ok||h.release?.sha!=='$SHA'||h.release?.corpusSha256!=='$CORPUS_SHA256')throw new Error('live release identity mismatch');console.log('[release] live health identity verified')"
+# Do not claim delivery until the actual public endpoint reports this exact
+# release and the same digest of the corpus opened by the running MCP process.
+matched=0
+for attempt in 1 2 3 4 5 6 7 8 9 10; do
+  if curl --fail --silent --show-error --max-time 20 \
+      https://wwdc-mcp.smatdesigns.com/healthz > .deploy-data/live-health.json &&
+     WWDC_EXPECT_SHA="$SHA" WWDC_EXPECT_CORPUS_SHA256="$CORPUS_SHA256" node -e '
+       const fs=require("node:fs");
+       const h=JSON.parse(fs.readFileSync(".deploy-data/live-health.json","utf8"));
+       if (!h.ok || h.release?.sha!==process.env.WWDC_EXPECT_SHA ||
+           h.release?.corpusSha256!==process.env.WWDC_EXPECT_CORPUS_SHA256 ||
+           h.corpus?.verified!==true || h.corpus?.needsRestart===true ||
+           h.publicReadOnly!==true) process.exit(1);
+     '; then
+    matched=1
+    break
+  fi
+  echo "[release] waiting for exact-SHA and verified-corpus parity attempt=$attempt"
+  sleep 6
+done
+if [ "$matched" != "1" ]; then
+  echo "[release] BLOCKED: deployed health does not prove expected source and corpus" >&2
+  exit 1
+fi
+
+# Real MCP calls through the public HTTPS origin, not local test fixtures.
+WWDC_EXPECT_SHA="$SHA" WWDC_EXPECT_CORPUS_SHA256="$CORPUS_SHA256" \
+  ./node_modules/.bin/tsx scripts/verify-public-mcp.ts
+echo "[release] LIVE_ACCEPTED sha=$SHA corpus=$CORPUS_SHA256"
