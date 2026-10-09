@@ -11,6 +11,7 @@
  */
 
 import type { Database as DatabaseType } from "better-sqlite3";
+import { createHash } from "node:crypto";
 
 /** Content tables whose row counts describe corpus coverage. */
 export const CORPUS_CONTENT_TABLES = [
@@ -37,6 +38,8 @@ export interface CorpusSourceStamp {
 
 export interface CorpusVersion {
   stampId: number;
+  /** Stable SHA-256 of the indexed content rows, independent of ingest wall clock. */
+  contentSha256: string;
   /** Corpus identity: the ingest-completion timestamp. Sortable, unique per run. */
   version: string;
   ingestedAt: string;
@@ -49,6 +52,25 @@ export interface CorpusVersion {
   counts: Record<string, number>;
   sources: Record<string, CorpusSourceStamp>;
   serverVersion: string | null;
+}
+
+/** Deterministic logical-content digest; excludes version rows and SQLite WAL layout. */
+export function hashCorpusContent(db: DatabaseType): string {
+  const hash = createHash("sha256");
+  for (const table of CORPUS_CONTENT_TABLES) {
+    hash.update("\nTABLE:" + table + "\n");
+    // Compile-time table names only; id is the content-table stable primary key.
+    for (const row of db.prepare(`SELECT * FROM ${table} ORDER BY id`).iterate() as Iterable<Record<string, unknown>>) {
+      hash.update("ROW\n");
+      for (const [field, value] of Object.entries(row)) {
+        hash.update(field + ":");
+        if (Buffer.isBuffer(value)) hash.update(value);
+        else hash.update(JSON.stringify(value ?? null));
+        hash.update("\n");
+      }
+    }
+  }
+  return hash.digest("hex");
 }
 
 /**
@@ -92,20 +114,22 @@ export function recordCorpusVersion(
     };
   }
 
-  const version = ingestedAt;
+  const contentSha256 = hashCorpusContent(db);
+  const version = contentSha256;
   const info = db
     .prepare(
       `
       INSERT INTO corpus_versions
         (version, ingested_at, ingest_source, session_count, total_items,
-         wwdc_years, counts, sources, server_version)
+         wwdc_years, counts, sources, server_version, content_sha256)
       VALUES
         (@version, @ingested_at, @ingest_source, @session_count, @total_items,
-         @wwdc_years, @counts, @sources, @server_version)
+         @wwdc_years, @counts, @sources, @server_version, @content_sha256)
       `,
     )
     .run({
       version,
+      content_sha256: contentSha256,
       ingested_at: ingestedAt,
       ingest_source: ingestSource,
       session_count: sessionCount,
@@ -118,6 +142,7 @@ export function recordCorpusVersion(
 
   return {
     stampId: Number(info.lastInsertRowid),
+    contentSha256,
     version,
     ingestedAt,
     ingestSource,
@@ -138,6 +163,7 @@ export function getLatestCorpusVersion(db: DatabaseType): CorpusVersion | null {
   if (!row) return null;
   return {
     stampId: row.id,
+    contentSha256: row.content_sha256 ?? row.version,
     version: row.version,
     ingestedAt: row.ingested_at,
     ingestSource: row.ingest_source,
