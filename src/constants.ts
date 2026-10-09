@@ -180,3 +180,11 @@ export const INGEST_CADENCE_WWDC_WEEK_MIN = 30;
 // Default pagination
 export const DEFAULT_LIMIT = 20;
 export const MAX_LIMIT = 100;
+
+// Search input bounds. Unbounded free-text queries were observed to hang
+// FTS5 for >70s (10,450-char query, ~1,100 quoted tokens, no output),
+// because every token is ANDed into a MATCH over large transcripts.
+// 500 chars is generous for a session/topic search (normal queries are
+// <80 chars) while keeping the FTS token count tractable.
+export const MAX_QUERY_CHARS = 500;
+export const MAX_QUERY_TOKENS = 32;

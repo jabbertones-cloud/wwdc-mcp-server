@@ -62,7 +62,7 @@ import { httpGet } from "../services/http.js";
 import { APPLE_DOCS_BASE } from "../constants.js";
 import { formatResponse, errorText, truncate } from "../services/format.js";
 import { semanticSearch, checkEmbeddings } from "../services/embeddings.js";
-import { DEFAULT_LIMIT, MAX_LIMIT } from "../constants.js";
+import { DEFAULT_LIMIT, MAX_LIMIT, MAX_QUERY_CHARS, MAX_QUERY_TOKENS } from "../constants.js";
 import { getSecurityManifest, scanUntrustedText } from "../security/manifest.js";
 
 const formatArg = z.enum(["markdown", "json"]).default("markdown").describe("Response format");
@@ -87,7 +87,9 @@ const swiftAuditFocusArg = z.enum([
 
 /** Build a safe FTS5 query: preserve explicit phrases and quote unquoted tokens (implicit AND).
  * For a single camelCase symbol, also search its expanded words without changing
- * multi-term FTS grammar. */
+ * multi-term FTS grammar. Duplicate tokens are dropped (ANDing a token with
+ * itself is a no-op) and the distinct-token count is capped, so repeated-token
+ * queries cannot make FTS5 churn through thousands of identical terms. */
 export function ftsQuote(q: string): string {
   const parts = q.match(/"[^"]*"|\S+/g) ?? [];
   const quoted = (value: string) => `"${value.replace(/"/g, '""')}"`;
@@ -98,12 +100,24 @@ export function ftsQuote(q: string): string {
     if (words.length > 1) return `(${quoted(original)} OR (${words.map(quoted).join(" ")}))`;
     return words.length === 1 ? quoted(original) : "";
   }
-  return parts.map((part) => {
-    if (part.startsWith('"') && part.endsWith('"')) return part;
-    const words = part.match(/[A-Za-z0-9_@.#+]+/g) ?? [];
-    return words.map(quoted).join(" ");
-  }).filter(Boolean).join(" ");
+  const seen = new Set<string>();
+  const tokens: string[] = [];
+  for (const part of parts) {
+    const words = part.startsWith('"') && part.endsWith('"')
+      ? [part]
+      : (part.match(/[A-Za-z0-9_@.#+]+/g) ?? []).map(quoted);
+    for (const token of words) {
+      const key = token.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      tokens.push(token);
+      if (tokens.length >= MAX_QUERY_TOKENS) return tokens.join(" ");
+    }
+  }
+  return tokens.join(" ");
 }
+
+const queryArg = z.string().min(1).max(MAX_QUERY_CHARS).describe("Search query; supports multi-word phrases.");
 
 function documentationPathFromInput(input: string): { clean?: string; error?: string } {
   const trimmed = input.trim();
@@ -676,7 +690,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
       description:
         "Full-text + semantic search across WWDC sessions, Apple documentation, tutorials, HIG, and Swift Evolution. Returns ranked hits with snippets. When the local embedding model is available, hybrid FTS + vector reranking is used; otherwise search falls back to FTS only.",
       inputSchema: {
-        query: z.string().min(1).describe("Search query; supports multi-word phrases."),
+        query: queryArg,
         kinds: z.array(z.enum(["session", "doc", "tutorial", "hig", "evolution"])).default(["session", "doc", "tutorial", "hig", "evolution"]),
         year: z.number().int().optional().describe("Restrict to a WWDC year."),
         year_min: z.number().int().optional().describe("Restrict WWDC sessions to this year or newer."),
@@ -929,7 +943,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
       title: "Grep WWDC sample-code URLs",
       description: "Filter all indexed sample-code refs by substring/regex (e.g. find sessions with `.zip` or `SwiftData`).",
       inputSchema: {
-        pattern: z.string().min(1).describe("Regex or literal substring."),
+        pattern: z.string().min(1).max(MAX_QUERY_CHARS).describe("Regex or literal substring."),
         is_regex: z.boolean().default(false),
         limit: limitArg,
         format: formatArg,
@@ -1037,7 +1051,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
     {
       title: "Search Human Interface Guidelines",
       description: "Keyword search across HIG topics (components, patterns, platforms).",
-      inputSchema: { query: z.string().min(1), limit: limitArg, format: formatArg },
+      inputSchema: { query: queryArg, limit: limitArg, format: formatArg },
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     async ({ query, limit, format }) => {
