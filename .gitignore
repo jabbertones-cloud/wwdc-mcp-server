@@ -19,3 +19,6 @@ __pycache__/
 .fuse_hidden*
 *.backup/
 .git.broken-*
+
+# Staged Cloudflare container corpus and release receipts (never commit SQLite data)
+.deploy-data/
