@@ -437,7 +437,7 @@ The test suite asserts that both stdio and Streamable HTTP expose exactly 45 too
 
 ## Search example
 
-`wwdc_search` supports year ranges, topics, platforms, transcript requirements, output detail, and conservative judgment metadata.
+`wwdc_search` supports year ranges, topics, platforms, transcript requirements, output detail, and conservative judgment metadata. If a query is narrowed before execution (duplicate terms removed, or more than 32 unique terms), the response discloses it via `query_normalization` and a judgment caveat rather than presenting the raw query as the executed one.
 
 ```json
 {

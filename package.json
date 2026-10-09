@@ -27,7 +27,7 @@
     "ingest:all": "tsx src/ingest/run.ts --source all",
     "smoke": "tsx tests/smoke.ts",
     "health:native": "node -e \"require('better-sqlite3'); console.log('better-sqlite3 native addon OK')\"",
-    "test": "tsx tests/smoke.ts && tsx tests/ingest-parse.ts && tsx tests/security-eval.ts && tsx tests/mcp-e2e.ts && tsx tests/search-regression.ts && tsx tests/eval.ts && tsx tests/package-smoke.ts && tsx tests/mcp-http.ts && tsx tests/optional-service.ts && tsx tests/corpus-version.ts && tsx tests/ingest-status-honesty.ts && tsx tests/verify-corpus-script.ts",
+    "test": "tsx tests/smoke.ts && tsx tests/ingest-parse.ts && tsx tests/security-eval.ts && tsx tests/mcp-e2e.ts && tsx tests/search-regression.ts && tsx tests/search-query-disclosure.ts && tsx tests/eval.ts && tsx tests/package-smoke.ts && tsx tests/mcp-http.ts && tsx tests/optional-service.ts && tsx tests/corpus-version.ts && tsx tests/ingest-status-honesty.ts && tsx tests/verify-corpus-script.ts",
     "test:parse": "tsx tests/ingest-parse.ts",
     "test:e2e": "tsx tests/mcp-e2e.ts",
     "test:http": "tsx tests/mcp-http.ts",

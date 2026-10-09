@@ -118,6 +118,40 @@ export function ftsQuote(q: string): string {
   return tokens.join(" ");
 }
 
+/** How ftsQuote narrows a raw query before execution: the raw searchable-
+ * token count vs what survives case-insensitive dedupe and the
+ * MAX_QUERY_TOKENS cap. wwdc_search echoes the raw query in its response;
+ * when the executed query differs, the handler discloses it from this. */
+export function describeQueryNormalization(q: string): {
+  rawTokens: number;
+  executedTokens: number;
+  deduped: number;
+  capped: boolean;
+} {
+  const parts = q.match(/"[^"]*"|\S+/g) ?? [];
+  if (parts.length <= 1) {
+    return { rawTokens: parts.length, executedTokens: parts.length, deduped: 0, capped: false };
+  }
+  const seen = new Set<string>();
+  let raw = 0;
+  for (const part of parts) {
+    const words = part.startsWith('"') && part.endsWith('"')
+      ? [part]
+      : part.match(/[A-Za-z0-9_@.#+]+/g) ?? [];
+    for (const word of words) {
+      raw++;
+      seen.add(word.toLowerCase());
+    }
+  }
+  const unique = seen.size;
+  return {
+    rawTokens: raw,
+    executedTokens: Math.min(unique, MAX_QUERY_TOKENS),
+    deduped: raw - unique,
+    capped: unique > MAX_QUERY_TOKENS,
+  };
+}
+
 /** Any-term (OR) variant of ftsQuote, used only as a labeled fallback when
  * the strict all-terms search returns nothing — e.g. one misspelled token
  * ("SwiftUI navigaton") otherwise dead-ends at zero hits even though the
@@ -801,11 +835,20 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
       if (fallback && searchJudgment) {
         searchJudgment.caveats.push("No all-terms match (a term may be misspelled); showing broader any-term matches.");
       }
+      const normalization = describeQueryNormalization(query);
+      const narrowed = normalization.deduped > 0 || normalization.capped;
+      if (narrowed && searchJudgment) {
+        const bits: string[] = [];
+        if (normalization.deduped > 0) bits.push(`removed ${normalization.deduped} duplicate term${normalization.deduped === 1 ? "" : "s"}`);
+        if (normalization.capped) bits.push(`limited to the first ${MAX_QUERY_TOKENS} unique terms`);
+        searchJudgment.caveats.push(`Query narrowed before execution (${bits.join("; ")}); ${normalization.executedTokens} of ${normalization.rawTokens} searchable terms were used.`);
+      }
       const contentSafety = scanUntrustedText(judgedPage.map((hit) => `${hit.title}\n${hit.snippet ?? ""}`).join("\n\n"));
       const md = renderSearchMd(query, judgedPage, total, searchJudgment, detail);
       const data = {
         query,
         ...(fallback ? { fallback } : {}),
+        ...(narrowed ? { query_normalization: normalization } : {}),
         filters: { kinds, year, year_min, year_max, topics, platforms, require_transcript },
         total,
         count: judgedPage.length,
