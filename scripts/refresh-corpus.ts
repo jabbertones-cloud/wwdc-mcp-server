@@ -4,7 +4,9 @@
  *
  * The active SQLite database is never a work-in-progress. Ingestion happens
  * on an independently backed-up candidate, verification happens there, and
- * only then is the complete candidate promoted with an atomic same-volume rename.
+ * only then is the complete candidate promoted through SQLite's online
+ * backup API. This uses an SQLite transaction on the existing database inode,
+ * avoiding dangerous WAL/shm collisions when MCP readers have DB handles open.
  * A failed or interrupted ingest leaves the active DB untouched.
  *
  * --db FILE (default WWDC_MCP_DB or DATA_DIR/wwdc.db)
@@ -132,11 +134,8 @@ async function main(): Promise<void> {
     const active = database(target);
     try {
       baseline = tableCounts(active);
-      const pendingWal = target + "-wal";
-      if (fs.existsSync(pendingWal) && fs.statSync(pendingWal).size > 0) {
-        throw new Error("active WAL is nonempty; quiesce writer before database swap");
-      }
-      // Online SQLite backup gives a consistent snapshot even with readers.
+      // SQLite's online backup gives a consistent snapshot even when WAL
+      // readers are active, without unlinking the database beneath them.
       await active.backup(candidate);
     } finally { active.close(); }
   }
@@ -173,15 +172,24 @@ async function main(): Promise<void> {
       fs.renameSync(pendingBackup, backup);
     } finally { active.close(); }
   }
-  // Same filesystem rename: a reader never observes a partially written DB.
-  fs.renameSync(candidate, target);
-  console.log("[refresh] PROMOTED path=" + target + " backup=" + (fs.existsSync(backup) ? backup : "none"));
+  // SQLite explicitly warns that renaming/unlinking an open WAL database
+  // can corrupt the DB when readers share WAL/journal filenames. Use its
+  // online backup API to promote the candidate as one SQLite transaction.
+  // Existing MCP readers remain on the SAME inode; an updated corpus stamp
+  // triggers their clean restart through the HTTP service's version watcher.
+  const sourceDb = new Database(candidate, { readonly: true, fileMustExist: true });
+  try {
+    await sourceDb.backup(target);
+  } finally { sourceDb.close(); }
+  console.log("[refresh] PROMOTED via sqlite-backup path=" + target + " backup=" + (fs.existsSync(backup) ? backup : "none"));
   const promoted = database(target);
   try {
     const v = getLatestCorpusVersion(promoted);
     if (!v || v.version !== hashCorpusContent(promoted)) throw new Error("promoted identity mismatch");
     console.log("[refresh] CONFIRMED version=" + v.version + " stamp=" + v.stampId);
   } finally { promoted.close(); }
+  // Avoid retaining 200MB+ successfully promoted candidates every week.
+  fs.unlinkSync(candidate);
 }
 try {
   await main();

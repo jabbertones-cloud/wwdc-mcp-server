@@ -126,17 +126,20 @@ export function createHttpServer() {
     stamp.version === actualContentHash && stamp.contentSha256 === actualContentHash
   );
   if (!integrityOk) throw new Error("WWDC corpus content hash differs from persisted version stamp");
-  function databaseReplaced(): boolean {
+  function corpusNeedsRestart(): boolean {
     try {
       const now = fs.statSync(DB_PATH);
-      return now.dev !== openDbIdentity.dev || now.ino !== openDbIdentity.ino;
+      if (now.dev !== openDbIdentity.dev || now.ino !== openDbIdentity.ino) return true;
+      const latest = getLatestCorpusVersion(db);
+      // The online backup promotion updates the same file. Observe the
+      // stamped content revision so health cannot overclaim stale evidence.
+      return (latest?.stampId ?? null) !== (stamp?.stampId ?? null) ||
+        (latest?.version ?? null) !== (stamp?.version ?? null);
     } catch { return true; }
   }
-  // SQLite keeps the old inode open after atomic promotion. The daemon must
-  // restart to bind to the new file; never keep answering from stale storage.
   const swapWatcher = setInterval(() => {
-    if (databaseReplaced()) {
-      console.error("[wwdc-mcp-server] promoted DB detected; restarting to reopen corpus");
+    if (corpusNeedsRestart()) {
+      console.error("[wwdc-mcp-server] corpus changed; restarting to reopen and attest new version");
       process.exit(75);
     }
   }, 5000);
@@ -149,9 +152,9 @@ export function createHttpServer() {
         json(res, 405, { error: "method_not_allowed" }, { allow: "GET" });
         return;
       }
-      const replaced = databaseReplaced();
-      json(res, replaced ? 503 : 200, {
-        ok: !replaced,
+      const needsRestart = corpusNeedsRestart();
+      json(res, needsRestart ? 503 : 200, {
+        ok: !needsRestart,
         service: SERVER_NAME,
         version: SERVER_VERSION,
         protocol: "streamable-http",
@@ -161,19 +164,19 @@ export function createHttpServer() {
         endpoints: { health: healthPath, mcp: mcpPath },
         release: { sha: DEPLOYED_SHA || null, corpusSha256: integrityOk ? actualContentHash : null },
         corpus: {
-          verified: !!stamp && integrityOk && !replaced,
+          verified: !!stamp && integrityOk && !needsRestart,
           version: stamp?.version ?? null,
           ingestedAt: stamp?.ingestedAt ?? null,
           ingestSource: stamp?.ingestSource ?? null,
           sessionCount: stamp?.sessionCount ?? null,
           wwdcYears: stamp?.wwdcYears ?? null,
-          needsRestart: replaced,
+          needsRestart,
         },
       });
       return;
     }
 
-    if (url.pathname === mcpPath && databaseReplaced()) {
+    if (url.pathname === mcpPath && corpusNeedsRestart()) {
       json(res, 503, { error: "corpus_replaced_restart_required" });
       return;
     }
