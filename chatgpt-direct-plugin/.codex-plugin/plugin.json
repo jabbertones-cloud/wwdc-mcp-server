@@ -1,0 +1,37 @@
+{
+  "interface": {
+    "capabilities": [
+      "Search current Apple developer guidance",
+      "Audit SwiftUI features against WWDC and App Store rules"
+    ],
+    "defaultPrompt": [
+      "Use WWDC MCP to audit the SwiftUI design of my app.",
+      "Find current Apple App Store Review guidance for this app feature."
+    ],
+    "developerName": "Scott Manthey",
+    "displayName": "SMAT WWDC Direct",
+    "longDescription": "Use SMAT Designs' read-only Apple developer knowledge MCP: current indexed WWDC sessions, Human Interface Guidelines, Apple documentation, Swift Evolution, API compatibility, and App Store guidelines. All tool calls go to the direct hosted WWDC service without RemoteDesk.",
+    "shortDescription": "Research current Apple guidance directly through WWDC MCP",
+    "websiteURL": "https://github.com/jabbertones-cloud/wwdc-mcp-server",
+    "category": "Other"
+  },
+  "name": "smat-wwdc-direct",
+  "version": "0.1.0",
+  "description": "Connect ChatGPT directly to SMAT's live, read-only WWDC MCP: 45 Apple developer research tools and current Apple source evidence, without RemoteDesk.",
+  "author": {
+    "name": "Scott Manthey",
+    "email": "jamonwidit@plushtrap.com",
+    "url": "https://smatdesigns.com"
+  },
+  "keywords": [
+    "Apple",
+    "WWDC",
+    "SwiftUI",
+    "App Store",
+    "MCP"
+  ],
+  "homepage": "https://github.com/jabbertones-cloud/wwdc-mcp-server",
+  "repository": "https://github.com/jabbertones-cloud/wwdc-mcp-server",
+  "license": "MIT",
+  "mcpServers": "./.mcp.json"
+}
