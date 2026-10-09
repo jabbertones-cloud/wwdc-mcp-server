@@ -20,6 +20,16 @@ import type {
 } from "../types.js";
 
 const nowIso = () => new Date().toISOString();
+
+/**
+ * True when an FTS5 query carries no searchable term (e.g. ftsQuote of a
+ * punctuation-only query returns ""). `MATCH ''` throws a raw SQLite
+ * `fts5: syntax error` that used to leak to MCP clients as the tool error;
+ * every FTS entry point below returns an empty result instead.
+ */
+export function isEmptyFtsQuery(query: string): boolean {
+  return query.trim().length === 0;
+}
 const applePlatformTerms = new Set(["ios", "macos", "watchos", "tvos", "visionos", "ipados"]);
 const platformAliases: Record<string, string[]> = {
   ios: ["ios", "iphone", "app store"],
@@ -407,6 +417,7 @@ export function searchSessionsFts(
     requireTranscript?: boolean;
   } = {},
 ): { hits: SearchHit[]; total: number } {
+  if (isEmptyFtsQuery(query)) return { hits: [], total: 0 };
   const predicates: string[] = [];
   const params: unknown[] = [query];
   if (filters.year !== undefined) {
@@ -500,6 +511,7 @@ export function searchTutorialsFts(
   limit: number,
   offset: number,
 ): { hits: SearchHit[]; total: number } {
+  if (isEmptyFtsQuery(query)) return { hits: [], total: 0 };
   const total = (db.prepare(`SELECT COUNT(*) AS c FROM tutorials_fts WHERE tutorials_fts MATCH ?`).get(query) as any).c;
   const rows = db.prepare(`
     SELECT t.id, t.title, t.url, t.category,
@@ -529,6 +541,7 @@ export function searchHigFts(
   limit: number,
   offset: number,
 ): { hits: SearchHit[]; total: number } {
+  if (isEmptyFtsQuery(query)) return { hits: [], total: 0 };
   const total = (db.prepare(`SELECT COUNT(*) AS c FROM hig_fts WHERE hig_fts MATCH ?`).get(query) as any).c;
   const rows = db.prepare(`
     SELECT h.id, h.title, h.url, h.category,
@@ -558,6 +571,7 @@ export function searchEvolutionFts(
   limit: number,
   offset: number,
 ): { hits: SearchHit[]; total: number } {
+  if (isEmptyFtsQuery(query)) return { hits: [], total: 0 };
   const total = (db.prepare(`SELECT COUNT(*) AS c FROM evolution_fts WHERE evolution_fts MATCH ?`).get(query) as any).c;
   const rows = db.prepare(`
     SELECT e.id, e.title, e.url, e.status,
@@ -610,6 +624,7 @@ export function searchAppleDocsFts(
   limit: number,
   offset: number,
 ): { hits: SearchHit[]; total: number } {
+  if (isEmptyFtsQuery(query)) return { hits: [], total: 0 };
   const total = (db.prepare(`SELECT COUNT(*) AS c FROM apple_docs_fts WHERE apple_docs_fts MATCH ?`).get(query) as any).c;
   const rows = db.prepare(`
     SELECT d.id, d.title, d.url, d.modules, d.platforms,
@@ -721,6 +736,7 @@ export function searchSwiftBookFts(
   limit = 20,
   offset = 0,
 ): SearchHit[] {
+  if (isEmptyFtsQuery(query)) return [];
   const rows = db.prepare(`
     SELECT b.id, b.title, b.section, b.url,
            snippet(swift_book_fts, 3, '[', ']', '...', 24) AS snippet,
@@ -762,6 +778,7 @@ export function findApiIntroduction(
   symbol: string,
   limit = 5,
 ): { hits: SearchHit[]; earliestYear: number | null } {
+  if (isEmptyFtsQuery(symbol)) return { hits: [], earliestYear: null };
   const rows = db.prepare(`
     SELECT s.id, s.year, s.title, s.url, s.description,
            snippet(sessions_fts, 2, '[', ']', '...', 32) AS snippet,
@@ -790,6 +807,7 @@ export function getSessionsByYearAndTopic(
   year: number,
   limit = 5,
 ): { hits: SearchHit[] } {
+  if (isEmptyFtsQuery(query)) return { hits: [] };
   const rows = db.prepare(`
     SELECT s.id, s.year, s.title, s.url, s.description,
            snippet(sessions_fts, 3, '[', ']', '...', 24) AS snippet,
@@ -886,6 +904,7 @@ export function searchAppStoreGuidelinesFts(
   limit = 20,
   offset = 0,
 ): SearchHit[] {
+  if (isEmptyFtsQuery(query)) return [];
   const rows = db.prepare(`
     SELECT g.id, g.section_number, g.title, g.url,
            snippet(appstore_guidelines_fts, 3, '[', ']', '...', 24) AS snippet,
@@ -940,6 +959,7 @@ export function filterEvolutionProposals(
   const { swiftVersion, status, author, keyword, limit = 30, offset = 0 } = opts;
 
   if (keyword) {
+    if (isEmptyFtsQuery(keyword)) return { rows: [], total: 0 };
     // FTS path with optional post-filters
     const predicates: string[] = [];
     const params: unknown[] = [keyword];
@@ -1167,6 +1187,7 @@ export function searchTranscripts(
     offset?: number;
   } = {},
 ): { hits: Array<SearchHit & { deepLinks?: string; score?: number }>; total: number } {
+  if (isEmptyFtsQuery(query)) return { hits: [], total: 0 };
   const { year, yearMin, yearMax, limit = 10, offset = 0 } = opts;
   const predicates: string[] = [
     "sessions_fts MATCH ?",
@@ -1311,6 +1332,12 @@ export function searchReleaseNotes(
   query: string,
   opts: { os?: string; limit?: number; offset?: number },
 ): { rows: any[]; tableExists: boolean } {
+  if (isEmptyFtsQuery(query)) {
+    const exists = db.prepare(
+      `SELECT name FROM sqlite_master WHERE type='table' AND name='release_notes'`,
+    ).get() as any;
+    return { rows: [], tableExists: Boolean(exists) };
+  }
   const tableCheck = db.prepare(
     `SELECT name FROM sqlite_master WHERE type='table' AND name='release_notes'`,
   ).get() as any;
@@ -1388,6 +1415,7 @@ export function searchAll(
   query: string,
   opts: { types?: string[]; limit?: number },
 ): any[] {
+  if (isEmptyFtsQuery(query)) return [];
   const { types = ["session", "doc", "hig", "evolution"], limit = 15 } = opts;
   const q = query;
   const results: any[] = [];
@@ -1486,6 +1514,7 @@ export function searchSwiftForums(
   query: string,
   opts: { category?: string; limit?: number; offset?: number },
 ): any[] {
+  if (isEmptyFtsQuery(query)) return [];
   const tableExists = db.prepare(
     `SELECT name FROM sqlite_master WHERE type='table' AND name=?`,
   ).get("swift_forum_posts");
@@ -1527,6 +1556,7 @@ export function searchAppleDevForums(
   query: string,
   opts: { limit?: number; offset?: number },
 ): any[] {
+  if (isEmptyFtsQuery(query)) return [];
   const tableExists = db.prepare(
     `SELECT name FROM sqlite_master WHERE type='table' AND name=?`,
   ).get("apple_dev_forum_posts");

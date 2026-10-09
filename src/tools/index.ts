@@ -118,6 +118,31 @@ export function ftsQuote(q: string): string {
   return tokens.join(" ");
 }
 
+/** Any-term (OR) variant of ftsQuote, used only as a labeled fallback when
+ * the strict all-terms search returns nothing — e.g. one misspelled token
+ * ("SwiftUI navigaton") otherwise dead-ends at zero hits even though the
+ * remaining terms match. Same quoting/dedupe/cap rules as ftsQuote; explicit
+ * phrases stay single operands. Returns "" when nothing is searchable. */
+export function ftsQuoteOr(q: string): string {
+  const parts = q.match(/"[^"]*"|\S+/g) ?? [];
+  if (parts.length <= 1) return ftsQuote(q);
+  const seen = new Set<string>();
+  const tokens: string[] = [];
+  for (const part of parts) {
+    const words = part.startsWith('"') && part.endsWith('"')
+      ? [part]
+      : (part.match(/[A-Za-z0-9_@.#+]+/g) ?? []).map((w) => `"${w.replace(/"/g, '""')}"`);
+    for (const token of words) {
+      const key = token.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      tokens.push(token);
+      if (tokens.length >= MAX_QUERY_TOKENS) return tokens.join(" OR ");
+    }
+  }
+  return tokens.join(" OR ");
+}
+
 const queryArg = z.string().min(1).max(MAX_QUERY_CHARS).describe("Search query; supports multi-word phrases.");
 
 function documentationPathFromInput(input: string): { clean?: string; error?: string } {
@@ -709,36 +734,55 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
     },
     async ({ query, kinds, year, year_min, year_max, topics, platforms, require_transcript, judgment, detail, limit, offset, format }) => {
       const fts = ftsQuote(query);
-      const hits: SearchHitWithJudgment[] = [];
-      let total = 0;
+      const runKinds = (ftsQuery: string): { hits: SearchHitWithJudgment[]; total: number } => {
+        const acc: SearchHitWithJudgment[] = [];
+        let accTotal = 0;
+        if (kinds.includes("session")) {
+          const { hits: h, total: t } = searchSessionsFts(db, ftsQuery, limit, offset, {
+            year,
+            yearMin: year_min,
+            yearMax: year_max,
+            topics,
+            platforms,
+            requireTranscript: require_transcript,
+          });
+          acc.push(...h);
+          accTotal += t;
+        }
+        if (kinds.includes("tutorial")) {
+          const { hits: h, total: t } = searchTutorialsFts(db, ftsQuery, limit, offset);
+          acc.push(...h); accTotal += t;
+        }
+        if (kinds.includes("doc")) {
+          const { hits: h, total: t } = searchAppleDocsFts(db, ftsQuery, limit, offset);
+          acc.push(...h); accTotal += t;
+        }
+        if (kinds.includes("hig")) {
+          const { hits: h, total: t } = searchHigFts(db, ftsQuery, limit, offset);
+          acc.push(...h); accTotal += t;
+        }
+        if (kinds.includes("evolution")) {
+          const { hits: h, total: t } = searchEvolutionFts(db, ftsQuery, limit, offset);
+          acc.push(...h); accTotal += t;
+        }
+        return { hits: acc, total: accTotal };
+      };
 
-      if (kinds.includes("session")) {
-        const { hits: h, total: t } = searchSessionsFts(db, fts, limit, offset, {
-          year,
-          yearMin: year_min,
-          yearMax: year_max,
-          topics,
-          platforms,
-          requireTranscript: require_transcript,
-        });
-        hits.push(...h);
-        total += t;
-      }
-      if (kinds.includes("tutorial")) {
-        const { hits: h, total: t } = searchTutorialsFts(db, fts, limit, offset);
-        hits.push(...h); total += t;
-      }
-      if (kinds.includes("doc")) {
-        const { hits: h, total: t } = searchAppleDocsFts(db, fts, limit, offset);
-        hits.push(...h); total += t;
-      }
-      if (kinds.includes("hig")) {
-        const { hits: h, total: t } = searchHigFts(db, fts, limit, offset);
-        hits.push(...h); total += t;
-      }
-      if (kinds.includes("evolution")) {
-        const { hits: h, total: t } = searchEvolutionFts(db, fts, limit, offset);
-        hits.push(...h); total += t;
+      let { hits, total } = runKinds(fts);
+      // Typo tolerance: one misspelled token makes the strict all-terms
+      // search return nothing. Retry once with any-term matching and label
+      // it, instead of dead-ending at zero hits.
+      let fallback: "or_relaxed" | undefined;
+      if (total === 0) {
+        const ftsOr = ftsQuoteOr(query);
+        if (ftsOr && ftsOr !== fts) {
+          const relaxed = runKinds(ftsOr);
+          if (relaxed.total > 0) {
+            hits = relaxed.hits;
+            total = relaxed.total;
+            fallback = "or_relaxed";
+          }
+        }
       }
 
       // Semantic rerank if the local embedding model is available.
@@ -754,10 +798,14 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
       const page = hits.slice(0, limit);
       const judgedPage = page.map((hit) => judgment || detail === "detailed" ? { ...hit, judgment: judgeHit(query, hit) } : hit);
       const searchJudgment = judgment || detail === "detailed" ? judgeSearch(query, judgedPage, total, embeddingsOn, listIngestStatus(db)) : undefined;
+      if (fallback && searchJudgment) {
+        searchJudgment.caveats.push("No all-terms match (a term may be misspelled); showing broader any-term matches.");
+      }
       const contentSafety = scanUntrustedText(judgedPage.map((hit) => `${hit.title}\n${hit.snippet ?? ""}`).join("\n\n"));
       const md = renderSearchMd(query, judgedPage, total, searchJudgment, detail);
       const data = {
         query,
+        ...(fallback ? { fallback } : {}),
         filters: { kinds, year, year_min, year_max, topics, platforms, require_transcript },
         total,
         count: judgedPage.length,
