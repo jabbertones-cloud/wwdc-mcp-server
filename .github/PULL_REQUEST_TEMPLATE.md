@@ -1,29 +1,25 @@
-## Summary
+## What problem does this solve?
 
-What changed and why?
+Describe the developer/agent problem and the user-visible behavior that changes.
 
-## Public contract
+## Evidence
 
-Check any that apply:
+- Apple/Swift source or upstream behavior:
+- What is directly observed vs inferred:
 
-- [ ] MCP tool surface changed
-- [ ] Apple/Swift source parser changed
-- [ ] transport/auth behavior changed
-- [ ] package/release metadata changed
-- [ ] README/public claim changed
-- [ ] no public contract change
+## Contract impact
+
+- [ ] No MCP tool-surface change
+- [ ] No transport/auth change
+- [ ] No distribution/version change
+- [ ] Public docs updated where repeated claims changed
+
+If any box above is false, explain the coordinated updates.
 
 ## Verification
 
 - [ ] `npm run build`
 - [ ] `npm test`
-- [ ] `npm audit --audit-level=high` when dependencies changed
-- [ ] focused live-source check when Apple page behavior changed
-
-## Documentation
-
-If a tool count, runtime requirement, year range, transport, source, or install path changed, list the docs updated with it.
-
-## Security
-
-Confirm that this change adds no secrets/private paths and does not turn retrieved web content into executable instructions.
+- [ ] `npm audit --audit-level=high`
+- [ ] Live-source test run when upstream behavior changed
+- [ ] No secrets/private paths/customer data added
