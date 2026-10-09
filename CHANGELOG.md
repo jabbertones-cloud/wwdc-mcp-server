@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fixed raw FTS5 error leak: punctuation-only / tokenless search queries quoted down to an empty FTS string and surfaced `fts5: syntax error near ""` as the MCP tool error. Every FTS entry point in `src/db/queries.ts` now returns an empty result for an empty query (`isEmptyFtsQuery` guard), so clients get a normal no-results response.
+- Added typo tolerance to `wwdc_search`: when the strict all-terms search returns zero hits, it retries once with any-term matching (`ftsQuoteOr`) and labels the response (`fallback: "or_relaxed"` in JSON, plus a judgment caveat) instead of dead-ending — e.g. "SwiftUI navigaton" now finds navigation sessions. Regression coverage in `tests/search-regression.ts`.
 - Added corpus-version stamping: every completed ingest run records a `corpus_versions` row (ingest date, per-source status, session count, WWDC year range, per-table counts), and `wwdc_ingest_status` now reports the latest stamp, so "which corpus is this?" is answerable from the server itself.
 - Added `.woodpecker/weekly-ingest.yml`: a weekly Woodpecker cron pipeline that gates on build + full tests, runs `ingest:all` into a persistent corpus volume, and proves the result with `verify:corpus`. (GitHub-hosted runners are not used; see the pipeline header for cron/volume activation.)
 - Extracted the optional-service degradation pattern (cached probe, null-safe access, one-time caveat, resettable verdict) from the embeddings service into `src/services/optional-service.ts`, with unit tests (`tests/optional-service.ts`, `tests/corpus-version.ts` wired into `npm test`). Embedding behavior is unchanged.

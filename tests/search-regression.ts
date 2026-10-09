@@ -12,7 +12,7 @@ import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { openDb, migrate } from "../src/db/schema.js";
 import { upsertSession, searchSessionsFts } from "../src/db/queries.js";
-import { ftsQuote } from "../src/tools/index.js";
+import { ftsQuote, ftsQuoteOr } from "../src/tools/index.js";
 import type { WwdcSession } from "../src/types.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -87,6 +87,45 @@ async function main(): Promise<void> {
     "deleted session must leave the index",
   );
   console.log("  ok  FTS index syncs on DELETE");
+
+  // 6. Punctuation-only queries quote down to "" — search must return an
+  // empty result, not leak a raw `fts5: syntax error` to the MCP client.
+  assert.equal(ftsQuote("!!!"), "", "punctuation-only query must quote to empty");
+  assert.deepEqual(
+    searchSessionsFts(db, ftsQuote("!!!"), 10, 0),
+    { hits: [], total: 0 },
+    "empty FTS query must return empty, not throw",
+  );
+  assert.deepEqual(
+    searchSessionsFts(db, "", 10, 0),
+    { hits: [], total: 0 },
+    "blank FTS query must return empty, not throw",
+  );
+  console.log("  ok  empty/punctuation-only FTS queries return empty without leaking sqlite errors");
+
+  // 7. Typo tolerance primitives: one misspelled token dead-ends the strict
+  // all-terms search; the labeled any-term fallback still finds the session.
+  const navId = "wwdc2024-77777";
+  upsertSession(db, {
+    ...base,
+    id: navId,
+    sessionNumber: "77777",
+    title: "The SwiftUI cookbook for navigation",
+    description: "NavigationStack and navigation destinations in SwiftUI.",
+    url: "https://developer.apple.com/videos/play/wwdc2024/77777/",
+    topics: ["SwiftUI"],
+  });
+  assert.equal(
+    searchSessionsFts(db, ftsQuote("SwiftUI navigaton"), 10, 0).total,
+    0,
+    "strict all-terms search must miss when one token is misspelled",
+  );
+  assert.ok(
+    searchSessionsFts(db, ftsQuoteOr("SwiftUI navigaton"), 10, 0).hits.some((h) => h.id === navId),
+    "any-term fallback must find the session despite the misspelled token",
+  );
+  assert.equal(ftsQuoteOr("SwiftUI"), ftsQuote("SwiftUI"), "single-token OR form must equal strict form");
+  console.log("  ok  any-term fallback recovers one-misspelled-token queries");
 
   db.close();
   fs.unlinkSync(tmp);
