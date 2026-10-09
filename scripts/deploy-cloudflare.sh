@@ -47,6 +47,16 @@ NODE
 ./node_modules/.bin/tsx scripts/verify-corpus.ts "$STAGED_DB" --require-all > "$PROOF"
 CORPUS_SHA256="$(node -e 'const p=require("./.deploy-data/corpus-proof.json");if(!p.ok||!(/^[a-f0-9]{64}$/.test(p.corpusVersion)))process.exit(1);process.stdout.write(p.corpusVersion)')"
 FILE_SHA256="$(node -e 'const p=require("./.deploy-data/corpus-proof.json");process.stdout.write(p.sha256)')"
+# Bake exact release identity into the image so even documentation-only source
+# changes trigger an ordinary Cloudflare Container rollout and a fresh start
+# with the new Worker-provided environment variables.
+WWDC_RELEASE_SHA="$SHA" WWDC_RELEASE_CORPUS_SHA256="$CORPUS_SHA256" node -e '
+  const fs=require("node:fs");
+  const sha=process.env.WWDC_RELEASE_SHA;
+  const corpus=process.env.WWDC_RELEASE_CORPUS_SHA256;
+  if (!/^[a-f0-9]{40}$/.test(sha ?? "") || !/^[a-f0-9]{64}$/.test(corpus ?? "")) process.exit(1);
+  fs.writeFileSync(".deploy-data/release.json", JSON.stringify({sourceSha:sha, corpusSha256:corpus})+"\\n");
+'
 echo "[release] source_git_sha=$SHA"
 echo "[release] staged_database_file_sha256=$FILE_SHA256"
 echo "[release] verified_logical_corpus_sha256=$CORPUS_SHA256"
