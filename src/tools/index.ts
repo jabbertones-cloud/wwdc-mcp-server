@@ -989,10 +989,10 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
   server.registerTool(
     "wwdc_sample_code_grep",
     {
-      title: "Grep WWDC sample-code URLs",
-      description: "Filter all indexed sample-code refs by substring/regex (e.g. find sessions with `.zip` or `SwiftData`).",
+      title: "Grep WWDC sample-code refs",
+      description: "Filter all indexed sample-code refs by substring/regex over title and URL (e.g. find sessions with `.zip` or `SwiftData`). Returns what was searched when nothing matches.",
       inputSchema: {
-        pattern: z.string().min(1).max(MAX_QUERY_CHARS).describe("Regex or literal substring."),
+        pattern: z.string().min(1).max(MAX_QUERY_CHARS).describe("Regex or literal substring matched against each ref's title and URL."),
         is_regex: z.boolean().default(false),
         limit: limitArg,
         format: formatArg,
@@ -1010,9 +1010,14 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
         }
       }
       const needle = pattern.toLowerCase();
-      const hits = rows.filter((r) => re ? re.test(r.url) : r.url.toLowerCase().includes(needle)).slice(0, limit);
-      const md = `# Sample-code grep: ${pattern}\n\n${hits.map((h) => `- [${h.session_id ?? "?"}] ${h.title}\n  ${h.url}`).join("\n")}`;
-      return { content: [{ type: "text", text: formatResponse(format, md, { pattern, count: hits.length, hits }) }] };
+      const matches = (text: string) => (re ? re.test(text) : text.toLowerCase().includes(needle));
+      const hits = rows.filter((r) => matches(r.url) || matches(r.title)).slice(0, limit);
+      const searched = { refs: rows.length, fields: ["title", "url"], mode: is_regex ? "regex" : "substring" };
+      const emptyNote = hits.length === 0
+        ? `\n\nNo sample-code refs match. Searched ${rows.length} indexed refs (${searched.mode} over title + URL). Browse what is indexed with \`wwdc_sample_code_list\`, or broaden the pattern.`
+        : "";
+      const md = `# Sample-code grep: ${pattern}\n\n${hits.map((h) => `- [${h.session_id ?? "?"}] ${h.title}\n  ${h.url}`).join("\n")}${emptyNote}`;
+      return { content: [{ type: "text", text: formatResponse(format, md, { pattern, count: hits.length, hits, searched }) }] };
     },
   );
 
