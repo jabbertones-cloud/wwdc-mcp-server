@@ -9,6 +9,7 @@ import path from "node:path";
 import os from "node:os";
 import type { Database as DatabaseType } from "better-sqlite3";
 import { pipeline, env } from "@huggingface/transformers";
+import { OptionalService } from "./optional-service.js";
 import {
   LOCAL_EMBED_MODEL,
   LOCAL_EMBED_DIM,
@@ -19,27 +20,22 @@ env.cacheDir = path.join(os.homedir(), ".cache", "huggingface", "hub");
 
 const HF_MODEL = LOCAL_EMBED_MODEL;
 
+// The embedding pipeline is an optional capability: when the local model
+// cannot load (offline first run, cold cache), search degrades to FTS only
+// instead of failing. OptionalService owns that degradation contract —
+// cached probe, null-safe access, one-time caveat, resettable verdict.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-let _pipe: any = null;
-let embeddingAvailable: boolean | null = null;
-let initErrorLogged = false;
+const embeddingService = new OptionalService<any>({
+  name: "embed",
+  init: () => pipeline("feature-extraction", HF_MODEL, { dtype: "fp32" }),
+  onUnavailable: (message) =>
+    console.error(
+      `[embed] local model unavailable; embeddings disabled for this process: ${message}`,
+    ),
+});
 
 async function getPipeline() {
-  if (_pipe) return _pipe;
-  if (embeddingAvailable === false) return null;
-  try {
-    _pipe = await pipeline("feature-extraction", HF_MODEL, { dtype: "fp32" });
-    embeddingAvailable = true;
-    return _pipe;
-  } catch (err) {
-    embeddingAvailable = false;
-    if (!initErrorLogged) {
-      const message = err instanceof Error ? err.message : String(err);
-      console.error(`[embed] local model unavailable; embeddings disabled for this process: ${message}`);
-      initErrorLogged = true;
-    }
-    return null;
-  }
+  return embeddingService.get();
 }
 
 /**
@@ -61,15 +57,12 @@ export async function embed(text: string): Promise<Float32Array | null> {
 /** Backward-compatible availability check used by ingest callers. */
 export async function checkEmbeddings(): Promise<boolean> {
   if (process.env.WWDC_SKIP_EMBEDDINGS === "1") return false;
-  if (embeddingAvailable !== null) return embeddingAvailable;
-  return Boolean(await getPipeline());
+  return embeddingService.isAvailable();
 }
 
 /** Reset cached availability so a later call may retry initialization. */
 export function resetEmbeddingStatus(): void {
-  _pipe = null;
-  embeddingAvailable = null;
-  initErrorLogged = false;
+  embeddingService.reset();
 }
 
 export function storeEmbedding(

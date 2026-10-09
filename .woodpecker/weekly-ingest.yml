@@ -1,0 +1,64 @@
+# Woodpecker pipeline: weekly WWDC corpus ingest + corpus-version stamp.
+#
+# GitHub Actions is not an option: GitHub never assigns a runner to this
+# account (account billing/spending-limit issue), so Woodpecker is the
+# only scheduler. This mirrors the mcp-torture nightly pattern.
+#
+# What runs, in order:
+#   1. gate: npm ci + build + full test suite. A red suite blocks the
+#      ingest — the corpus is only ever stamped from verified code.
+#   2. ingest: `npm run ingest:all` into the persistent corpus volume.
+#      Every completed run stamps a corpus_versions row (ingest date,
+#      per-source status, session count, per-table counts) — see
+#      src/db/corpus.ts. `wwdc_ingest_status` reports the latest stamp.
+#   3. verify: `npm run verify:corpus` — fail-closed corpus proof
+#      (integrity_check, WWDC years 2020-2026 present, required sources
+#      non-empty, sha256 of the DB file).
+#
+# Persistence: two named volumes keep weekly runs refreshing one corpus
+# instead of starting empty:
+#   - wwdc-corpus    -> /data          (WWDC_MCP_DATA_DIR=/data, DB at /data/wwdc.db)
+#   - wwdc-hf-cache  -> /root/.cache   (Hugging Face embedding-model cache)
+# The Woodpecker agent must permit these named volumes. Without them the
+# pipeline still proves ingest+verify green, but each run starts from an
+# empty corpus and stamps do not accumulate.
+#
+# First run warning: a cold corpus ingests seven WWDC years plus docs,
+# HIG, Evolution, and the Swift book, and downloads the local embedding
+# model. Expect that run to take substantially longer than later weekly
+# refreshes.
+#
+# Activation (Woodpecker UI, repo settings -> Cron):
+#   create a cron job named "weekly-ingest" with schedule "0 6 * * 1"
+#   (Mondays 06:00 UTC). The pipeline below runs on cron events only;
+#   the name filter keeps manually triggered runs from firing it.
+
+when:
+  event: [cron]
+  cron: [weekly-ingest]
+
+volumes:
+  - name: wwdc-corpus
+    path: /data
+  - name: wwdc-hf-cache
+    path: /root/.cache
+
+steps:
+  gate:
+    image: node:22-bookworm
+    commands:
+      - npm ci
+      - npm run build
+      - npm test
+
+  ingest:
+    image: node:22-bookworm
+    environment:
+      WWDC_MCP_DATA_DIR: /data
+    commands:
+      - npm run ingest:all
+
+  verify:
+    image: node:22-bookworm
+    commands:
+      - npm run verify:corpus -- /data/wwdc.db
