@@ -15,6 +15,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
 import { openDb, migrate, rebuildFts } from "../src/db/schema.js";
+import { recordCorpusVersion } from "../src/db/corpus.js";
 import {
   upsertSession, upsertTutorial, upsertHig, upsertEvolution,
   upsertSampleCode, upsertPathway, upsertAppleDoc, upsertSwiftBookChapter,
@@ -180,6 +181,7 @@ function seedDb(dbPath: string): void {
   recordIngest(db, "swiftbook", 1, 0, "seeded");
   recordIngest(db, "appstore", 1, 0, "seeded");
   rebuildFts(db);
+  recordCorpusVersion(db, "all", "e2e-seed");
   db.close();
 }
 
@@ -651,6 +653,11 @@ async function main(): Promise<void> {
       const r = await call("wwdc_ingest_status", { format: "json" });
       const data = JSON.parse(textOf(r));
       assert.ok(data.status.find((s: any) => s.source === "wwdc"));
+      assert.ok(data.corpus, "ingest status reports the corpus version stamp");
+      assert.equal(data.corpus.sessionCount, 3, "stamp counts the seeded sessions");
+      assert.equal(data.corpus.wwdcYears, "2024–2025");
+      assert.equal(data.corpus.ingestSource, "all");
+      assert.equal(data.corpus.sources.wwdc.itemsIngested, 2);
     }
 
     // 17) wwdc_security_manifest

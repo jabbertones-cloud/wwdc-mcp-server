@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 import http, { type IncomingMessage, type ServerResponse } from "node:http";
 import { createHash, timingSafeEqual } from "node:crypto";
+import fs from "node:fs";
+import { DB_PATH } from "./constants.js";
+import { getLatestCorpusVersion, hashCorpusContent } from "./db/corpus.js";
 import { pathToFileURL } from "node:url";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createWwdcServer, openWwdcDatabase, SERVER_NAME, SERVER_VERSION } from "./server.js";
@@ -14,7 +17,6 @@ const DEPLOYED_SHA = (
   ""
 ).trim();
 
-const CORPUS_SHA256 = (process.env.WWDC_MCP_CORPUS_SHA256 ?? "").trim().toLowerCase();
 
 function normalizePathPrefix(value: string | undefined): string {
   const raw = (value ?? "").trim();
@@ -116,7 +118,29 @@ async function readJsonBody(req: IncomingMessage): Promise<unknown> {
 export function createHttpServer() {
   const db = openWwdcDatabase();
   const { pathPrefix, healthPath, mcpPath } = httpPaths();
-
+  // This is the database the MCP actually opened, not a declared env hash.
+  const openDbIdentity = fs.statSync(DB_PATH);
+  const stamp = getLatestCorpusVersion(db);
+  const actualContentHash = stamp ? hashCorpusContent(db) : null;
+  const integrityOk = !stamp || (
+    stamp.version === actualContentHash && stamp.contentSha256 === actualContentHash
+  );
+  if (!integrityOk) throw new Error("WWDC corpus content hash differs from persisted version stamp");
+  function databaseReplaced(): boolean {
+    try {
+      const now = fs.statSync(DB_PATH);
+      return now.dev !== openDbIdentity.dev || now.ino !== openDbIdentity.ino;
+    } catch { return true; }
+  }
+  // SQLite keeps the old inode open after atomic promotion. The daemon must
+  // restart to bind to the new file; never keep answering from stale storage.
+  const swapWatcher = setInterval(() => {
+    if (databaseReplaced()) {
+      console.error("[wwdc-mcp-server] promoted DB detected; restarting to reopen corpus");
+      process.exit(75);
+    }
+  }, 5000);
+  swapWatcher.unref();
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
 
@@ -125,8 +149,9 @@ export function createHttpServer() {
         json(res, 405, { error: "method_not_allowed" }, { allow: "GET" });
         return;
       }
-      json(res, 200, {
-        ok: true,
+      const replaced = databaseReplaced();
+      json(res, replaced ? 503 : 200, {
+        ok: !replaced,
         service: SERVER_NAME,
         version: SERVER_VERSION,
         protocol: "streamable-http",
@@ -134,11 +159,24 @@ export function createHttpServer() {
         publicReadOnly: publicReadOnlyEnabled(),
         pathPrefix: pathPrefix || null,
         endpoints: { health: healthPath, mcp: mcpPath },
-        release: { sha: DEPLOYED_SHA || null, corpusSha256: /^[a-f0-9]{64}$/.test(CORPUS_SHA256) ? CORPUS_SHA256 : null },
+        release: { sha: DEPLOYED_SHA || null, corpusSha256: integrityOk ? actualContentHash : null },
+        corpus: {
+          verified: !!stamp && integrityOk && !replaced,
+          version: stamp?.version ?? null,
+          ingestedAt: stamp?.ingestedAt ?? null,
+          ingestSource: stamp?.ingestSource ?? null,
+          sessionCount: stamp?.sessionCount ?? null,
+          wwdcYears: stamp?.wwdcYears ?? null,
+          needsRestart: replaced,
+        },
       });
       return;
     }
 
+    if (url.pathname === mcpPath && databaseReplaced()) {
+      json(res, 503, { error: "corpus_replaced_restart_required" });
+      return;
+    }
     if (url.pathname !== mcpPath) {
       json(res, 404, { error: "not_found" });
       return;
@@ -219,6 +257,7 @@ export function createHttpServer() {
     }
   });
 
+  server.once("close", () => clearInterval(swapWatcher));
   return server;
 }
 

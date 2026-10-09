@@ -1,0 +1,48 @@
+# Weekly evidence-gated WWDC corpus refresh.
+#
+# Activation requirements (these YAML entries DO NOT create the cron job):
+# - Woodpecker repo cron: name weekly-ingest, "0 6 * * 1", timezone Etc/UTC,
+#   enabled, branch main; verify next_exec and first actual cron execution.
+# - Trusted repo with volumes permission, restricted to trusted main/cron.
+# - Docker agent with persistent named volumes wwdc-corpus and wwdc-hf-cache.
+# - Confirm the installed MCP consumes the refreshed database; a CI volume
+#   alone is NOT evidence that a separate M1 mini has been updated.
+#
+# Volumes are per-step (Woodpecker v3 syntax), not top-level YAML names.
+# The refresh script clones the old SQLite DB, ingests into a candidate,
+# verifies all required sources, preserves a rollback backup, and atomically
+# promotes only a verified completed candidate. Failed work never overwrites
+# the database. No GitHub-hosted runners are required.
+when:
+  - event: cron
+    cron: weekly-ingest
+    branch: main
+
+labels:
+  platform: linux/amd64
+
+steps:
+  gate:
+    image: node:22-bookworm
+    commands:
+      - npm ci
+      - npm run build
+      - npm test
+
+  refresh:
+    image: node:22-bookworm
+    volumes:
+      - wwdc-corpus:/data
+      - wwdc-hf-cache:/root/.cache
+    environment:
+      WWDC_MCP_DATA_DIR: /data
+    commands:
+      - npm run build
+      - node --import tsx scripts/refresh-corpus.ts --db /data/wwdc.db --source all
+
+  verify:
+    image: node:22-bookworm
+    volumes:
+      - wwdc-corpus:/data
+    commands:
+      - npm run verify:corpus -- /data/wwdc.db --require-all

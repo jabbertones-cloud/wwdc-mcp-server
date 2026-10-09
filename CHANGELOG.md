@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Added corpus-version stamping: every completed ingest run records a `corpus_versions` row (ingest date, per-source status, session count, WWDC year range, per-table counts), and `wwdc_ingest_status` now reports the latest stamp, so "which corpus is this?" is answerable from the server itself.
+- Added `.woodpecker/weekly-ingest.yml`: a weekly Woodpecker cron pipeline that gates on build + full tests, runs `ingest:all` into a persistent corpus volume, and proves the result with `verify:corpus`. (GitHub-hosted runners are not used; see the pipeline header for cron/volume activation.)
+- Extracted the optional-service degradation pattern (cached probe, null-safe access, one-time caveat, resettable verdict) from the embeddings service into `src/services/optional-service.ts`, with unit tests (`tests/optional-service.ts`, `tests/corpus-version.ts` wired into `npm test`). Embedding behavior is unchanged.
+
 ## v0.2.1 — 2026-10-07
 
 - Fixed MCPB startup under npm 12 by explicitly opting into the pinned GitHub release tarball with `--allow-remote=all`; the same path remains compatible with npm 11.
