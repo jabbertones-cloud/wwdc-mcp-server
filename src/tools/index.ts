@@ -63,7 +63,7 @@ import { APPLE_DOCS_BASE } from "../constants.js";
 import { formatResponse, errorText, truncate } from "../services/format.js";
 import { semanticSearch, checkEmbeddings } from "../services/embeddings.js";
 import { getLatestCorpusVersion } from "../db/corpus.js";
-import { DEFAULT_LIMIT, MAX_LIMIT, MAX_QUERY_CHARS, MAX_QUERY_TOKENS } from "../constants.js"
+import { DB_PATH, DEFAULT_LIMIT, MAX_LIMIT, MAX_QUERY_CHARS, MAX_QUERY_TOKENS } from "../constants.js"
 import { getSecurityManifest, scanUntrustedText } from "../security/manifest.js";
 
 const formatArg = z.enum(["markdown", "json"]).default("markdown").describe("Response format");
@@ -1956,11 +1956,19 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
       const status = listIngestStatus(db);
       const recent = listSessionsAddedSince(db, sinceIso, limit);
       const corpus = getLatestCorpusVersion(db);
+      // An absent DB file is silently auto-created empty by openDb, so "no
+      // stamp + zero sessions" can mean a missing/misconfigured corpus volume
+      // rather than a fresh install. Name that state explicitly instead of
+      // presenting a healthy-looking empty status.
+      const sessionsIndexed = listYears(db).reduce((n, y) => n + y.count, 0);
+      const corpusState = corpus ? "stamped" : sessionsIndexed > 0 ? "unstamped" : "empty";
       const corpusMd = corpus
         ? `\n\n## Corpus version\n- version: ${corpus.version}\n- ingested: ${corpus.ingestedAt} (via \`--source ${corpus.ingestSource}\`)\n- sessions: ${corpus.sessionCount}${corpus.wwdcYears ? ` (WWDC ${corpus.wwdcYears})` : ""}\n- total indexed items: ${corpus.totalItems}\n- server version at ingest: ${corpus.serverVersion ?? "unknown"}`
-        : `\n\n## Corpus version\n- none recorded yet; run \`npm run ingest:all\` to stamp the corpus`;
+        : corpusState === "empty"
+          ? `\n\n## Corpus version\n- **EMPTY CORPUS — 0 sessions indexed** in the database at \`${DB_PATH}\`. If this deployment is supposed to have a corpus, the data volume is missing or the DB path is wrong; an absent DB file is created empty on open, so this is how a missing corpus presents. Only run \`npm run ingest:all\` if this is a genuinely new install.`
+          : `\n\n## Corpus version\n- none recorded yet; run \`npm run ingest:all\` to stamp the corpus`;
       const md = `# Ingest status\n\n${status.map((s) => `- **${s.source}** — last run: ${s.lastRunAt}, items: ${s.itemsIngested}, errors: ${s.errors}${s.notes ? ` (${s.notes})` : ""}`).join("\n")}${corpusMd}\n\n## Added since ${sinceIso}\n${recent.map((r) => `- [${r.year}] ${r.title} (${r.id})`).join("\n")}`;
-      return { content: [{ type: "text", text: formatResponse(format, md, { status, recent, since: sinceIso, corpus }) }] };
+      return { content: [{ type: "text", text: formatResponse(format, md, { status, recent, since: sinceIso, corpus, corpus_state: corpusState, db_path: DB_PATH, sessions_indexed: sessionsIndexed }) }] };
     },
   );
 
