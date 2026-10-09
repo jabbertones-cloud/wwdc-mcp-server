@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "wwdc": {
+      "type": "streamable-http",
+      "url": "https://wwdc-mcp.smatdesigns.com/mcp",
+      "headers": {}
+    }
+  }
+}
