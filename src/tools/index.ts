@@ -118,6 +118,95 @@ export function ftsQuote(q: string): string {
   return tokens.join(" ");
 }
 
+function levenshtein(a: string, b: string): number {
+  if (a === b) return 0;
+  const m = a.length;
+  const n = b.length;
+  if (Math.abs(m - n) > 2) return 3; // corrections allow distance <= 2 only
+  let prev = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i++) {
+    const curr = [i];
+    for (let j = 1; j <= n; j++) {
+      curr[j] = Math.min(
+        prev[j] + 1,
+        curr[j - 1] + 1,
+        prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+    }
+    prev = curr;
+  }
+  return prev[n];
+}
+
+/** Did-you-mean for searches that match nothing even after the any-term
+ * fallback (e.g. "SwftUI navigaton" — both terms misspelled). The
+ * vocabulary is session titles + topics: the text a user is most likely
+ * echoing. Corrections are PROPOSED, never executed — silently running a
+ * guess would hide the miss behind plausible-looking results.
+ * Returns null when the query contains quoted phrases, or when any term
+ * has no plausible correction (better silence than a fabricated guess). */
+export function suggestQueryCorrection(
+  db: DatabaseType,
+  rawQuery: string,
+): { suggested_query: string; corrections: Array<{ from: string; to: string }> } | null {
+  if (rawQuery.includes('"')) return null;
+  const terms = rawQuery.split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return null;
+
+  // Vocabulary: lowercase token -> { count, display (most frequent casing) }.
+  const vocab = new Map<string, { count: number; forms: Map<string, number> }>();
+  const addText = (text: string) => {
+    for (const word of text.match(/[A-Za-z][A-Za-z0-9_@.#+]*/g) ?? []) {
+      if (word.length < 3) continue;
+      const key = word.toLowerCase();
+      const entry = vocab.get(key) ?? { count: 0, forms: new Map<string, number>() };
+      entry.count++;
+      entry.forms.set(word, (entry.forms.get(word) ?? 0) + 1);
+      vocab.set(key, entry);
+    }
+  };
+  const rows = db.prepare(`SELECT title, topics FROM sessions`).all() as Array<{ title: string; topics: string | null }>;
+  for (const row of rows) {
+    addText(row.title ?? "");
+    if (row.topics) {
+      try {
+        for (const topic of JSON.parse(row.topics) as string[]) addText(topic);
+      } catch { /* malformed topics JSON: title vocabulary still applies */ }
+    }
+  }
+  if (vocab.size === 0) return null;
+
+  const display = (key: string): string => {
+    const entry = vocab.get(key)!;
+    return [...entry.forms.entries()].sort((a, b) => b[1] - a[1])[0][0];
+  };
+
+  const corrections: Array<{ from: string; to: string }> = [];
+  const suggested: string[] = [];
+  for (const term of terms) {
+    const key = term.toLowerCase();
+    if (vocab.has(key)) {
+      suggested.push(term);
+      continue;
+    }
+    const maxDist = term.length >= 8 ? 2 : 1;
+    let best: { key: string; dist: number; count: number } | null = null;
+    for (const [candidate, entry] of vocab) {
+      if (Math.abs(candidate.length - key.length) > maxDist) continue;
+      const dist = levenshtein(key, candidate);
+      if (dist > maxDist) continue;
+      if (!best || dist < best.dist || (dist === best.dist && entry.count > best.count)) {
+        best = { key: candidate, dist, count: entry.count };
+      }
+    }
+    if (!best) return null; // one uncorrectable term: do not guess the rest
+    corrections.push({ from: term, to: display(best.key) });
+    suggested.push(display(best.key));
+  }
+  if (corrections.length === 0) return null;
+  return { suggested_query: suggested.join(" "), corrections };
+}
+
 /** Any-term (OR) variant of ftsQuote, used only as a labeled fallback when
  * the strict all-terms search returns nothing — e.g. one misspelled token
  * ("SwiftUI navigaton") otherwise dead-ends at zero hits even though the
@@ -801,11 +890,17 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
       if (fallback && searchJudgment) {
         searchJudgment.caveats.push("No all-terms match (a term may be misspelled); showing broader any-term matches.");
       }
+      const didYouMean = total === 0 ? suggestQueryCorrection(db, query) : null;
+      if (didYouMean && searchJudgment) {
+        searchJudgment.caveats.push(`No matches for the query as typed. Did you mean: "${didYouMean.suggested_query}"? (suggested, not run)`);
+      }
       const contentSafety = scanUntrustedText(judgedPage.map((hit) => `${hit.title}\n${hit.snippet ?? ""}`).join("\n\n"));
-      const md = renderSearchMd(query, judgedPage, total, searchJudgment, detail);
+      const baseMd = renderSearchMd(query, judgedPage, total, searchJudgment, detail);
+      const md = didYouMean ? `${baseMd}\n\nDid you mean: **${didYouMean.suggested_query}**? (suggested, not run)` : baseMd;
       const data = {
         query,
         ...(fallback ? { fallback } : {}),
+        ...(didYouMean ? { did_you_mean: didYouMean } : {}),
         filters: { kinds, year, year_min, year_max, topics, platforms, require_transcript },
         total,
         count: judgedPage.length,

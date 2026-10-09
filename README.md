@@ -437,7 +437,7 @@ The test suite asserts that both stdio and Streamable HTTP expose exactly 45 too
 
 ## Search example
 
-`wwdc_search` supports year ranges, topics, platforms, transcript requirements, output detail, and conservative judgment metadata.
+`wwdc_search` supports year ranges, topics, platforms, transcript requirements, output detail, and conservative judgment metadata. A fully-misspelled query that matches nothing returns a proposed correction from the corpus vocabulary (`did_you_mean`) instead of a bare zero — the suggestion is labeled and never auto-run.
 
 ```json
 {
