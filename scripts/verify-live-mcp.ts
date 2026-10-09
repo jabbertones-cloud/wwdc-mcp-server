@@ -52,6 +52,8 @@ async function main() {
     assert.ok(version.sessionCount >= 1200, "production session count floor");
     assert.equal(version.wwdcYears, "2020–2026", "seven-year corpus");
   } finally { db.close(); }
+  assert.equal(health.corpus?.verified, true, "live server must independently confirm its corpus");
+  assert.equal(health.corpus?.version, version.version, "live server reports matching corpus");
   assert.equal(health.release?.corpusSha256, version.contentSha256,
     "health corpus identity must equal SQLite contents");
 

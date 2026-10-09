@@ -273,7 +273,7 @@ export function recordIngest(
   itemsIngested: number,
   errors: number,
   notes?: string,
-  success = true,
+  success = errors === 0 && itemsIngested > 0,
 ): void {
   const now = nowIso();
   db.prepare(`

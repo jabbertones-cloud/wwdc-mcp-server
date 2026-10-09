@@ -171,4 +171,18 @@ if (process.exitCode) {
   console.error("[ingest-parse] some tests FAILED");
   process.exit(1);
 }
+  {
+    const { tutorialSlugFromUrl } = await import("../src/ingest/tutorials.js");
+    assert.equal(
+      tutorialSlugFromUrl("/tutorials/swiftui/animating-views#Add-animation"),
+      "swiftui/animating-views",
+      "a DocC chapter anchor must not cause a separate network request",
+    );
+    assert.equal(
+      tutorialSlugFromUrl("/tutorials/swiftui/animating-views?lang=swift"),
+      "swiftui/animating-views",
+    );
+    assert.equal(tutorialSlugFromUrl("/documentation/swiftui/view"), null);
+  }
+
 console.log("[ingest-parse] all parser tests passed");

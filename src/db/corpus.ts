@@ -40,7 +40,7 @@ export interface CorpusVersion {
   stampId: number;
   /** Stable SHA-256 of the indexed content rows, independent of ingest wall clock. */
   contentSha256: string;
-  /** Corpus identity: the ingest-completion timestamp. Sortable, unique per run. */
+  /** Content-addressed corpus identity: SHA-256 of indexed canonical source rows. */
   version: string;
   ingestedAt: string;
   /** The `ingest --source` argument whose run produced this stamp. */
@@ -63,6 +63,8 @@ export function hashCorpusContent(db: DatabaseType): string {
     for (const row of db.prepare(`SELECT * FROM ${table} ORDER BY id`).iterate() as Iterable<Record<string, unknown>>) {
       hash.update("ROW\n");
       for (const [field, value] of Object.entries(row)) {
+        // Exclude ingest-local timestamps from deterministic content identity.
+        if (field === "updated_at" || field === "extracted_at") continue;
         hash.update(field + ":");
         if (Buffer.isBuffer(value)) hash.update(value);
         else hash.update(JSON.stringify(value ?? null));

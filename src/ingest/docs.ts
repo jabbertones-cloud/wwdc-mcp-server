@@ -8,7 +8,7 @@
 
 import type { Database as DatabaseType } from "better-sqlite3";
 import { APPLE_DOCS_BASE, APPLE_DOCS_JSON, APPLE_DOC_SEEDS } from "../constants.js";
-import { httpGet } from "../services/http.js";
+import { httpGet, HttpError } from "../services/http.js";
 import type { AppleDocPage } from "../types.js";
 import { recordIngest, upsertAppleDoc } from "../db/queries.js";
 import { checkEmbeddings, embed, storeEmbedding } from "../services/embeddings.js";
@@ -130,6 +130,9 @@ export async function ingestAppleDocs(
 ): Promise<{ ingested: number; errors: number }> {
   let ingested = 0;
   let errors = 0;
+  let skippedNotFound = 0;
+  const unavailable: string[] = [];
+  const failures: string[] = [];
   const maxPages = Math.max(1, parseInt(process.env.WWDC_DOCS_MAX_PAGES ?? "2500", 10));
   const embeddingsOn = await checkEmbeddings();
   const visited = new Set<string>();
@@ -141,9 +144,20 @@ export async function ingestAppleDocs(
     const path = queue.shift()!;
     if (visited.has(path)) continue;
     visited.add(path);
-    const node = await fetchAppleDoc(path);
-    if (!node) {
-      errors++;
+    let node: DoccNode;
+    try {
+      const { data } = await httpGet<DoccNode>(APPLE_DOCS_JSON + "/" + path + ".json");
+      if (!data?.metadata) throw new Error("unexpected Apple documentation DocC response");
+      node = data;
+    } catch (error) {
+      const retired = error instanceof HttpError && (error.status === 404 || error.status === 410);
+      if (retired && !seeds.map(normalizeDocPath).includes(path)) {
+        skippedNotFound++;
+        if (unavailable.length < 10) unavailable.push(path);
+      } else {
+        errors++;
+        if (failures.length < 10) failures.push(path + ": " + (error instanceof Error ? error.message : String(error)));
+      }
       continue;
     }
     const page = appleDocToPage(path, node);
@@ -162,6 +176,16 @@ export async function ingestAppleDocs(
     }
   }
 
-  recordIngest(db, "docs", ingested, errors, `seeds: ${seeds.length}, visited: ${visited.size}, max_pages: ${maxPages}`);
+  if (skippedNotFound > Math.max(10, Math.floor(visited.size * 0.15))) {
+    errors++;
+    failures.push("unavailable Apple documentation references exceeded 15%");
+  }
+  console.log("[docs] crawl:", JSON.stringify({
+    visited: visited.size, ingested, skippedNotFound, errors,
+    unavailableExamples: unavailable, failureExamples: failures,
+  }));
+  recordIngest(db, "docs", ingested, errors,
+    "seeds: " + seeds.length + ", visited: " + visited.size + ", max_pages: " + maxPages +
+    ", skipped_not_found: " + skippedNotFound + ", sample: " + unavailable.join(","));
   return { ingested, errors };
 }

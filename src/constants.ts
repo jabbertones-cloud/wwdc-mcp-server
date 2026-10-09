@@ -89,7 +89,7 @@ export const APPLE_DOC_SEEDS: readonly string[] = [
   // Notifications + background
   "usernotifications",
   "backgroundtasks",
-  "pushtoconnect",
+  "pushtotalk",
   // Content + media
   "photosui",
   "photos",
@@ -100,7 +100,7 @@ export const APPLE_DOC_SEEDS: readonly string[] = [
   "naturallanguage",
   // UI extensions
   "widgetkit",
-  "app-clips",
+  "appclip",
   "activitykit",
   "shazamkit",
   // Gaming
@@ -128,7 +128,7 @@ export const APPLE_DOC_SEEDS: readonly string[] = [
   // App Store Connect + developer services
   "appstoreconnectapi",
   "devicecheck",
-  "businesschat",
+  // businesschat DocC root returns 404 (removed/renamed as of 2026-10-09).
   "classkit",
   "corehaptics",
 ] as const;
