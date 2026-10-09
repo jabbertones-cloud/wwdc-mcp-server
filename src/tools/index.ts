@@ -62,6 +62,7 @@ import { httpGet } from "../services/http.js";
 import { APPLE_DOCS_BASE } from "../constants.js";
 import { formatResponse, errorText, truncate } from "../services/format.js";
 import { semanticSearch, checkEmbeddings } from "../services/embeddings.js";
+import { getLatestCorpusVersion } from "../db/corpus.js";
 import { DEFAULT_LIMIT, MAX_LIMIT } from "../constants.js";
 import { getSecurityManifest, scanUntrustedText } from "../security/manifest.js";
 
@@ -1880,7 +1881,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
     "wwdc_ingest_status",
     {
       title: "Ingest status + what's new",
-      description: "Shows per-source last-run metadata and the most recent sessions added. Use to confirm the index is fresh before querying.",
+      description: "Shows the corpus version stamp (ingest date, per-source status, session count), per-source last-run metadata, and the most recent sessions added. Use to confirm which corpus this is and that the index is fresh before querying.",
       inputSchema: {
         since: z.string().optional().describe("ISO timestamp; defaults to 7 days ago."),
         limit: limitArg,
@@ -1892,8 +1893,12 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
       const sinceIso = since ?? new Date(Date.now() - 7 * 24 * 3600_000).toISOString();
       const status = listIngestStatus(db);
       const recent = listSessionsAddedSince(db, sinceIso, limit);
-      const md = `# Ingest status\n\n${status.map((s) => `- **${s.source}** — last run: ${s.lastRunAt}, items: ${s.itemsIngested}, errors: ${s.errors}${s.notes ? ` (${s.notes})` : ""}`).join("\n")}\n\n## Added since ${sinceIso}\n${recent.map((r) => `- [${r.year}] ${r.title} (${r.id})`).join("\n")}`;
-      return { content: [{ type: "text", text: formatResponse(format, md, { status, recent, since: sinceIso }) }] };
+      const corpus = getLatestCorpusVersion(db);
+      const corpusMd = corpus
+        ? `\n\n## Corpus version\n- version: ${corpus.version}\n- ingested: ${corpus.ingestedAt} (via \`--source ${corpus.ingestSource}\`)\n- sessions: ${corpus.sessionCount}${corpus.wwdcYears ? ` (WWDC ${corpus.wwdcYears})` : ""}\n- total indexed items: ${corpus.totalItems}\n- server version at ingest: ${corpus.serverVersion ?? "unknown"}`
+        : `\n\n## Corpus version\n- none recorded yet; run \`npm run ingest:all\` to stamp the corpus`;
+      const md = `# Ingest status\n\n${status.map((s) => `- **${s.source}** — last run: ${s.lastRunAt}, items: ${s.itemsIngested}, errors: ${s.errors}${s.notes ? ` (${s.notes})` : ""}`).join("\n")}${corpusMd}\n\n## Added since ${sinceIso}\n${recent.map((r) => `- [${r.year}] ${r.title} (${r.id})`).join("\n")}`;
+      return { content: [{ type: "text", text: formatResponse(format, md, { status, recent, since: sinceIso, corpus }) }] };
     },
   );
 

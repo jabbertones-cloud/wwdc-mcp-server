@@ -7,6 +7,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { DB_PATH, DATA_DIR, WWDC_YEARS } from "../constants.js";
 import { openDb, migrate, rebuildFts } from "../db/schema.js";
+import { recordCorpusVersion } from "../db/corpus.js";
+import { SERVER_VERSION } from "../server.js";
 import { ingestWwdc } from "./wwdc.js";
 import { ingestTutorials } from "./tutorials.js";
 import { ingestPathways } from "./pathways.js";
@@ -131,6 +133,14 @@ async function main(): Promise<void> {
 
     console.log("[ingest] Rebuilding FTS…");
     rebuildFts(db);
+
+    // Stamp the corpus before closing: date, per-source status, and content
+    // counts, so any later "which corpus is this?" has a recorded answer.
+    // A failed ingest throws before this point and leaves no stamp.
+    const stamp = recordCorpusVersion(db, args.source, SERVER_VERSION);
+    console.log(
+      `[ingest] corpus version stamped: ${stamp.version} sessions=${stamp.sessionCount} total_items=${stamp.totalItems}`,
+    );
   } finally {
     db.close();
   }

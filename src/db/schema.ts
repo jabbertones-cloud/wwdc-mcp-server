@@ -11,6 +11,7 @@
  *   - sample_code       Extracted sample-code bundles
  *   - embeddings        local nomic-embed-text-v1.5 vectors (768-dim) per doc_id
  *   - ingest_status     Last-run metadata per source
+ *   - corpus_versions   One version stamp per completed ingest run (db/corpus.ts)
  *
  * FTS5 virtual tables provide keyword search.
  */
@@ -309,6 +310,23 @@ export function migrate(db: DatabaseType): void {
       items_ingested INTEGER NOT NULL DEFAULT 0,
       errors INTEGER NOT NULL DEFAULT 0,
       notes TEXT
+    );
+
+    -- Corpus version stamps ------------------------------------------------
+    -- One row per completed ingest run (see src/db/corpus.ts). The latest
+    -- stamp answers "which corpus is this?"; wwdc_ingest_status reports it
+    -- alongside the per-source status above.
+    CREATE TABLE IF NOT EXISTS corpus_versions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      version TEXT NOT NULL,
+      ingested_at TEXT NOT NULL,
+      ingest_source TEXT NOT NULL,
+      session_count INTEGER NOT NULL DEFAULT 0,
+      total_items INTEGER NOT NULL DEFAULT 0,
+      wwdc_years TEXT,
+      counts TEXT NOT NULL DEFAULT '{}',
+      sources TEXT NOT NULL DEFAULT '{}',
+      server_version TEXT
     );
 
     -- FTS5 virtual tables -----------------------------------------------
