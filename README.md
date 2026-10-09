@@ -50,7 +50,7 @@ You do not need to learn 45 tool names first. Start with the job you are trying 
 
 - **Modernize an Apple app:** call `swift_app_audit` with the repo's actual feature/API/problem, then follow its evidence into the focused WWDC, HIG, documentation, and API tools.
 - **Answer “what changed?”:** use `wwdc_what_changed` or `wwdc_search` with a framework/API and a year range, then open the strongest session/transcript evidence.
-- **Check shipping risk:** search `appstore_guidelines_search`, API availability/deprecation tools, and `wwdc_ingest_status` before treating a recommendation as current.
+- **Check shipping risk:** search `appstore_guidelines_search`, API availability/deprecation tools, and `wwdc_ingest_status` before treating a recommendation as current. `wwdc_ingest_status` names the corpus state (`stamped` / `unstamped` / `empty`); an `empty` state means 0 sessions indexed and warns that a missing corpus volume may be the cause, rather than presenting a healthy empty status.
 
 The server instructions teach connected agents this routing automatically; the catalog remains available when you need a narrower source.
 
