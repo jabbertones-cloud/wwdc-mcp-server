@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "wwdc-mcp",
+  "account_id": "793e209ea35f2e064b4b49b168a26c22",
   "main": "deploy/cloudflare/worker.js",
   "compatibility_date": "2026-10-07",
   "observability": {
