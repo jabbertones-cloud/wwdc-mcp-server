@@ -7,6 +7,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { DB_PATH, DATA_DIR, WWDC_YEARS } from "../constants.js";
 import { openDb, migrate, rebuildFts } from "../db/schema.js";
+import { recordCorpusVersion } from "../db/corpus.js";
+import { SERVER_VERSION } from "../server.js";
 import { ingestWwdc } from "./wwdc.js";
 import { ingestTutorials } from "./tutorials.js";
 import { ingestPathways } from "./pathways.js";
@@ -38,6 +40,13 @@ function parseArgs(argv: string[]): Args {
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
+  const validSources = new Set([
+    "wwdc", "tutorials", "pathways", "hig", "evolution", "docs",
+    "swiftbook", "appstore", "all", "release-notes", "deprecation-backfill",
+    "swift-forums", "apple-dev-forums", "session-summaries", "cross-reference",
+    "export-deprecation-qa",
+  ]);
+  if (!validSources.has(args.source)) throw new Error("unknown ingest source: " + args.source);
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
   const db = openDb(DB_PATH);
@@ -131,6 +140,25 @@ async function main(): Promise<void> {
 
     console.log("[ingest] Rebuilding FTS…");
     rebuildFts(db);
+
+    // An attempted fetch is not a successful corpus refresh. Preserve
+    // source-level statuses for diagnosis but do NOT claim a complete stamp
+    // when an upstream source failed or yielded no material.
+    const failed = Object.entries(results).filter(([, result]) =>
+      result.errors > 0 || result.ingested < 1,
+    );
+    if (failed.length) {
+      throw new Error("incomplete ingest; refusing corpus stamp: " +
+        failed.map(([name, result]) => name + "=" + JSON.stringify(result)).join(", "));
+    }
+
+    // Stamp the corpus before closing: date, per-source status, and content
+    // counts, so any later "which corpus is this?" has a recorded answer.
+    // A failed ingest throws before this point and leaves no stamp.
+    const stamp = recordCorpusVersion(db, args.source, SERVER_VERSION);
+    console.log(
+      `[ingest] corpus version stamped: ${stamp.version} sessions=${stamp.sessionCount} total_items=${stamp.totalItems}`,
+    );
   } finally {
     db.close();
   }

@@ -62,7 +62,8 @@ import { httpGet } from "../services/http.js";
 import { APPLE_DOCS_BASE } from "../constants.js";
 import { formatResponse, errorText, truncate } from "../services/format.js";
 import { semanticSearch, checkEmbeddings } from "../services/embeddings.js";
-import { DEFAULT_LIMIT, MAX_LIMIT, MAX_QUERY_CHARS, MAX_QUERY_TOKENS } from "../constants.js";
+import { getLatestCorpusVersion } from "../db/corpus.js";
+import { DEFAULT_LIMIT, MAX_LIMIT, MAX_QUERY_CHARS, MAX_QUERY_TOKENS } from "../constants.js"
 import { getSecurityManifest, scanUntrustedText } from "../security/manifest.js";
 
 const formatArg = z.enum(["markdown", "json"]).default("markdown").describe("Response format");
@@ -1109,7 +1110,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
       description:
         "Find repeated implementation/product patterns across indexed WWDC sessions, Apple docs, tutorials, HIG, and Swift Evolution. Use for API adoption, app architecture, and opportunity discovery.",
       inputSchema: {
-        query: z.string().min(1).describe("Pattern area, API, feature, or product need, e.g. `App Intents Spotlight actions` or `SwiftData migration`."),
+        query: z.string().min(1).max(MAX_QUERY_CHARS).describe("Pattern area, API, feature, or product need, e.g. `App Intents Spotlight actions` or `SwiftData migration`."),
         platforms: z.array(platformArg).default([]),
         frameworks: z.array(z.string().min(1)).default([]),
         year_min: z.number().int().default(2020),
@@ -1204,8 +1205,8 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
         focus: swiftAuditFocusArg.describe("Audit focus area."),
         platforms: z.array(platformArg).default([]).describe("Target Apple platforms."),
         frameworks: z.array(z.string().min(1)).default([]).describe("Frameworks or APIs, e.g. SwiftUI, SwiftData, AppKit, StoreKit."),
-        feature: z.string().optional().describe("Feature/screen/workflow being audited."),
-        symptom: z.string().optional().describe("Observed bug, performance issue, warning, or failure mode."),
+        feature: z.string().max(MAX_QUERY_CHARS).optional().describe("Feature/screen/workflow being audited."),
+        symptom: z.string().max(MAX_QUERY_CHARS).optional().describe("Observed bug, performance issue, warning, or failure mode."),
         year_min: z.number().int().default(2023).describe("Prefer WWDC sessions from this year or newer."),
         include_evolution: z.boolean().default(true),
         limit: limitArg,
@@ -1410,7 +1411,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
       title: "Search App Store Review Guidelines",
       description: "Full-text search across all App Store Review Guidelines sections (Safety, Performance, Business, Design, Legal). Returns matching sections with text excerpts. Use before submitting an app or when auditing for policy compliance.",
       inputSchema: {
-        query: z.string().describe("Search query, e.g. 'privacy tracking', 'in-app purchase', 'advertising', 'kids category'."),
+        query: z.string().min(1).max(MAX_QUERY_CHARS).describe("Search query, e.g. 'privacy tracking', 'in-app purchase', 'advertising', 'kids category'."),
         limit: limitArg,
         offset: offsetArg,
         format: formatArg,
@@ -1725,7 +1726,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
         year: z.number().int().describe("WWDC year, e.g. 2024."),
         sort_by: z.enum(["session_number", "duration", "title"]).default("session_number").describe("Sort column."),
         sort_dir: z.enum(["asc", "desc"]).default("asc").describe("Sort direction."),
-        topic: z.string().optional().describe("Topic substring filter, e.g. 'SwiftUI', 'Swift Concurrency'."),
+        topic: z.string().max(MAX_QUERY_CHARS).optional().describe("Topic substring filter, e.g. 'SwiftUI', 'Swift Concurrency'."),
         has_transcript: z.boolean().optional().describe("Only return sessions with an indexed transcript."),
         has_sample_code: z.boolean().optional().describe("Only return sessions with sample code URLs."),
         limit: z.number().int().min(1).max(100).default(20),
@@ -1762,7 +1763,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
       title: "Search sessions by speaker",
       description: "Find all WWDC sessions featuring a speaker. Case-insensitive substring match against the speakers field.",
       inputSchema: {
-        speaker: z.string().describe("Speaker name (or partial name), e.g. 'Tim Cook', 'Quinn'."),
+        speaker: z.string().min(1).max(MAX_QUERY_CHARS).describe("Speaker name (or partial name), e.g. 'Tim Cook', 'Quinn'."),
         year: z.number().int().optional().describe("Restrict to a specific WWDC year."),
         limit: z.number().int().min(1).max(50).default(20),
         format: formatArg,
@@ -1800,7 +1801,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
       title: "Full-text search inside WWDC transcripts",
       description: "Search the full text of indexed WWDC transcripts using FTS5. Returns matching sessions with a snippet showing the matched text in context.",
       inputSchema: {
-        query: z.string().describe("Search phrase, e.g. 'Swift concurrency structured' or 'observable macro'."),
+        query: z.string().min(1).max(MAX_QUERY_CHARS).describe("Search phrase, e.g. 'Swift concurrency structured' or 'observable macro'."),
         year: z.number().int().optional().describe("Restrict to a specific WWDC year."),
         year_min: z.number().int().optional().describe("Minimum WWDC year (inclusive), e.g. 2022."),
         year_max: z.number().int().optional().describe("Maximum WWDC year (inclusive), e.g. 2024."),
@@ -1811,7 +1812,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     async ({ query, year, year_min, year_max, limit, offset, format }) => {
-      const { hits, total } = searchTranscripts(db, query, { year, yearMin: year_min, yearMax: year_max, limit, offset });
+      const { hits, total } = searchTranscripts(db, ftsQuote(query), { year, yearMin: year_min, yearMax: year_max, limit, offset });
       if (hits.length === 0) {
         return { content: [{ type: "text", text: `No transcript matches for **${query}**. Try broader terms or check \`wwdc_ingest_status\` to confirm transcripts are indexed.` }] };
       }
@@ -1894,7 +1895,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
     "wwdc_ingest_status",
     {
       title: "Ingest status + what's new",
-      description: "Shows per-source last-run metadata and the most recent sessions added. Use to confirm the index is fresh before querying.",
+      description: "Shows the corpus version stamp (ingest date, per-source status, session count), per-source last-run metadata, and the most recent sessions added. Use to confirm which corpus this is and that the index is fresh before querying.",
       inputSchema: {
         since: z.string().optional().describe("ISO timestamp; defaults to 7 days ago."),
         limit: limitArg,
@@ -1906,8 +1907,12 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
       const sinceIso = since ?? new Date(Date.now() - 7 * 24 * 3600_000).toISOString();
       const status = listIngestStatus(db);
       const recent = listSessionsAddedSince(db, sinceIso, limit);
-      const md = `# Ingest status\n\n${status.map((s) => `- **${s.source}** — last run: ${s.lastRunAt}, items: ${s.itemsIngested}, errors: ${s.errors}${s.notes ? ` (${s.notes})` : ""}`).join("\n")}\n\n## Added since ${sinceIso}\n${recent.map((r) => `- [${r.year}] ${r.title} (${r.id})`).join("\n")}`;
-      return { content: [{ type: "text", text: formatResponse(format, md, { status, recent, since: sinceIso }) }] };
+      const corpus = getLatestCorpusVersion(db);
+      const corpusMd = corpus
+        ? `\n\n## Corpus version\n- version: ${corpus.version}\n- ingested: ${corpus.ingestedAt} (via \`--source ${corpus.ingestSource}\`)\n- sessions: ${corpus.sessionCount}${corpus.wwdcYears ? ` (WWDC ${corpus.wwdcYears})` : ""}\n- total indexed items: ${corpus.totalItems}\n- server version at ingest: ${corpus.serverVersion ?? "unknown"}`
+        : `\n\n## Corpus version\n- none recorded yet; run \`npm run ingest:all\` to stamp the corpus`;
+      const md = `# Ingest status\n\n${status.map((s) => `- **${s.source}** — last run: ${s.lastRunAt}, items: ${s.itemsIngested}, errors: ${s.errors}${s.notes ? ` (${s.notes})` : ""}`).join("\n")}${corpusMd}\n\n## Added since ${sinceIso}\n${recent.map((r) => `- [${r.year}] ${r.title} (${r.id})`).join("\n")}`;
+      return { content: [{ type: "text", text: formatResponse(format, md, { status, recent, since: sinceIso, corpus }) }] };
     },
   );
 
@@ -1984,7 +1989,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
       title: "Search Apple release notes",
       description: "Full-text search across Apple OS/SDK release notes (iOS, macOS, Xcode, watchOS, tvOS, visionOS). Returns matching entries with snippets.",
       inputSchema: {
-        query: z.string().min(1).describe("Search query, e.g. \"SwiftUI deprecation\", \"StoreKit 2\""),
+        query: z.string().min(1).max(MAX_QUERY_CHARS).describe("Search query, e.g. \"SwiftUI deprecation\", \"StoreKit 2\""),
         os: z.enum(["iOS", "macOS", "Xcode", "watchOS", "tvOS", "visionOS"]).optional().describe("Filter by OS/platform"),
         limit: z.number().int().min(1).max(30).default(10),
         offset: offsetArg,
@@ -2049,7 +2054,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
       title: "Federated search across all Apple content",
       description: "Search all indexed Apple content at once: WWDC sessions, Apple docs, HIG, and Swift Evolution. Results are merged and ranked by relevance.",
       inputSchema: {
-        query: z.string().min(1).describe("Search query"),
+        query: z.string().min(1).max(MAX_QUERY_CHARS).describe("Search query"),
         types: z.array(z.enum(["session", "doc", "hig", "evolution"])).default(["session", "doc", "hig", "evolution"]).describe("Content types to include"),
         limit: z.number().int().min(1).max(40).default(15),
         format: formatArg,
@@ -2121,7 +2126,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
       description:
         "Full-text search across forums.swift.org discussions, including Swift Evolution proposals discussion, using-swift questions, and development topics. Returns ranked forum posts with title, category, URL, and a content snippet. Useful for finding community discussion around Swift proposals, language behavior, compiler questions, and API usage.",
       inputSchema: {
-        query: z.string().min(1).describe("Search query, e.g. 'sendable', 'actor isolation', 'async sequence', 'SE-0400'."),
+        query: z.string().min(1).max(MAX_QUERY_CHARS).describe("Search query, e.g. 'sendable', 'actor isolation', 'async sequence', 'SE-0400'."),
         category: z
           .enum(["swift-evolution", "using-swift", "development"])
           .optional()
@@ -2156,7 +2161,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
       description:
         "Full-text search across Apple Developer Forums posts ingested from RSS feeds. Covers SwiftUI, Swift, Combine, and other recent developer discussions. Returns ranked posts with title, URL, and content snippet.",
       inputSchema: {
-        query: z.string().min(1).describe("Search query, e.g. 'SwiftUI list performance', 'NavigationStack', 'Combine publisher'."),
+        query: z.string().min(1).max(MAX_QUERY_CHARS).describe("Search query, e.g. 'SwiftUI list performance', 'NavigationStack', 'Combine publisher'."),
         limit: limitArg,
         offset: offsetArg,
         format: formatArg,
