@@ -718,9 +718,9 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
       inputSchema: {
         query: queryArg,
         kinds: z.array(z.enum(["session", "doc", "tutorial", "hig", "evolution"])).default(["session", "doc", "tutorial", "hig", "evolution"]),
-        year: z.number().int().optional().describe("Restrict to a WWDC year."),
-        year_min: z.number().int().optional().describe("Restrict WWDC sessions to this year or newer."),
-        year_max: z.number().int().optional().describe("Restrict WWDC sessions to this year or older."),
+        year: z.number().int().optional().describe("Restrict WWDC sessions to an exact year (sessions only — tutorials, docs, HIG, and evolution results are not year-filtered)."),
+        year_min: z.number().int().optional().describe("Restrict WWDC sessions to this year or newer (sessions only)."),
+        year_max: z.number().int().optional().describe("Restrict WWDC sessions to this year or older (sessions only)."),
         topics: z.array(z.string().min(1)).default([]).describe("Require WWDC session topics/status text to include every value."),
         platforms: z.array(z.string().min(1)).default([]).describe("Require WWDC session platforms to include every value."),
         require_transcript: z.boolean().default(false).describe("Only return WWDC sessions with transcript text."),
@@ -801,12 +801,16 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
       if (fallback && searchJudgment) {
         searchJudgment.caveats.push("No all-terms match (a term may be misspelled); showing broader any-term matches.");
       }
+      const yearRequested = year !== undefined || year_min !== undefined || year_max !== undefined;
+      if (yearRequested && kinds.some((k) => k !== "session") && searchJudgment) {
+        searchJudgment.caveats.push("Year filters apply to WWDC sessions only; tutorial, doc, HIG, and Swift Evolution results are not filtered by year.");
+      }
       const contentSafety = scanUntrustedText(judgedPage.map((hit) => `${hit.title}\n${hit.snippet ?? ""}`).join("\n\n"));
       const md = renderSearchMd(query, judgedPage, total, searchJudgment, detail);
       const data = {
         query,
         ...(fallback ? { fallback } : {}),
-        filters: { kinds, year, year_min, year_max, topics, platforms, require_transcript },
+        filters: { kinds, year, year_min, year_max, topics, platforms, require_transcript, ...(yearRequested ? { year_applies_to: ["session"] } : {}) },
         total,
         count: judgedPage.length,
         hits: judgedPage,
