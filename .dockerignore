@@ -18,4 +18,5 @@ coverage
 data
 .deploy-data/*
 !.deploy-data/wwdc.db
+!.deploy-data/release.json
 .DS_Store
