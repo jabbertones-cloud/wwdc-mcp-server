@@ -57,8 +57,15 @@ echo "[release] verified_logical_corpus_sha256=$CORPUS_SHA256"
 
 # Do not claim delivery until the actual public endpoint reports this exact
 # release and the same digest of the corpus opened by the running MCP process.
+# A brand-new Cloudflare Container can need several minutes to pull the image,
+# open and hash the indexed SQLite corpus, and pass startup health checks.
+# A 60-second fixed retry loop misclassified a successful deployment as failed.
+# Keep the gate strict but use a bounded 10-minute cold-start allowance.
 matched=0
-for attempt in 1 2 3 4 5 6 7 8 9 10; do
+deadline=$(($(date +%s) + 600))
+attempt=0
+while :; do
+  attempt=$((attempt + 1))
   if curl --fail --silent --show-error --max-time 20 \
       https://wwdc-mcp.smatdesigns.com/healthz > .deploy-data/live-health.json &&
      WWDC_EXPECT_SHA="$SHA" WWDC_EXPECT_CORPUS_SHA256="$CORPUS_SHA256" node -e '
@@ -72,8 +79,13 @@ for attempt in 1 2 3 4 5 6 7 8 9 10; do
     matched=1
     break
   fi
-  echo "[release] waiting for exact-SHA and verified-corpus parity attempt=$attempt"
-  sleep 6
+  now=$(date +%s)
+  if [ "$now" -ge "$deadline" ]; then
+    echo "[release] cold-start deadline exceeded; production identity still unverified" >&2
+    break
+  fi
+  echo "[release] waiting for exact-SHA and verified-corpus parity attempt=$attempt remaining_seconds=$((deadline - now))"
+  sleep 10
 done
 if [ "$matched" != "1" ]; then
   echo "[release] BLOCKED: deployed health does not prove expected source and corpus" >&2
