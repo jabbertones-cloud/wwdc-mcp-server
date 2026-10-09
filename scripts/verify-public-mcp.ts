@@ -26,7 +26,14 @@ function jsonToolResult(result: any, name: string): any {
     .filter((part: any) => part.type === "text")
     .map((part: any) => part.text).join("\n");
   assert.ok(text.length > 0, name + " returned no text");
-  return JSON.parse(text);
+  const parsed = JSON.parse(text);
+  // Real WWDC corpus status exceeds the JSON response budget (72+ KiB).
+  // The service returns a valid compacted { truncated, data } envelope.
+  // Inspect that live response instead of treating compaction as lost data.
+  if (parsed?.truncated === true && parsed?.data && typeof parsed.data === "object") {
+    return parsed.data;
+  }
+  return parsed;
 }
 
 async function main() {
