@@ -11,5 +11,8 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY package.json ./
 COPY dist ./dist
 COPY .deploy-data/wwdc.db ./data/wwdc.db
+# A deterministic release fingerprint forces a normal Container rollout when
+# source SHA changes but the indexed SQLite corpus and runtime code do not.
+COPY .deploy-data/release.json ./data/release.json
 EXPOSE 8789
 CMD ["node", "dist/mcp-http.js"]
