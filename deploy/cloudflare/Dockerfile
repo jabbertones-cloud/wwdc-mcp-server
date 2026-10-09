@@ -1,6 +1,8 @@
-FROM node:22-bookworm-slim AS deps
+# Compile native better-sqlite3 with the official Debian build toolchain.
+# The slim image lacks CA certificates and its HTTP apt mirror is blocked in Colima.
+# Do not disable APT TLS verification or ship a build without a real compiler.
+FROM node:22-bookworm AS deps
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts && npm rebuild better-sqlite3
 
