@@ -1,8 +1,10 @@
 import Database from "better-sqlite3";
 import { createHash } from "node:crypto";
-import fs from "node:fs";\nimport { getLatestCorpusVersion, hashCorpusContent, CORPUS_CONTENT_TABLES } from "../src/db/corpus.js";
+import fs from "node:fs";
+import { getLatestCorpusVersion, hashCorpusContent, CORPUS_CONTENT_TABLES } from "../src/db/corpus.js";
 
-const path = process.argv[2] ?? process.env.WWDC_MCP_DB ?? ".deploy-data/wwdc.db";\nconst requireAll = process.argv.includes("--require-all");
+const path = process.argv[2] ?? process.env.WWDC_MCP_DB ?? ".deploy-data/wwdc.db";
+const requireAll = process.argv.includes("--require-all");
 if (!fs.existsSync(path)) throw new Error(`corpus missing: ${path}`);
 const db = new Database(path, { readonly: true });
 const integrity = db.pragma("integrity_check", { simple: true });
