@@ -55,7 +55,19 @@ WWDC_RELEASE_SHA="$SHA" WWDC_RELEASE_CORPUS_SHA256="$CORPUS_SHA256" node -e '
   const sha=process.env.WWDC_RELEASE_SHA;
   const corpus=process.env.WWDC_RELEASE_CORPUS_SHA256;
   if (!/^[a-f0-9]{40}$/.test(sha ?? "") || !/^[a-f0-9]{64}$/.test(corpus ?? "")) process.exit(1);
-  fs.writeFileSync(".deploy-data/release.json", JSON.stringify({sourceSha:sha, corpusSha256:corpus})+"\\n");
+  fs.writeFileSync(".deploy-data/release.json", JSON.stringify({sourceSha:sha, corpusSha256:corpus}));
+'
+# Parse and cross-check the exact bytes that Docker will COPY; never ship
+# an invalid release manifest or a mismatched image identity.
+WWDC_RELEASE_SHA="$SHA" WWDC_RELEASE_CORPUS_SHA256="$CORPUS_SHA256" node -e '
+  const fs=require("node:fs");
+  const manifest=JSON.parse(fs.readFileSync(".deploy-data/release.json", "utf8"));
+  const proof=JSON.parse(fs.readFileSync(".deploy-data/corpus-proof.json", "utf8"));
+  if (manifest.sourceSha !== process.env.WWDC_RELEASE_SHA ||
+      manifest.corpusSha256 !== process.env.WWDC_RELEASE_CORPUS_SHA256 ||
+      manifest.corpusSha256 !== proof.corpusVersion) {
+    throw new Error("release_manifest_identity_mismatch");
+  }
 '
 echo "[release] source_git_sha=$SHA"
 echo "[release] staged_database_file_sha256=$FILE_SHA256"
