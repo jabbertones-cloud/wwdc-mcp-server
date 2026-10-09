@@ -2,6 +2,13 @@
 # Native M1 host refresh when Woodpecker is not active:
 # UTC Monday 06:00 == Sunday 23:00 America/Phoenix (non-DST).
 set -euo pipefail
+# launchd's Background session does NOT inherit the interactive shell PATH.
+# This is required by the observed 2026-10-09 exit=127 "node: command not found".
+export PATH="/opt/homebrew/bin:$HOME/.local/node22/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
+  echo "[weekly-ingest] required Node/npm runtime missing from the authorized host" >&2
+  exit 69
+fi
 ROOT="$(cd -P "$(dirname "$0")/.." && pwd)"
 DATA="$HOME/Library/Application Support/wwdc-mcp-server"
 DB="$DATA/wwdc.db"
