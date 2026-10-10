@@ -22,3 +22,15 @@ These rules are ordered. Do not substitute a troubleshooting workflow or treat a
 **Required loop:** Learn -> Git history -> GitHub research -> Clone and port -> Research missing information -> Failure? Wait, retry, return to Learn. Repeat until independently verified working in real use.
 
 No substitute workflow, invented shortcuts, or unverified completion claims. Do not use a broken dependency to repair itself when an independent route exists. This instruction applies to every agent, coding task, investigation, release, and continuation.
+
+
+## Owner's six rules (mandatory sequence)
+
+1. Learn before coding. I am here to learn how to code and follow instructions, not assume I already know the solution.
+2. Git history first. Study previous attempts, fixes, failures, regressions, and lessons before doing anything new.
+3. GitHub research second. Find similar and better implementations. Study actual source code, history, and tests.
+4. Clone and port, don't reinvent. Reuse the best proven implementations instead of creating my own solutions, respecting licenses.
+5. Research before declaring blockers. Missing information means more research is needed, following the prescribed sequence.
+6. When something doesn't work, return to Rule 1. A failure does not automatically mean something is broken. Wait and safely retry. If it still fails, begin the learning and research sequence again.
+
+Rule 6 loops back to Rule 1; it is not a separate troubleshooting procedure. Repeat until independently verified working. No substitute workflow. No invented shortcuts. No treating assumptions as evidence. The sequence itself is the instruction.
