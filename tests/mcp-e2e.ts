@@ -204,7 +204,7 @@ async function main(): Promise<void> {
       WWDC_MCP_DB: dbPath,
       // Force embeddings off so the test is deterministic and network-free.
       WWDC_SKIP_EMBEDDINGS: "1",
-      OLLAMA_BASE: "http://127.0.0.1:1", // legacy fallback, unreachable
+      WWDC_SKIP_EMBEDDINGS: "1",
     },
     stderr: "ignore",
   });
@@ -213,6 +213,10 @@ async function main(): Promise<void> {
   await client.connect(transport);
 
   try {
+    const { SERVER_INSTRUCTIONS, SERVER_VERSION } = await import("../src/server.js");
+    assert.equal(client.getServerVersion()?.version, SERVER_VERSION);
+    assert.equal(client.getInstructions(), SERVER_INSTRUCTIONS);
+
     // 0) listTools must return all tools
     const listed = await client.listTools();
     const names = new Set(listed.tools.map((t) => t.name));
@@ -472,7 +476,7 @@ async function main(): Promise<void> {
       assert.match(textOf(r), /Invalid regex/);
     }
 
-    // 10) apple_doc_lookup — offline (Ollama/network disabled). Accept either success or error, but should return a tool response (no protocol crash).
+    // 10) apple_doc_lookup — offline (embeddings/network disabled). Accept either success or error, but should return a tool response (no protocol crash).
     {
       const r = await call("apple_doc_lookup", { path: "swiftui/view", format: "markdown" });
       // In offline CI the network call to developer.apple.com may fail; what matters is it degrades gracefully rather than crashing.

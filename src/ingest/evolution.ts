@@ -12,7 +12,7 @@ import {
 } from "../constants.js";
 import { httpGet } from "../services/http.js";
 import { upsertEvolution, recordIngest } from "../db/queries.js";
-import { embed, checkOllama, storeEmbedding } from "../services/ollama.js";
+import { embed, checkEmbeddings, storeEmbedding } from "../services/embeddings.js";
 import type { SwiftEvolutionProposal } from "../types.js";
 
 interface GithubFile {
@@ -88,7 +88,7 @@ export async function ingestEvolution(
     errors++;
   }
 
-  const ollamaOn = await checkOllama();
+  const embeddingsOn = await checkEmbeddings();
   const toProcess = limit ? files.slice(-limit) : files;
   const gate = pLimit(REQUEST_CONCURRENCY);
 
@@ -102,7 +102,7 @@ export async function ingestEvolution(
       upsertEvolution(db, proposal);
       ingested++;
 
-      if (ollamaOn) {
+      if (embeddingsOn) {
         const vec = await embed(`${proposal.title}\n${proposal.body}`.slice(0, 4000));
         if (vec) storeEmbedding(db, `evolution:${proposal.id}`, "evolution", vec);
       }

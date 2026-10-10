@@ -96,7 +96,7 @@ async function main(): Promise<void> {
     env: {
       ...process.env as Record<string, string>,
       WWDC_MCP_DB: dbPath,
-      OLLAMA_BASE: "http://127.0.0.1:1",
+      WWDC_SKIP_EMBEDDINGS: "1",
     },
     stderr: "ignore",
   });
