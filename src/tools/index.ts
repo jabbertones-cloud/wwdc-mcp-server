@@ -1,27 +1,10 @@
 /**
- * MCP tool registrations.
+ * Canonical MCP tool registrations.
  *
- * Exposes canonical WWDC/Apple source tools:
- *   - wwdc_search
- *   - wwdc_list_years
- *   - wwdc_list_topics
- *   - wwdc_list_pathways
- *   - wwdc_get_pathway
- *   - wwdc_get_session
- *   - wwdc_session_deep_link
- *   - wwdc_list_session_code
- *   - wwdc_sample_code_grep
- *   - apple_doc_lookup
- *   - apple_tutorial_get
- *   - apple_hig_search
- *   - apple_swift_evolution_get
- *   - apple_swift_evolution_list
- *   - apple_doc_get
- *   - apple_swift_pattern_find
- *   - swift_app_audit
- *   - apple_swift_book_get         (new — Swift Language Reference)
- *   - appstore_guidelines_search   (new — App Store Review Guidelines)
- *   - wwdc_ingest_status
+ * The public surface is intentionally tested as an exact 45-tool read-only
+ * contract. Do not maintain a partial tool list in this source header; use
+ * tools/list at runtime and wwdc_security_manifest for the canonical names,
+ * trust posture, and manifest hash.
  */
 
 import { z } from "zod";
@@ -78,7 +61,7 @@ import {
 import { httpGet } from "../services/http.js";
 import { APPLE_DOCS_BASE } from "../constants.js";
 import { formatResponse, errorText, truncate } from "../services/format.js";
-import { semanticSearch, checkOllama } from "../services/ollama.js";
+import { semanticSearch, checkEmbeddings } from "../services/embeddings.js";
 import { DEFAULT_LIMIT, MAX_LIMIT } from "../constants.js";
 import { getSecurityManifest, scanUntrustedText } from "../security/manifest.js";
 
@@ -691,7 +674,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
     {
       title: "Search WWDC + Apple docs",
       description:
-        "Full-text + semantic search across WWDC sessions, Apple documentation, tutorials, HIG, and Swift Evolution. Returns ranked hits with snippets. If Ollama is available, hybrid (FTS + vector) is used; otherwise FTS only.",
+        "Full-text + semantic search across WWDC sessions, Apple documentation, tutorials, HIG, and Swift Evolution. Returns ranked hits with snippets. When the local embedding model is available, hybrid FTS + vector reranking is used; otherwise search falls back to FTS only.",
       inputSchema: {
         query: z.string().min(1).describe("Search query; supports multi-word phrases."),
         kinds: z.array(z.enum(["session", "doc", "tutorial", "hig", "evolution"])).default(["session", "doc", "tutorial", "hig", "evolution"]),
@@ -743,9 +726,9 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
         hits.push(...h); total += t;
       }
 
-      // Semantic rerank if Ollama is available.
-      const ollamaOn = await checkOllama();
-      if (ollamaOn && hits.length > 1) {
+      // Semantic rerank if the local embedding model is available.
+      const embeddingsOn = await checkEmbeddings();
+      if (embeddingsOn && hits.length > 1) {
         try {
           const vecHits = await semanticSearch(db, query, kinds.map((k) => k), Math.max(limit * 2, 20));
           const scoreMap = new Map(vecHits.map((v) => [`${v.kind}:${v.docId.split(":")[1] ?? v.docId}`, v.score]));
@@ -755,7 +738,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
 
       const page = hits.slice(0, limit);
       const judgedPage = page.map((hit) => judgment || detail === "detailed" ? { ...hit, judgment: judgeHit(query, hit) } : hit);
-      const searchJudgment = judgment || detail === "detailed" ? judgeSearch(query, judgedPage, total, ollamaOn, listIngestStatus(db)) : undefined;
+      const searchJudgment = judgment || detail === "detailed" ? judgeSearch(query, judgedPage, total, embeddingsOn, listIngestStatus(db)) : undefined;
       const contentSafety = scanUntrustedText(judgedPage.map((hit) => `${hit.title}\n${hit.snippet ?? ""}`).join("\n\n"));
       const md = renderSearchMd(query, judgedPage, total, searchJudgment, detail);
       const data = {
@@ -766,7 +749,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
         hits: judgedPage,
         judgment: searchJudgment,
         content_safety: contentSafety,
-        hybrid: ollamaOn,
+        hybrid: embeddingsOn,
       };
       return { content: [{ type: "text", text: formatResponse(format, md, data) }] };
     },
