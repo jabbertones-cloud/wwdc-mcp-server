@@ -22,24 +22,65 @@ const HF_MODEL = "nomic-ai/nomic-embed-text-v1.5";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _pipe: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _pipePromise: Promise<any | null> | null = null;
 let embeddingAvailable: boolean | null = null;
 let initErrorLogged = false;
 
+/**
+ * Start (once) and share the pipeline load. First use may download/load a
+ * ~500MB local model, which can take far longer than a search should wait;
+ * callers that need a fast answer use getPipelineBounded() instead. The
+ * in-flight load is deliberately NOT cancelled by a bounded wait, so a
+ * later call can still pick the model up once it is ready.
+ */
+function startPipeline() {
+  if (_pipe) return Promise.resolve(_pipe);
+  if (embeddingAvailable === false) return Promise.resolve(null);
+  if (!_pipePromise) {
+    _pipePromise = (async () => {
+      try {
+        _pipe = await pipeline("feature-extraction", HF_MODEL, { dtype: "fp32" });
+        embeddingAvailable = true;
+        return _pipe;
+      } catch (err) {
+        embeddingAvailable = false;
+        if (!initErrorLogged) {
+          const message = err instanceof Error ? err.message : String(err);
+          console.error(`[embed] local model unavailable; embeddings disabled for this process: ${message}`);
+          initErrorLogged = true;
+        }
+        return null;
+      }
+    })();
+  }
+  return _pipePromise;
+}
+
 async function getPipeline() {
+  return startPipeline();
+}
+
+/**
+ * Bounded availability probe for request paths (e.g. search): resolves to
+ * the pipeline if it loads within `timeoutMs`, otherwise null so the
+ * caller can fall back (FTS-only) instead of hanging. A timeout does not
+ * mark the service unavailable and does not cancel the background load.
+ */
+export async function getPipelineBounded(timeoutMs = 3000) {
   if (_pipe) return _pipe;
   if (embeddingAvailable === false) return null;
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    _pipe = await pipeline("feature-extraction", HF_MODEL, { dtype: "fp32" });
-    embeddingAvailable = true;
-    return _pipe;
-  } catch (err) {
-    embeddingAvailable = false;
-    if (!initErrorLogged) {
-      const message = err instanceof Error ? err.message : String(err);
-      console.error(`[embed] local model unavailable; embeddings disabled for this process: ${message}`);
-      initErrorLogged = true;
-    }
-    return null;
+    return await Promise.race([
+      startPipeline(),
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), Math.max(0, timeoutMs));
+        timer.unref?.();
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 
@@ -59,16 +100,23 @@ export async function embed(text: string): Promise<Float32Array | null> {
   }
 }
 
-/** Backward-compatible availability check used by ingest callers. */
-export async function checkOllama(): Promise<boolean> {
+/**
+ * Backward-compatible availability check used by ingest callers.
+ * With `timeoutMs`, the probe is bounded (see getPipelineBounded): a slow
+ * first model load reports `false` for this call rather than blocking the
+ * caller, and may still succeed on a later call once loading finishes.
+ */
+export async function checkOllama(timeoutMs?: number): Promise<boolean> {
   if (process.env.WWDC_SKIP_EMBEDDINGS === "1") return false;
   if (embeddingAvailable !== null) return embeddingAvailable;
+  if (timeoutMs !== undefined) return Boolean(await getPipelineBounded(timeoutMs));
   return Boolean(await getPipeline());
 }
 
 /** Reset cached availability so a later call may retry initialization. */
 export function resetOllamaStatus(): void {
   _pipe = null;
+  _pipePromise = null;
   embeddingAvailable = null;
   initErrorLogged = false;
 }

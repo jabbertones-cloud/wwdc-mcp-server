@@ -304,6 +304,70 @@ export function listIngestStatus(db: DatabaseType): IngestStatus[] {
   }));
 }
 
+/**
+ * Newest timestamp recorded in index state (latest ingest run, or newest
+ * session update if no ingest has been recorded). Returns null when the
+ * index holds no state at all. Used to anchor default time windows in
+ * state instead of wall-clock call time, so read-only status output stays
+ * deterministic while nothing has changed.
+ */
+export function latestStateTimestamp(db: DatabaseType): string | null {
+  const row: any = db.prepare(`
+    SELECT MAX(ts) AS latest FROM (
+      SELECT MAX(last_run_at) AS ts FROM ingest_status
+      UNION ALL
+      SELECT MAX(updated_at) AS ts FROM sessions
+    )
+  `).get();
+  return row?.latest ?? null;
+}
+
+/**
+ * Counts of corpus content per index table plus recorded ingest runs.
+ * Added for TL-020: lets wwdc_ingest_status name the corpus state
+ * explicitly instead of returning a near-blank report on a fresh/empty DB.
+ * All reads are cheap COUNT(*)s; safe on an empty index.
+ */
+export interface CorpusCounts {
+  sessions: number;
+  tutorials: number;
+  appleDocs: number;
+  higEntries: number;
+  evolution: number;
+  sampleCode: number;
+  ingestRuns: number;
+}
+
+export function corpusCounts(db: DatabaseType): CorpusCounts {
+  const count = (table: string): number => {
+    try {
+      return ((db.prepare(`SELECT COUNT(*) AS c FROM ${table}`).get() as any).c ?? 0) as number;
+    } catch {
+      return 0; // table missing pre-migration: treat as zero, not an error
+    }
+  };
+  return {
+    sessions: count("sessions"),
+    tutorials: count("tutorials"),
+    appleDocs: count("apple_docs"),
+    higEntries: count("hig_entries"),
+    evolution: count("evolution"),
+    sampleCode: count("sample_code"),
+    ingestRuns: count("ingest_status"),
+  };
+}
+
+/**
+ * True when the corpus holds no indexable content and no ingest run has
+ * ever been recorded. A populated index with zero sessions is not "empty"
+ * in this sense; an empty DB straight off migrate() is.
+ */
+export function isCorpusEmpty(counts: CorpusCounts): boolean {
+  return counts.sessions + counts.tutorials + counts.appleDocs +
+    counts.higEntries + counts.evolution + counts.sampleCode === 0 &&
+    counts.ingestRuns === 0;
+}
+
 // ---------- Reads ----------
 
 export function getSession(db: DatabaseType, id: string): WwdcSession | null {

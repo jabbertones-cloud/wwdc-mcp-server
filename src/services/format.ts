@@ -93,3 +93,74 @@ function compactJsonValue(value: unknown, budget: { maxArray: number; maxString:
 export function errorText(message: string, hint?: string): string {
   return hint ? `Error: ${message}\nHint: ${hint}` : `Error: ${message}`;
 }
+
+// ---------------------------------------------------------------------------
+// TL-009 fleet error envelope (see ~/workspace/testlabs/ERROR-ENVELOPE-STANDARD.md)
+// Every domain error returns through toolError(): the familiar
+// "Error: … / Hint: …" text block for continuity, PLUS structuredContent
+// carrying a stable slug + status taxonomy so clients/models can branch on
+// the failure class instead of scraping prose. Caller input reflected in a
+// message is always passed through sanitizeEcho() first — bounded length,
+// control characters stripped — so a not-found message can never reflect
+// an unbounded injection string.
+// ---------------------------------------------------------------------------
+
+export type ErrorStatus =
+  | "invalid_input"
+  | "not_found"
+  | "not_configured"
+  | "not_performed"
+  | "upstream_failure"
+  | "internal";
+
+export interface ToolErrorEnvelope {
+  error: string;
+  status: ErrorStatus;
+  tool: string;
+  message: string;
+  hint?: string;
+  retryable?: boolean;
+  [extra: string]: unknown;
+}
+
+export const MAX_ERROR_ECHO = 80;
+
+/** Bound + sanitise caller input before reflecting it in an error message. */
+export function sanitizeEcho(value: unknown, max = MAX_ERROR_ECHO): string {
+  const raw = typeof value === "string" ? value : String(value ?? "");
+  // Strip C0/C1 control chars (incl. newlines/tabs) and collapse whitespace
+  // so echoed input stays a single inert line of data.
+  const cleaned = raw.replace(/[\u0000-\u001F\u007F-\u009F]/g, " ").replace(/\s+/g, " ").trim();
+  if (cleaned.length <= max) return cleaned;
+  return `${cleaned.slice(0, max)}…[+${cleaned.length - max} chars]`;
+}
+
+export function toolError(options: {
+  tool: string;
+  error: string;
+  status: ErrorStatus;
+  message: string;
+  hint?: string;
+  retryable?: boolean;
+  fields?: Record<string, unknown>;
+}): {
+  isError: true;
+  content: [{ type: "text"; text: string }];
+  structuredContent: ToolErrorEnvelope;
+} {
+  const { tool, error, status, message, hint, retryable, fields } = options;
+  const structuredContent: ToolErrorEnvelope = {
+    error,
+    status,
+    tool,
+    message,
+    ...(hint ? { hint } : {}),
+    ...(retryable ? { retryable: true } : {}),
+    ...(fields ?? {}),
+  };
+  return {
+    isError: true,
+    content: [{ type: "text", text: errorText(message, hint) }],
+    structuredContent,
+  };
+}
