@@ -1,0 +1,28 @@
+name: Apple source drift
+description: Report an Apple/Swift source or parser that changed upstream
+title: "[Source drift]: "
+labels: ["source-drift"]
+body:
+  - type: input
+    id: source
+    attributes:
+      label: Source URL
+      placeholder: https://developer.apple.com/...
+    validations: { required: true }
+  - type: input
+    id: tool
+    attributes:
+      label: Affected tool or ingest source
+      placeholder: wwdc_search, HIG ingest, Swift Evolution, etc.
+    validations: { required: true }
+  - type: textarea
+    id: observed
+    attributes:
+      label: What changed?
+      description: Explain the missing/stale/incorrect result and what the upstream source now shows.
+    validations: { required: true }
+  - type: textarea
+    id: proof
+    attributes:
+      label: Reproduction / evidence
+      description: Include the smallest reproducible query or ingest command.

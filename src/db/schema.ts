@@ -9,7 +9,7 @@
  *   - evolution         Swift Evolution proposals
  *   - apple_docs        Apple Developer documentation DocC pages
  *   - sample_code       Extracted sample-code bundles
- *   - embeddings        Ollama nomic-embed-text vectors (768-dim) per doc_id
+ *   - embeddings        local nomic-embed-text-v1.5 vectors (768-dim) per doc_id
  *   - ingest_status     Last-run metadata per source
  *
  * FTS5 virtual tables provide keyword search.

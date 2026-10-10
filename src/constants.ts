@@ -150,15 +150,20 @@ export const SWIFT_EVOLUTION_PROPOSALS = `${SWIFT_EVOLUTION_REPO}/proposals`;
 export const SWIFT_EVOLUTION_INDEX_API =
   "https://api.github.com/repos/apple/swift-evolution/contents/proposals";
 
-// Ollama — local embeddings, no paid API
+// Local semantic embeddings — Hugging Face Transformers/ONNX, no local service required.
+export const LOCAL_EMBED_MODEL = "nomic-ai/nomic-embed-text-v1.5";
+export const LOCAL_EMBED_DIM = 768;
+
+// Deprecated compatibility exports from the pre-v0.2 Ollama implementation.
+// Current embedding code does not connect to OLLAMA_BASE or use OLLAMA_EMBED_MODEL.
 export const OLLAMA_BASE = process.env.OLLAMA_BASE ?? "http://127.0.0.1:11434";
 export const OLLAMA_EMBED_MODEL =
   process.env.OLLAMA_EMBED_MODEL ?? "nomic-embed-text";
-export const OLLAMA_EMBED_DIM = 768;
+export const OLLAMA_EMBED_DIM = LOCAL_EMBED_DIM;
 
 // HTTP client tuning
 export const USER_AGENT =
-  "wwdc-mcp-server/0.1.3 (+https://github.com/jabbertones-cloud/wwdc-mcp-server)";
+  "wwdc-mcp-server/0.2.1 (+https://github.com/jabbertones-cloud/wwdc-mcp-server)";
 export const REQUEST_TIMEOUT_MS = 20_000;
 export const REQUEST_RETRY = 2;
 export const REQUEST_CONCURRENCY = 4; // Be polite to Apple

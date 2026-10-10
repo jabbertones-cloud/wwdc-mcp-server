@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If WWDC MCP materially supports research, tooling, or published work, cite this repository and the Apple/Swift primary sources returned by the tools."
+title: "WWDC MCP"
+type: software
+authors:
+  - family-names: Manthey
+    given-names: Scott
+repository-code: "https://github.com/jabbertones-cloud/wwdc-mcp-server"
+url: "https://github.com/jabbertones-cloud/wwdc-mcp-server"
+license: MIT
+version: 0.2.1
+date-released: 2026-10-07
+keywords:
+  - Model Context Protocol
+  - WWDC
+  - Apple Developer
+  - Swift
+  - SwiftUI
