@@ -7,3 +7,18 @@ Direct hosted WWDC MCP and its ChatGPT plugin were built in #34. Distinguish reg
 For app localization, screenshots, App Store Connect, TestFlight and submission, use the existing AiSCent MCP handoff #47, preserving WWDC citations. A handoff document is not an actual cross-MCP invocation.
 
 Do not mistake tests, merged PRs or local HTTP probes for production acceptance. Capture before-fix failing user workflow, repair, rerun actual MCP, independently verify results, and update the historical evidence ledger. Use only smat-m1-mini for GitHub Actions; no paid GitHub runners.
+
+## Mandatory six-rule learning loop (owner directive, 2026-10-10)
+
+These rules are ordered. Do not substitute a troubleshooting workflow or treat assumptions as evidence.
+
+1. **Learn before coding.** Learn how the existing system works and follow instructions; do not assume the solution.
+2. **Git history first.** Study previous attempts, fixes, failures, regressions, and lessons before doing anything new.
+3. **GitHub research second.** Find similar and better implementations; study actual code, history, and tests.
+4. **Clone and port, don't reinvent.** Reuse the best proven implementations instead of inventing replacements.
+5. **Research before declaring blockers.** Missing information requires more research in the prescribed sequence.
+6. **On failure, return to Rule 1.** A failure does not automatically prove breakage. Wait and retry; if it still fails, restart the learning and research sequence.
+
+**Required loop:** Learn -> Git history -> GitHub research -> Clone and port -> Research missing information -> Failure? Wait, retry, return to Learn. Repeat until independently verified working in real use.
+
+No substitute workflow, invented shortcuts, or unverified completion claims. Do not use a broken dependency to repair itself when an independent route exists. This instruction applies to every agent, coding task, investigation, release, and continuation.
