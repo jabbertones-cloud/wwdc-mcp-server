@@ -54,10 +54,17 @@ export async function embed(text: string): Promise<Float32Array | null> {
   }
 }
 
-/** Backward-compatible availability check used by ingest callers. */
-export async function checkEmbeddings(): Promise<boolean> {
+/**
+ * Backward-compatible availability check used by ingest callers.
+ * With `timeoutMs`, the probe is bounded (see OptionalService.getBounded):
+ * a slow first model load reports `false` for this call rather than
+ * blocking the caller, does not mark embeddings unavailable, and may
+ * still succeed on a later call once loading finishes in the background.
+ */
+export async function checkEmbeddings(timeoutMs?: number): Promise<boolean> {
   if (process.env.WWDC_SKIP_EMBEDDINGS === "1") return false;
-  return embeddingService.isAvailable();
+  if (timeoutMs === undefined) return embeddingService.isAvailable();
+  return (await embeddingService.getBounded(timeoutMs)) !== null;
 }
 
 /** Reset cached availability so a later call may retry initialization. */

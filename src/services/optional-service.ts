@@ -34,6 +34,7 @@ export class OptionalService<T> {
   private resource: T | null = null;
   private available: boolean | null = null;
   private failureReported = false;
+  private inflight: Promise<T | null> | null = null;
 
   constructor(private readonly options: OptionalServiceOptions<T>) {}
 
@@ -46,24 +47,58 @@ export class OptionalService<T> {
   async get(): Promise<T | null> {
     if (this.resource) return this.resource;
     if (this.available === false) return null;
-    try {
-      this.resource = await this.options.init();
-      this.available = true;
-      return this.resource;
-    } catch (err) {
-      this.available = false;
-      if (!this.failureReported) {
-        this.failureReported = true;
-        const message = err instanceof Error ? err.message : String(err);
-        if (this.options.onUnavailable) {
-          this.options.onUnavailable(message);
-        } else {
-          console.error(
-            `[optional-service] ${this.options.name} unavailable; dependent features degraded for this process: ${message}`,
-          );
+    // Share one in-flight initialization: a slow first load (e.g. a large
+    // local model download) must not be started twice by concurrent or
+    // repeated callers while it is still running.
+    if (!this.inflight) {
+      this.inflight = (async () => {
+        try {
+          this.resource = await this.options.init();
+          this.available = true;
+          return this.resource;
+        } catch (err) {
+          this.available = false;
+          if (!this.failureReported) {
+            this.failureReported = true;
+            const message = err instanceof Error ? err.message : String(err);
+            if (this.options.onUnavailable) {
+              this.options.onUnavailable(message);
+            } else {
+              console.error(
+                `[optional-service] ${this.options.name} unavailable; dependent features degraded for this process: ${message}`,
+              );
+            }
+          }
+          return null;
+        } finally {
+          this.inflight = null;
         }
-      }
-      return null;
+      })();
+    }
+    return this.inflight;
+  }
+
+  /**
+   * Time-bounded access for request paths that must not hang: resolves to
+   * the resource if initialization completes within `timeoutMs`, otherwise
+   * null so the caller can take its fallback. Timing out does NOT mark the
+   * service unavailable and does NOT cancel the underlying load — a later
+   * call can still pick the resource up once initialization finishes.
+   */
+  async getBounded(timeoutMs: number): Promise<T | null> {
+    if (this.resource) return this.resource;
+    if (this.available === false) return null;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        this.get(),
+        new Promise<null>((resolve) => {
+          timer = setTimeout(() => resolve(null), Math.max(0, timeoutMs));
+          timer.unref?.();
+        }),
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
     }
   }
 
@@ -78,5 +113,6 @@ export class OptionalService<T> {
     this.resource = null;
     this.available = null;
     this.failureReported = false;
+    this.inflight = null;
   }
 }

@@ -69,6 +69,31 @@ async function main(): Promise<void> {
     console.log("  ok  reset clears the verdict and allows retry");
   }
 
+  // 4) Bounded access: a slow init must not hang the caller. Timing out
+  // neither marks the service unavailable nor cancels the load — once
+  // init finishes in the background, the verdict is cached and later
+  // calls pick the resource up. (Regression: wwdc_search's first-run
+  // embedding probe blocked a fresh user's search on the model load.)
+  {
+    let inits = 0;
+    const svc = new OptionalService({
+      name: "test-slow",
+      init: async () => {
+        inits++;
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        return "ready";
+      },
+    });
+    const started = Date.now();
+    assert.equal(await svc.getBounded(25), null, "bounded probe times out to null");
+    assert.ok(Date.now() - started < 200, "bounded probe returns before init completes");
+    assert.equal(svc.availability, null, "a timeout does not mark the service unavailable");
+    assert.equal(await svc.get(), "ready", "the background load still completes and caches");
+    assert.equal(inits, 1, "the in-flight init is shared, not restarted");
+    assert.equal(await svc.getBounded(25), "ready", "cached resource is served immediately");
+    console.log("  ok  bounded probe times out without cancelling or poisoning the load");
+  }
+
   console.log("[optional-service] all tests passed");
 }
 
