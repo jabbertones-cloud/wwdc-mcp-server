@@ -1,94 +1,108 @@
 # Codex for Open Source application brief
 
-This file is a paste-ready application brief for OpenAI's Codex for Open Source program.
+Updated: 2026-10-07
+
+This is a paste-ready public-project brief for an OpenAI open-source program application. Keep any program-specific status or credit amount out of the repository unless it is confirmed.
 
 ## Repository
 
-https://github.com/jabbertones-cloud/wwdc-mcp-server
+`jabbertones-cloud/wwdc-mcp-server`
 
 ## Short description
 
-`wwdc-mcp-server` is a local-first MCP server that indexes Apple's WWDC sessions, tutorials, Human Interface Guidelines, and Swift Evolution proposals. It gives Codex and other MCP-compatible coding agents searchable, source-grounded Apple platform context without paid APIs.
+`wwdc-mcp-server` is a local-first Model Context Protocol server that gives coding agents searchable, source-grounded Apple developer context from WWDC sessions, Apple Developer Documentation, tutorials, Human Interface Guidelines, Swift Evolution, The Swift Programming Language, and App Store Review Guidelines.
 
-## Maintainer role
+It currently exposes 45 read-only tools for Apple-platform search, transcripts, API history, availability/deprecation checks, App Review guidance, source-grounded Swift app audits, and trust metadata.
 
-Primary maintainer and repository administrator. I maintain the MCP server, ingest pipeline, tests, documentation, release workflow, and issue/PR triage.
+## Why this is open-source infrastructure
 
-## Why this is open source infrastructure
+Apple-platform developers regularly need current information about Swift, SwiftUI, UIKit, AppKit, StoreKit, App Intents, Apple Intelligence, platform UX, API availability, deprecations, and App Review rules.
 
-Apple platform developers often need authoritative, current context from WWDC sessions, HIG pages, DocC tutorials, and Swift Evolution proposals. This project packages those sources into a reusable local MCP server so coding agents can answer iOS, macOS, visionOS, watchOS, tvOS, Swift, SwiftUI, UIKit, AppKit, Metal, StoreKit, GameKit, Vision, AVFoundation, Foundation Models, and platform UX implementation questions with better context and fewer hallucinations.
+Generic model memory can be stale or incomplete. This project gives coding agents a reusable Apple-source retrieval layer that can:
+
+- search WWDC20–WWDC26 sessions and transcripts
+- retrieve timestamped session deep links
+- search indexed Apple docs, tutorials, HIG, Swift Evolution, and Swift language reference material
+- check API introduction, availability, deprecation, and replacement evidence
+- search App Store Review Guidelines
+- build source-grounded `swift_app_audit` context before code changes
+- report confidence/caveats and trust metadata rather than treating every hit equally
+
+## Architecture
 
 The server is intentionally local-first:
 
-- SQLite + FTS5 for durable local indexing.
-- Optional Ollama embeddings for semantic reranking.
-- Stdio MCP transport by default, with no public network listener.
-- No paid API dependency for baseline use.
+- SQLite + FTS5 for durable local indexing
+- optional local Hugging Face Transformers/ONNX embeddings for semantic reranking
+- MCP stdio by default
+- optional authenticated stateless Streamable HTTP for self-hosted/remote use
+- no paid API dependency for core ingest, search, audits, or semantic reranking
+- read-only MCP tool surface
+- content-safety metadata for untrusted retrieved text
 
-## How Codex helps maintain this project
+The project does not require Apple Developer account credentials for its public-source retrieval workflow. Optional `session-summaries` is separate from the core path: when a maintainer explicitly supplies `ANTHROPIC_API_KEY`, it sends bounded WWDC session metadata/transcript excerpts to Anthropic and may incur API cost.
+
+## How Codex helps maintain the project
 
 Codex is useful for:
 
-- Reviewing PRs that change MCP tool contracts.
-- Auditing ingest changes against Apple source structure drift.
-- Maintaining TypeScript strictness and test coverage.
-- Improving docs and examples for new MCP clients.
-- Triage of issues from Apple platform developers.
-- Release checks before publishing tags.
-- Finding reusable WWDC/HIG/Swift Evolution guidance for iOS, macOS, visionOS, watchOS, tvOS, and iPadOS app improvements.
-- Combining WWDC source retrieval with existing app specs, OSS benchmarks, and patent/opportunity radar patterns.
-- Turning app-improvement findings back into MCP search, parser, and documentation improvements.
+- reviewing changes to MCP tool contracts
+- tracing parser failures when Apple changes public source layouts
+- improving TypeScript strictness and test coverage
+- analyzing search regressions
+- maintaining client setup examples
+- triaging issues and PRs
+- reviewing changelog/release metadata
+- checking that README claims match executable tests
+- turning real Apple-platform implementation questions into better retrieval/evaluation cases
 
-## API credit use case
+## Security fit
 
-If API credits are granted, they would support maintainer automation:
+The repository is useful for security-oriented review because it:
 
-- PR review summaries for MCP tool and ingest changes.
-- Release checklist generation and changelog review.
-- Test failure triage for CI runs.
-- Documentation quality checks against repository examples.
-- App-improvement synthesis for maintained Apple-platform apps using local WWDC evidence.
+- fetches and parses untrusted public web content
+- stores external material in SQLite
+- exposes that material to AI agents through MCP
+- supports an optional authenticated HTTP transport
+- needs durable guarantees that retrieved text remains evidence rather than executable instruction
 
-API credits would not be used to power a commercial hosted service.
+Current controls include:
 
-## Codex Security fit
+- stdio default with no network listener
+- fail-closed bearer authentication for remote MCP requests
+- bounded request bodies
+- a read-only 45-tool surface
+- `wwdc_security_manifest` for tool-surface and trust metadata
+- content-safety scanning/evaluation
+- deterministic stdio and HTTP E2E tests
+- dependency audit in CI
 
-The repository is a good fit for security review because it:
+## Current project readiness
 
-- Fetches public web content during ingest.
-- Parses and stores external data in SQLite.
-- Exposes local MCP tools to agent clients.
-- Needs continued validation that default stdio/local-only behavior remains safe.
+- Public GitHub repository: yes
+- MIT license: yes
+- README: current
+- Contribution guide: current
+- Security policy: current
+- 45-tool stdio E2E: yes
+- authenticated Streamable HTTP E2E: yes
+- package dry-run test: yes
+- npm package published: **not yet**
+- official MCP Registry entry: **not yet; intentionally blocked on npm publication**
 
-Current security posture:
+## Local verification
 
-- Stdio transport by default.
-- No user credentials stored or transmitted.
-- No paid API keys required.
-- `npm audit --audit-level=high` is part of CI.
-- Search/session tools expose judgment metadata so agent clients can inspect confidence, caveats, and recommended follow-up tools instead of treating every hit as equally authoritative.
-- Security reporting documented in `SECURITY.md`.
-
-## Readiness checklist
-
-- Public GitHub repository: yes.
-- License file: MIT.
-- README: yes.
-- Contributing guide: yes.
-- Security policy: yes.
-- CI: build, smoke test, parse test, high-severity audit.
-- MCP e2e coverage: all 45 canonical tools plus filtered search, no-hit judgment, session response shaping, security manifest, package smoke.
-- Local verification:
-  - `npm run build`
-  - `npm test`
-  - `npm audit --audit-level=high`
+```bash
+npm ci
+npm run build
+npm test
+npm audit --audit-level=high
+```
 
 ## Suggested application answer
 
-I maintain `wwdc-mcp-server`, a local-first MCP server for Apple platform development. It indexes WWDC sessions, Apple tutorials, Human Interface Guidelines, Swift Evolution proposals, Swift Book chapters, and App Store Review Guidelines, then exposes them through 45 MCP tools for Codex and other MCP-compatible coding agents.
+I maintain `wwdc-mcp-server`, an MIT-licensed, local-first MCP server for Apple-platform development. It turns public Apple and Swift source material — including WWDC sessions, Apple Developer Documentation, Human Interface Guidelines, Swift Evolution, the Swift language reference, and App Store Review Guidelines — into 45 read-only tools that Codex and other coding agents can query before changing Swift code.
 
-The project helps Apple-platform developers ground agent answers in authoritative Apple material while keeping retrieval local through SQLite FTS5 and optional Ollama embeddings. It does not require paid APIs for normal use.
+The project focuses on source grounding and verification rather than generic summarization. It supports transcript search and timestamped WWDC deep links, API introduction/availability/deprecation research, App Review guidance, and a `swift_app_audit` workflow that gathers relevant Apple evidence and validation steps before implementation. SQLite FTS5 works without a paid API, while optional semantic reranking runs locally with `nomic-ai/nomic-embed-text-v1.5` through Hugging Face Transformers/ONNX.
 
-I use Codex for maintainer workflows: PR review, issue triage, test failure analysis, release checks, and documentation updates. API credits would be used only for open-source maintainer automation around this repository, especially PR/release review and CI triage. Codex Security would help validate the local MCP boundary, public-web ingest code, and SQLite-backed tool surface.
-
-In practice, the MCP is also used as Apple-platform upgrade infrastructure for maintained apps. Its `swift_app_audit` tool supplies source-grounded WWDC/HIG/tutorial/evolution context that combines with the existing OpenClaw Mac utilities spec format, OSS index patterns, and patent/opportunity radar patterns; those findings feed back into better MCP parser coverage, search judgment, and docs.
+I use Codex for open-source maintenance tasks such as parser-drift diagnosis, PR review, test failure analysis, search regression work, release checks, and documentation consistency. The repository also has explicit trust controls for agent use: a read-only tool surface, content-safety handling for retrieved text, a security manifest, deterministic protocol tests, and fail-closed authentication for the optional Streamable HTTP transport.

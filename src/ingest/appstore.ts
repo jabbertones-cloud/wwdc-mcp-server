@@ -21,7 +21,7 @@ import { APPSTORE_GUIDELINES_URL } from "../constants.js";
 import { httpGet } from "../services/http.js";
 import type { AppStoreGuidelineEntry } from "../types.js";
 import { upsertAppStoreGuideline, recordIngest } from "../db/queries.js";
-import { checkOllama, embed, storeEmbedding } from "../services/ollama.js";
+import { checkEmbeddings, embed, storeEmbedding } from "../services/embeddings.js";
 
 // Minimal HTML text extraction without a full DOM parser.
 function stripTags(html: string): string {
@@ -147,7 +147,7 @@ export async function ingestAppStoreGuidelines(
     return { ingested, errors };
   }
 
-  const ollamaOn = await checkOllama();
+  const embeddingsOn = await checkEmbeddings();
 
   for (const sec of sections) {
     const id = makeId(sec.number, sec.title);
@@ -163,7 +163,7 @@ export async function ingestAppStoreGuidelines(
       upsertAppStoreGuideline(db, entry);
       ingested++;
 
-      if (ollamaOn) {
+      if (embeddingsOn) {
         const vec = await embed(`${sec.number} ${sec.title}\n${sec.body}`.slice(0, 4000));
         if (vec) storeEmbedding(db, `appstore:${id}`, "appstore", vec);
       }
