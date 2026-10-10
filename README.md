@@ -1,193 +1,264 @@
-# wwdc-mcp-server
+# WWDC MCP — current Apple developer knowledge for coding agents
 
 <!-- mcp-name: wwdc -->
 
-Local-first MCP server that indexes Apple's WWDC sessions, tutorials, Human Interface Guidelines, and Swift Evolution proposals — with hybrid keyword + semantic search powered by **Ollama** running locally (no paid APIs).
+Ground **Codex, Claude, Cursor, VS Code, Windsurf, Zed, and other MCP clients** in Apple source material before they change your Swift code.
 
-Works with **OpenAI Codex**, **Claude**, **Cursor**, **Windsurf**, **Zed**, or any MCP-compatible client. No paid APIs required — all retrieval runs locally via Ollama.
+WWDC MCP indexes **WWDC20–WWDC26 sessions**, Apple Developer Documentation, tutorials, Human Interface Guidelines, Swift Evolution, The Swift Programming Language, and App Store Review Guidelines into a local SQLite search layer. It exposes **45 read-only MCP tools** for search, API history, deprecations, transcripts, source-grounded app audits, and trust metadata.
 
 [![CI](https://github.com/jabbertones-cloud/wwdc-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/jabbertones-cloud/wwdc-mcp-server/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Node](https://img.shields.io/badge/Node-%3E%3D22.14-339933?logo=node.js&logoColor=white)](package.json)
+[![MCP](https://img.shields.io/badge/MCP-45%20read--only%20tools-5A45FF)](server.json)
+[![MCP Registry](https://img.shields.io/badge/MCP%20Registry-v0.2.1%20active-5A45FF)](https://registry.modelcontextprotocol.io/v0.1/servers/io.github.jabbertones-cloud%2Fwwdc/versions/0.2.1)
 
-## Features
+> **Unofficial community project.** Not affiliated with or endorsed by Apple. Apple content remains subject to Apple's terms and source-site availability.
 
-- **WWDC sessions** (2020–2025+) — title, description, topics, platforms, speakers, transcript excerpts, sample-code links, related docs, chapter deep-links.
-- **Apple tutorials** — full DocC JSON walk starting from SwiftUI, visionOS, SwiftData, Develop in Swift, and more.
-- **Human Interface Guidelines** — iOS, macOS, watchOS, visionOS, tvOS components and patterns.
-- **Swift Evolution** — every proposal pulled from the apple/swift-evolution GitHub repo with status, authors, and full body.
-- **Pathways** — curated + auto-derived learning tracks, including SwiftUI Fundamentals, Ship with Swift 6, Build with Apple Intelligence, visionOS Essentials, and app archetypes such as macOS display tools, Finder-style navigation, window switchers, ScreenCaptureKit capture tools, GameKit/StoreKit games, camera export, audio/push, and App Intents.
-- **Hybrid search** — SQLite FTS5 (porter stemmer) keyword match + Ollama `nomic-embed-text` semantic reranking.
-- **Deep links** — generate `?time=SECONDS` URLs that jump straight to a session chapter.
-- **Sample-code grep** — filter every indexed zip/repo URL by substring or regex.
-- **Judgment metadata** — search/session responses can include confidence, evidence basis, caveats, and suggested next MCP tools.
+## Pick your path
 
-## Recent updates and upgrades
+**I just want my coding agent to use Apple knowledge**
 
-Current unreleased work strengthens the existing 45-tool WWDC/Apple source foundation:
+1. Install/connect WWDC MCP using the MCP Registry/MCPB release or the client config below.
+2. Ask: *“Use WWDC MCP to audit this app against current Apple guidance before changing code.”*
+3. Let the agent start with `swift_app_audit`; you do not need to learn all 45 tools.
 
-- **Better platform search** — broad queries like `macOS`, `iOS`, or `visionOS` now search session platform metadata instead of relying only on FTS text matches.
-- **More useful search judgment** — search results include confidence, answer readiness, caveats, evidence basis, and suggested next tools so agents know when context is strong enough.
-- **Empty-index guidance** — low-confidence searches now point to exact ingest commands instead of silently returning weak answers.
-- **Improved WWDC 2025 parsing** — transcript extraction skips Apple video UI chrome, and chapter parsing supports newer `jump-to-time` anchors plus supplemental chapter list items.
-- **Expanded session response controls** — callers can cap transcript length and toggle chapters, sample code, related docs, and session judgment metadata.
-- **Package and public repo polish** — `npx wwdc-mcp-server` quickstart, repository/homepage/bugs metadata, Node 20+ baseline, and package smoke coverage.
-- **Swift app audit bundle** — `swift_app_audit` builds source-grounded Apple-platform audit context before code changes, including source coverage, direct Apple doc hints, archetype pathways, validation checklists, and weak-hit diagnostics.
-- **Indexed Apple documentation** — `npm run ingest:docs` crawls public DocC JSON for Swift and Apple-platform frameworks into local FTS.
-- **Pattern finding** — `apple_swift_pattern_find` groups repeated signals across WWDC, docs, tutorials, HIG, and Swift Evolution.
-- **Security manifest** — `wwdc_security_manifest` returns the canonical tool list, manifest hash, read-only posture, and prompt-injection handling notes.
-- **Content safety tripwire** — search JSON includes `content_safety` so agents treat retrieved text as evidence, not instruction.
-- **Stronger tests** — parser tests cover new WWDC formats and MCP e2e covers the canonical 45-tool surface.
+**I am a power user**
 
-## 45 MCP tools
+Use the focused tools directly for transcripts, API history, HIG, Swift Evolution, App Review, source freshness, and trust metadata. See [Agent Guide](docs/AGENT_GUIDE.md) for recommended tool chains and prompt recipes.
 
-| Tool | Purpose |
-|------|---------|
-| `wwdc_search` | Hybrid search across sessions/docs/tutorials/hig/evolution |
-| `wwdc_list_years` | WWDC years in the index with session counts |
-| `wwdc_list_topics` | Top topics (SwiftUI, Swift, AI, visionOS…) |
-| `wwdc_list_pathways` | Curated + auto-derived learning tracks |
-| `wwdc_get_pathway` | A pathway with its ordered steps |
-| `wwdc_get_session` | Full session record (incl. transcript) |
-| `wwdc_session_deep_link` | URL with `?time=SECONDS` |
-| `wwdc_list_session_code` | All sample-code URLs for a session |
-| `wwdc_sample_code_grep` | Filter every indexed sample-code URL |
-| `apple_doc_lookup` | Live Apple `/documentation` JSON lookup |
-| `apple_doc_get` | Return indexed Apple documentation from the local DB |
-| `apple_tutorial_get` | Return a tutorial (from local index) |
-| `apple_hig_search` | HIG keyword search |
-| `apple_swift_evolution_get` | Proposal by id (SE-0428) |
-| `apple_swift_evolution_list` | List proposals, optional status filter |
-| `apple_swift_pattern_find` | Find repeated Apple/Swift patterns across indexed sources |
-| `swift_app_audit` | Audit bundle for Swift/SwiftUI/macOS/iOS app work using WWDC, HIG, tutorials, and Swift Evolution |
-| `apple_swift_book_get` | Retrieve a chapter from The Swift Programming Language |
-| `appstore_guidelines_search` | Search App Store Review Guidelines |
-| `wwdc_find_api_introduction` | Find when an Apple API first appeared in WWDC coverage |
-| `wwdc_what_changed` | Compare topic coverage between two WWDC years |
-| `wwdc_related_sessions` | Find sessions related to a known session |
-| `apple_hig_list` | Browse HIG entries by category or keyword |
-| `apple_swift_evolution_filter` | Filter Swift Evolution proposals by version, status, author, or keyword |
-| `wwdc_session_transcript_full` | Read complete transcripts in chunks |
-| `wwdc_topics_by_year` | Show topic trends by WWDC year |
-| `wwdc_sample_code_list` | Browse all indexed sample-code projects |
-| `wwdc_list_sessions` | List sessions for a year with optional filters |
-| `wwdc_speaker_search` | Find sessions by speaker |
-| `wwdc_transcript_search` | Search inside session transcripts |
-| `apple_doc_list_framework` | Browse indexed Apple docs by framework/module |
-| `appstore_guideline_get` | Retrieve one App Store Review Guideline section |
-| `wwdc_ingest_status` | Per-source last-run metadata + what's new |
-| `apple_api_deprecation` | Check deprecation status for indexed Apple APIs |
-| `apple_api_availability` | Check minimum OS availability for indexed Apple APIs |
-| `apple_release_notes_search` | Search indexed Apple release notes |
-| `apple_what_replaced` | Find replacements for deprecated Apple APIs |
-| `apple_search_all` | Federated search across indexed Apple content |
-| `wwdc_sessions_for_api` | Find WWDC sessions mentioning a specific API |
-| `swift_forum_search` | Search indexed Swift Forums posts |
-| `apple_forum_search` | Search indexed Apple Developer Forums posts |
-| `wwdc_session_summary` | Retrieve generated structured session summaries |
-| `apple_cross_references` | Inspect cross-reference graph edges |
-| `wwdc_export_status` | Report indexed table counts |
-| `wwdc_security_manifest` | Verify canonical tool surface, read-only posture, and prompt-injection controls |
+**I am an agent working in this repository**
 
-## Search parameters
+Read [AGENTS.md](AGENTS.md) first. Client-specific repository instructions are also provided for [Cursor](.cursor/rules/wwdc-mcp.mdc) and [GitHub Copilot](.github/copilot-instructions.md).
 
-`wwdc_search` supports focused retrieval for agent workflows:
+## Why use it?
 
-| Parameter | Purpose |
-|-----------|---------|
-| `kinds` | Limit search to `session`, `tutorial`, `hig`, and/or `evolution` |
-| `year` | Restrict sessions to one WWDC year |
-| `year_min`, `year_max` | Restrict sessions to a year range |
-| `topics` | Require session topics/status text to include each value |
-| `platforms` | Require session platforms to include each value |
-| `require_transcript` | Return only sessions with transcript text |
-| `judgment` | Include confidence, caveats, and suggested next tools |
-| `detail` | `compact`, `standard`, or `detailed` markdown output |
+Coding agents are excellent at writing Swift, but Apple APIs, platform guidance, App Review rules, and WWDC recommendations change quickly. WWDC MCP gives an agent a source-grounded way to answer questions like:
 
-Judgment metadata is intentionally conservative. Platform-only searches like `macOS` or `iOS` are marked as broad, even when many results match, because app audits need a framework, API, symptom, or feature term. If the local index is empty, search judgment points directly to ingest commands instead of returning silent low-confidence misses.
+- “What changed in SwiftUI at WWDC26, and which changes matter to this app?”
+- “Audit this StoreKit subscription flow against current Apple guidance.”
+- “When was this API introduced, is it deprecated, and what replaces it?”
+- “Find the exact WWDC chapter that explains this App Intents behavior.”
+- “Compare WWDC25 and WWDC26 coverage of Foundation Models.”
+- “Check App Store Review Guideline 3.1.1 before I ship.”
+- “Audit this macOS app for current SwiftUI, AppKit, concurrency, accessibility, and App Store guidance.”
 
-Example:
+The promoted entry point for repo-level Apple work is `swift_app_audit`. The promoted trust entry point is `wwdc_security_manifest`.
 
-```json
-{
-  "query": "SwiftUI navigation",
-  "kinds": ["session"],
-  "year_min": 2024,
-  "topics": ["SwiftUI"],
-  "platforms": ["visionOS"],
-  "require_transcript": true,
-  "detail": "detailed"
-}
+## Start here: three high-value workflows
+
+You do not need to learn 45 tool names first. Start with the job you are trying to finish:
+
+- **Modernize an Apple app:** call `swift_app_audit` with the repo's actual feature/API/problem, then follow its evidence into the focused WWDC, HIG, documentation, and API tools.
+- **Answer “what changed?”:** use `wwdc_what_changed` or `wwdc_search` with a framework/API and a year range, then open the strongest session/transcript evidence.
+- **Check shipping risk:** search `appstore_guidelines_search`, API availability/deprecation tools, and `wwdc_ingest_status` before treating a recommendation as current.
+
+The server instructions teach connected agents this routing automatically; the catalog remains available when you need a narrower source.
+
+## What makes this different?
+
+- **WWDC26-aware** — the default ingest range is 2020–2026 and can be extended with `--year`.
+- **Source-grounded app audits** — `swift_app_audit` combines WWDC, HIG, tutorials, Swift Evolution, pathways, Apple doc hints, caveats, and validation steps.
+- **API intelligence** — availability, deprecation, replacement, introduction history, and WWDC mentions.
+- **Transcript-native** — search complete session transcripts, read them in chunks, and generate timestamped deep links.
+- **Local-first** — SQLite + FTS5 plus optional local ONNX semantic reranking; no separate embedding service or paid API is required for core search.
+- **Trust-aware** — conservative judgment metadata, a content-safety tripwire, and a security manifest help agents distinguish evidence from instructions.
+- **Two transports** — stdio by default, plus authenticated stateless Streamable HTTP for remote/self-hosted use.
+- **Public-directory ready transport** — remote deployments can explicitly set `WWDC_MCP_PUBLIC_READ_ONLY=1` to allow anonymous access to the same read-only tool surface; without that flag or bearer auth, HTTP fails closed.
+- **Read-only MCP surface** — the 45 tools retrieve and analyze source material; they do not mutate your Apple account or source repo.
+
+## Install-path scorecard
+
+Choose the path that matches what you value. **Do not confuse “local-first” with “everyone must self-host.”**
+
+| Path | User work | Best for | Status |
+| --- | --- | --- | --- |
+| Hosted remote MCP | paste/connect one HTTPS MCP URL | ChatGPT, cloud/remote agents, fastest evaluation | endpoint prepared; not advertised live until verification passes |
+| MCPB / MCP Registry | install published bundle | clients with bundle/Registry support | v0.2.1 active |
+| Local stdio | clone/package + ingest + local client config | privacy, offline-ish retrieval, full local control | supported and tested |
+| Self-hosted HTTP | deploy + choose auth + TLS/edge | teams controlling their own infrastructure | supported and tested |
+
+When the hosted endpoint is live, the intended public URL is:
+
+```text
+https://wwdc-mcp.smatdesigns.com/mcp
 ```
 
-`wwdc_get_session` also supports response shaping:
+For ChatGPT/custom remote MCP clients, that removes the local Node/index/config-path requirement. For Cursor, the same remote URL can be placed in `mcp.json` and can later back a one-click install/deeplink. Local stdio remains a first-class option rather than a fallback.
 
-| Parameter | Purpose |
-|-----------|---------|
-| `include_transcript` | Include or omit transcript text |
-| `transcript_chars` | Cap returned transcript characters, from 500 to 25,000 |
-| `include_chapters` | Include or omit chapter deep-links |
-| `include_sample_code` | Include or omit sample-code URLs |
-| `include_related_docs` | Include or omit related Apple docs |
-| `include_judgment` | Include confidence, coverage, caveats, and suggested next tools |
+### Friction budget
 
-## Project docs
+A newcomer should be able to reach the **first source-grounded answer** with as few decisions as possible:
 
-- [`CHANGELOG.md`](CHANGELOG.md) — release notes and unreleased changes.
-- [`docs/SOURCE-OF-TRUTH.md`](docs/SOURCE-OF-TRUTH.md) — local pointer to the NotebookLM source of truth.
-- [`docs/NOTEBOOKLM-WWDC-MCP-DOC-AUDIT.md`](docs/NOTEBOOKLM-WWDC-MCP-DOC-AUDIT.md) — latest NotebookLM-grounded doc audit, gaps, and questions.
-- [`docs/DEPLOY.md`](docs/DEPLOY.md) — local deployment and verification runbook.
-- [`docs/SKILL-WIRING.md`](docs/SKILL-WIRING.md) — guidance for wiring this MCP into Apple-platform coding skills.
-- [`docs/APPLE-ENDPOINTS.md`](docs/APPLE-ENDPOINTS.md) — Apple endpoint notes for ingest maintainers.
+- hosted: connect URL → ask the 60-second check;
+- Registry/MCPB: install → ask the 60-second check;
+- local: install → ingest → configure → ask the 60-second check.
 
-## Install
+If a new distribution method adds steps before the first useful answer, treat that as an adoption regression unless it buys a clear privacy/security capability.
 
-Requires Node.js 20 or newer.
+## Local-first quick start
+
+Use this path when you want the corpus and server on your own machine. For hosted/Registry paths, use the scorecard above.
+
+### Requirements
+
+- Node.js **22.14 or newer**
+- npm
+
+> **Distribution status (October 7, 2026):** the official MCP Registry namespace is `io.github.jabbertones-cloud/wwdc`, distributed through a GitHub-hosted MCPB release asset. v0.2.1 is the current patch line. npm publication is optional secondary distribution and is not required for Registry or Cursor installs.
+
+### 1. Clone and build
 
 ```bash
 git clone https://github.com/jabbertones-cloud/wwdc-mcp-server.git
 cd wwdc-mcp-server
-npm install
+npm ci
 npm run build
 ```
 
-Or run directly without cloning (no build step):
+The release package exposes two executables:
 
-```bash
-npx wwdc-mcp-server
+```text
+wwdc-mcp-server   # stdio MCP server
+wwdc-mcp-ingest   # build/update the local Apple knowledge index
 ```
 
-Ollama (optional but recommended for semantic search):
+Run the immutable GitHub release package directly:
 
 ```bash
-ollama pull nomic-embed-text
-# Server must be running at http://127.0.0.1:11434
+PKG="https://github.com/jabbertones-cloud/wwdc-mcp-server/releases/download/v0.2.1/wwdc-mcp-server-0.2.1.tgz"
+
+npm exec --yes --allow-remote=all --package="$PKG" -- wwdc-mcp-ingest --source wwdc --year 2026
+npm exec --yes --allow-remote=all --package="$PKG" -- wwdc-mcp-server
 ```
 
-## Ingest
+Clients that support MCP Bundles can use the `WWDC-MCP-v0.2.1.mcpb` asset from the GitHub v0.2.1 release / official MCP Registry.
+
+### 2. Build a useful local index
+
+For the full core corpus:
 
 ```bash
-npm run ingest:all        # everything (takes a while on first run)
-npm run ingest:wwdc       # just WWDC sessions
-npm run ingest:tutorials  # Apple tutorials (DocC)
-npm run ingest:docs       # Apple documentation (DocC)
-npm run ingest:hig        # Human Interface Guidelines
-npm run ingest:evolution  # Swift Evolution proposals
+npm run ingest:all
 ```
 
-You can restrict WWDC years with `--year 2024 --year 2025`, and cap evolution with `--limit 20`.
+For a faster WWDC26-first setup:
 
-## Environment variables
+```bash
+npm run ingest:wwdc -- --year 2026
+npm run ingest:docs
+npm run ingest:hig
+npm run ingest:evolution
+npm run ingest:appstore
+```
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `OLLAMA_BASE` | No | `http://127.0.0.1:11434` | Ollama base URL |
-| `OLLAMA_EMBED_MODEL` | No | `nomic-embed-text` | Embedding model for semantic reranking |
-| `WWDC_MCP_DB` | No | `<repo>/data/wwdc.db` | Custom SQLite database path |
+`ingest:all` covers the **core** sources: WWDC, tutorials, pathways, HIG, Swift Evolution, Apple docs, Swift Book, and App Store Review Guidelines. Additional optional enrichment sources are documented below.
 
-Without Ollama the server falls back to pure keyword (FTS5) search.
+### 3. Prove it works before wiring your client
 
-## Connect to your AI client
+```bash
+npm test
+```
 
-### Claude Desktop
+That exercises parser/security checks, all 45 tools over stdio, search regressions, package metadata, and authenticated Streamable HTTP.
+
+### 4. Add it to an MCP client
+
+Generic stdio configuration:
+
+```json
+{
+  "mcpServers": {
+    "wwdc": {
+      "command": "node",
+      "args": ["/absolute/path/to/wwdc-mcp-server/dist/index.js"]
+    }
+  }
+}
+```
+
+Then ask your agent:
+
+> Use WWDC MCP to audit this app against current Apple guidance before changing code.
+
+## Make your agent use it automatically
+
+The highest-leverage setup is a short repository instruction so the agent reaches for WWDC MCP without being reminded every prompt:
+
+```text
+For Apple-platform work, use WWDC MCP before material code changes.
+Start with swift_app_audit for repo-level work, verify API availability/deprecation,
+cite the strongest Apple/Swift source evidence, and separate evidence from inference.
+```
+
+Ready-made versions are included in [AGENTS.md](AGENTS.md), [Cursor rules](.cursor/rules/wwdc-mcp.mdc), and [GitHub Copilot instructions](.github/copilot-instructions.md).
+
+### 60-second connection check
+
+After connecting the server, ask your client to:
+
+```text
+Use WWDC MCP. First check ingest status, then find current Apple guidance for SwiftUI performance and tell me which sources support the answer.
+```
+
+A healthy setup should be able to see the `wwdc` server, call its tools, and return source-grounded results. For repository-level work, follow with:
+
+```text
+Audit this repository with swift_app_audit before proposing Apple-platform changes.
+```
+
+## Remote HTTP deployment modes
+
+The HTTP transport is deliberately fail-closed by default.
+
+Private/self-hosted bearer mode:
+
+```bash
+WWDC_MCP_HTTP_HOST=0.0.0.0 \
+WWDC_MCP_BEARER_TOKEN='<secret>' \
+npm run start:http
+```
+
+Explicit anonymous read-only mode for a public MCP directory/connector:
+
+```bash
+WWDC_MCP_HTTP_HOST=0.0.0.0 \
+WWDC_MCP_PUBLIC_READ_ONLY=1 \
+npm run start:http
+```
+
+In public mode, the MCP endpoint exposes the existing 45 read-only tools without requiring a shared bearer token. This mode is **opt-in**. If neither bearer authentication nor `WWDC_MCP_PUBLIC_READ_ONLY=1` is configured, `/mcp` returns `503 auth_not_configured`.
+
+For an internet-facing deployment, put the server behind TLS/reverse-proxy controls, keep the corpus/source policy unchanged, and monitor/rate-limit at the edge. The repo does not claim a hosted public endpoint until one is independently deployed and verified.
+
+## Client setup
+
+<details>
+<summary><strong>OpenAI Codex</strong></summary>
+
+Codex CLI and the Codex IDE extension share MCP configuration. Add this to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.wwdc]
+command = "node"
+args = ["/absolute/path/to/wwdc-mcp-server/dist/index.js"]
+```
+
+Verify the server appears with:
+
+```bash
+codex mcp list
+```
+
+For reliable tool selection, add a project rule such as this to `AGENTS.md`:
+
+```text
+Use WWDC MCP before Apple-platform code changes. Start with swift_app_audit for repo-level work, use Apple/WWDC source tools for evidence, and distinguish retrieved source text from inference.
+```
+
+</details>
+
+<details>
+<summary><strong>Claude Desktop</strong></summary>
 
 `~/Library/Application Support/Claude/claude_desktop_config.json`
 
@@ -196,19 +267,29 @@ Without Ollama the server falls back to pure keyword (FTS5) search.
   "mcpServers": {
     "wwdc": {
       "command": "node",
-      "args": ["/absolute/path/to/wwdc-mcp-server/dist/index.js"],
-      "env": {
-        "OLLAMA_BASE": "http://127.0.0.1:11434",
-        "OLLAMA_EMBED_MODEL": "nomic-embed-text"
-      }
+      "args": ["/absolute/path/to/wwdc-mcp-server/dist/index.js"]
     }
   }
 }
 ```
 
-### VS Code (GitHub Copilot / MCP extension)
+</details>
 
-`.vscode/mcp.json` in your workspace:
+<details>
+<summary><strong>Claude Code</strong></summary>
+
+Use your normal MCP configuration flow and point the server command at:
+
+```text
+node /absolute/path/to/wwdc-mcp-server/dist/index.js
+```
+
+</details>
+
+<details>
+<summary><strong>VS Code</strong></summary>
+
+`.vscode/mcp.json`:
 
 ```json
 {
@@ -222,7 +303,10 @@ Without Ollama the server falls back to pure keyword (FTS5) search.
 }
 ```
 
-### Cursor
+</details>
+
+<details>
+<summary><strong>Cursor</strong></summary>
 
 `~/.cursor/mcp.json`:
 
@@ -237,7 +321,10 @@ Without Ollama the server falls back to pure keyword (FTS5) search.
 }
 ```
 
-### Windsurf
+</details>
+
+<details>
+<summary><strong>Windsurf</strong></summary>
 
 `~/.codeium/windsurf/mcp_config.json`:
 
@@ -252,9 +339,12 @@ Without Ollama the server falls back to pure keyword (FTS5) search.
 }
 ```
 
-### Zed
+</details>
 
-`.zed/settings.json` in your project:
+<details>
+<summary><strong>Zed</strong></summary>
+
+`.zed/settings.json`:
 
 ```json
 {
@@ -269,48 +359,277 @@ Without Ollama the server falls back to pure keyword (FTS5) search.
 }
 ```
 
-### Dev mode (any client, via tsx)
+</details>
+
+## Documentation map
+
+| If you are… | Read |
+| --- | --- |
+| Installing for the first time | this README → Quick start → Client setup |
+| Driving a coding agent | [Agent Guide](docs/AGENT_GUIDE.md) |
+| Understanding design/trust boundaries | [Architecture](docs/ARCHITECTURE.md) |
+| Diagnosing a failure | [Troubleshooting](docs/TROUBLESHOOTING.md) |
+| Checking clients/runtimes/transports | [Compatibility](docs/COMPATIBILITY.md) |
+| An agent modifying this repo | [AGENTS.md](AGENTS.md) |
+| Self-hosting / deploying HTTP | [Deployment guide](docs/DEPLOY.md) |
+| Contributing code or sources | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| Contributing with an AI coding agent | [AI-assisted contributions](docs/AI_CONTRIBUTIONS.md) |
+| Reviewing trust/security | [SECURITY.md](SECURITY.md) |
+| Publishing a release | [Release guide](docs/RELEASING.md) |
+
+## Apple sources
+
+The core index can include:
+
+| Source | What you get |
+| --- | --- |
+| WWDC 2020–2026 | Sessions, descriptions, topics, platforms, speakers, transcripts, chapters, sample-code links, related docs |
+| Apple Developer Documentation | Framework and symbol documentation from public DocC data |
+| Apple tutorials | Public DocC tutorial content |
+| Human Interface Guidelines | Platform design guidance |
+| Swift Evolution | Proposal status, authors, versions, implementation links, and full proposal text |
+| The Swift Programming Language | Swift language reference chapters |
+| App Store Review Guidelines | Searchable guideline sections |
+| Optional enrichment | Apple release notes, Swift Forums, Apple Developer Forums, generated summaries, cross-reference graph |
+
+Most query tools read from the local SQLite index. `apple_doc_lookup` is intentionally a **live Apple Developer Documentation lookup** and therefore uses the network.
+
+## 45 read-only MCP tools
+
+### Search and discovery
+
+- `wwdc_search`, `apple_search_all`
+- `wwdc_list_years`, `wwdc_list_topics`, `wwdc_list_sessions`
+- `wwdc_topics_by_year`, `wwdc_speaker_search`, `wwdc_what_changed`
+- `wwdc_list_pathways`, `wwdc_get_pathway`
+
+### Sessions, transcripts, and sample code
+
+- `wwdc_get_session`, `wwdc_session_summary`, `wwdc_related_sessions`
+- `wwdc_transcript_search`, `wwdc_session_transcript_full`
+- `wwdc_session_deep_link`
+- `wwdc_list_session_code`, `wwdc_sample_code_list`, `wwdc_sample_code_grep`
+
+### Apple docs, HIG, Swift, and forums
+
+- `apple_doc_lookup`, `apple_doc_get`, `apple_doc_list_framework`
+- `apple_tutorial_get`
+- `apple_hig_search`, `apple_hig_list`
+- `apple_swift_book_get`
+- `apple_swift_evolution_get`, `apple_swift_evolution_list`, `apple_swift_evolution_filter`
+- `swift_forum_search`, `apple_forum_search`
+
+### API and App Store intelligence
+
+- `wwdc_find_api_introduction`, `wwdc_sessions_for_api`
+- `apple_api_availability`, `apple_api_deprecation`, `apple_what_replaced`
+- `apple_release_notes_search`
+- `appstore_guidelines_search`, `appstore_guideline_get`
+
+### Audit, graph, status, and trust
+
+- `swift_app_audit`
+- `apple_swift_pattern_find`, `apple_cross_references`
+- `wwdc_ingest_status`, `wwdc_export_status`
+- `wwdc_security_manifest`
+
+The test suite asserts that both stdio and Streamable HTTP expose exactly 45 tools.
+
+## Search example
+
+`wwdc_search` supports year ranges, topics, platforms, transcript requirements, output detail, and conservative judgment metadata.
 
 ```json
 {
-  "mcpServers": {
-    "wwdc": {
-      "command": "npx",
-      "args": ["tsx", "/abs/path/to/wwdc-mcp-server/src/index.ts"]
-    }
-  }
+  "query": "SwiftUI performance",
+  "kinds": ["session"],
+  "year_min": 2025,
+  "year_max": 2026,
+  "topics": ["SwiftUI"],
+  "require_transcript": true,
+  "judgment": true,
+  "detail": "detailed"
 }
 ```
 
-## Scheduled ingest
+Platform-only queries such as “macOS” intentionally receive conservative judgment. Better audit queries name a framework, API, feature, symptom, or goal.
 
-During WWDC week, re-run `npm run ingest:wwdc` every 30 min to catch newly-published sessions:
+## Ingest
 
-```cron
-# Regular cadence
-0 6 * * * cd /abs/path/to/wwdc-mcp-server && npm run ingest:all
-
-# WWDC week burst (uncomment during the conference)
-# */30 * * * 1-5 cd /abs/path/to/wwdc-mcp-server && npm run ingest:wwdc
-```
-
-## Tests
+### Core sources
 
 ```bash
-npm run smoke   # offline DB/FTS assertions
-npm run build   # TypeScript strict typecheck
-npm test        # smoke + parse + MCP e2e + package smoke
+npm run ingest:wwdc
+npm run ingest:tutorials
+npm run ingest:hig
+npm run ingest:evolution
+npm run ingest:docs
+npm run ingest:swiftbook
+npm run ingest:appstore
+npm run ingest:all
 ```
 
-The `tests/evaluation.xml` file contains 10 read-only, stable QA pairs for scoring LLM answer quality with the MCP builder evaluation harness.
+Restrict WWDC years by repeating `--year`:
 
-## Design notes
+```bash
+npm run ingest:wwdc -- --year 2025 --year 2026
+```
 
-- Transport: **stdio** — one process per client, no HTTP endpoint to secure.
-- DB: **SQLite + FTS5** with porter stemmer; embeddings stored as raw `BLOB` (Float32).
-- Network: polite concurrency (4), retries, 20 s timeout, honest User-Agent.
-- Response budget: every tool truncates to **25,000 chars** (~6K tokens).
-- Naming: `{service}_{action}_{resource}` snake_case with `wwdc_` / `apple_` prefixes so it never collides with other MCP servers.
+### Optional enrichment
+
+```bash
+npm run ingest -- --source release-notes
+npm run ingest -- --source swift-forums
+npm run ingest -- --source apple-dev-forums
+npm run ingest -- --source session-summaries --limit 50
+npm run ingest -- --source cross-reference
+npm run ingest -- --source deprecation-backfill
+npm run ingest -- --source export-deprecation-qa
+```
+
+`session-summaries` is the one optional enrichment lane that uses an external model API. It runs only when `ANTHROPIC_API_KEY` is set, sends bounded WWDC session metadata/transcript excerpts to Anthropic, and may incur API cost. Core ingest, search, audits, and local semantic reranking do not require that key.
+
+During WWDC week, re-run the WWDC ingest periodically to pick up newly published sessions.
+
+## Local semantic search — no Ollama required
+
+FTS5 keyword search works immediately. When semantic reranking is enabled, WWDC MCP lazily loads `nomic-ai/nomic-embed-text-v1.5` through `@huggingface/transformers` and runs the ONNX model locally. The model is cached under `~/.cache/huggingface/hub`; the first semantic use may need network access to download model files.
+
+If the model cannot initialize, search falls back to FTS5 for that process. To force keyword-only behavior:
+
+```bash
+export WWDC_SKIP_EMBEDDINGS=1
+```
+
+### Local/index configuration
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `WWDC_MCP_DATA_DIR` | OS app-data directory | Database/cache directory |
+| `WWDC_MCP_DB` | `<data-dir>/wwdc.db` | SQLite database path |
+| `WWDC_SKIP_EMBEDDINGS` | unset | Set to `1` to disable local model loading and semantic reranking |
+| `WWDC_DOCS_MAX_PAGES` | `2500` | Bound Apple Developer Documentation crawl size |
+| `WWDC_TUTORIAL_MAX_PAGES` | `250` | Bound Apple tutorial crawl size |
+
+## Remote Streamable HTTP
+
+Stdio remains the default and simplest local transport. The same 45-tool server can also run as a stateless Streamable HTTP MCP in either **private bearer-authenticated** mode or an explicitly enabled **public read-only** mode.
+
+### Private bearer-authenticated mode
+
+```bash
+export WWDC_MCP_BEARER_TOKEN="$(openssl rand -hex 32)"
+export WWDC_MCP_HTTP_HOST=127.0.0.1
+export WWDC_MCP_HTTP_PORT=8789
+npm run start:http
+```
+
+Routes:
+
+- `GET /healthz`
+- `POST /mcp`
+
+For a deliberately public, read-only connector endpoint:
+
+```bash
+export WWDC_MCP_PUBLIC_READ_ONLY=1
+export WWDC_MCP_HTTP_HOST=0.0.0.0
+export WWDC_MCP_HTTP_PORT=8789
+npm run start:http
+```
+
+The MCP route fails closed with `503 auth_not_configured` unless either bearer authentication is configured **or** `WWDC_MCP_PUBLIC_READ_ONLY=1` is explicitly enabled. Public mode does not add write capabilities: it exposes the same 45 read-only tools.
+
+To mount the service behind a shared reverse proxy without path rewriting:
+
+```bash
+export WWDC_MCP_PATH_PREFIX=/wwdc
+```
+
+Routes become `/wwdc/healthz` and `/wwdc/mcp`.
+
+The built-in HTTP server does **not** terminate TLS. If you expose it outside localhost, put it behind a TLS edge/reverse proxy, rate-limit and monitor it, and treat bearer tokens as secrets.
+
+### Hosted public endpoint
+
+A Cloudflare-backed public endpoint is being prepared at:
+
+```text
+https://wwdc-mcp.smatdesigns.com/mcp
+```
+
+It will be marked **live** here only after the deployed endpoint passes health, MCP initialize, tool-catalog, and source-grounding verification. Until then, use the GitHub release/MCP Registry or self-hosted modes above.
+
+See [docs/DEPLOY.md](docs/DEPLOY.md) for the full runbook.
+
+## Trust and security model
+
+- All 45 MCP tools are read-only.
+- Retrieved web text is treated as **untrusted evidence**, not executable instruction.
+- Search responses can include `content_safety` metadata.
+- `wwdc_security_manifest` reports the canonical tool surface, manifest hash, read-only posture, and prompt-injection handling.
+- Remote HTTP fails closed by default. Private mode requires bearer authentication; anonymous access exists only when the operator explicitly enables `WWDC_MCP_PUBLIC_READ_ONLY=1`.
+- The default stdio server opens no network listener.
+- Ingest fetches public Apple/Swift sources. `apple_doc_lookup` performs live public Apple documentation requests.
+- Local semantic reranking uses a Hugging Face Transformers/ONNX model and may download its model files on first use.
+- Optional `session-summaries` sends bounded session metadata/transcript excerpts to Anthropic only when `ANTHROPIC_API_KEY` is explicitly configured.
+- No Apple Developer account credentials are required or stored.
+
+For vulnerability reporting and deployment cautions, see [SECURITY.md](SECURITY.md).
+
+## Tests and release proof
+
+```bash
+npm run build
+npm test
+npm audit --audit-level=high
+```
+
+`npm test` covers smoke tests, ingest parsing, security evaluation, stdio MCP E2E, search regression, package smoke, and Streamable HTTP MCP E2E.
+
+The protocol tests verify the 45-tool catalog and exercise the trust manifest over both supported transports.
+
+## Architecture
+
+- **Runtime:** Node.js >=22.14, TypeScript
+- **Default transport:** MCP stdio
+- **Optional transport:** authenticated stateless Streamable HTTP
+- **Storage:** SQLite + FTS5
+- **Semantic reranking:** local `nomic-ai/nomic-embed-text-v1.5` via Hugging Face Transformers/ONNX
+- **Response budget:** bounded tool responses, with compact envelopes for oversized JSON
+- **Ingest:** public Apple/Swift sources with bounded concurrency, retries, and a stable User-Agent
+- **Safety:** content-safety metadata, read-only tool contract, security manifest, fail-closed remote auth
+
+## Public project docs
+
+- [CHANGELOG.md](CHANGELOG.md) — implementation and release history
+- [CONTRIBUTING.md](CONTRIBUTING.md) — contribution workflow
+- [SECURITY.md](SECURITY.md) — security model and vulnerability reporting
+- [docs/DEPLOY.md](docs/DEPLOY.md) — stdio and remote deployment
+- [docs/RELEASING.md](docs/RELEASING.md) — npm + MCP Registry release checklist
+- [docs/SOURCE-OF-TRUTH.md](docs/SOURCE-OF-TRUTH.md) — repository truth and verification rules
+- [docs/SKILL-WIRING.md](docs/SKILL-WIRING.md) — agent/skill integration guidance
+- [docs/APPLE-ENDPOINTS.md](docs/APPLE-ENDPOINTS.md) — ingest-maintainer notes
+
+## From Apple guidance to App Store execution
+
+WWDC MCP is intentionally read-only: it helps your agent **understand** current Apple APIs, design guidance, platform changes, and App Review requirements without holding App Store Connect credentials.
+
+When the research is done and you need to **execute** the release workflow, [AiSCent](https://aiscentmcp.com) is the companion product: App Store Connect automation for release operations such as localization, screenshots, metadata, TestFlight readiness, and submission workflows.
+
+**A useful agent workflow:**
+
+1. Ask WWDC MCP to audit the app against current Apple guidance.
+2. Fix the code and UX with source-grounded evidence.
+3. Use AiSCent for the App Store Connect work needed to get the build ready to ship.
+
+> **WWDC MCP = know what Apple expects. AiSCent = help get the release through App Store Connect.**
+
+## Contributing
+
+Issues and PRs are welcome. If you change the MCP tool surface, ingest behavior, transport behavior, or public claims, update the matching tests and docs in the same change.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

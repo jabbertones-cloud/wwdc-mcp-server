@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 /**
  * Offline smoke test — exercises DB schema, seed fixtures, FTS, and tool stubs
- * without talking to Apple or Ollama.
+ * without talking to Apple or loading the embedding model.
  */
 
 import fs from "node:fs";

@@ -4,7 +4,7 @@
  * There's no JSON index for videos, so we:
  *   1. Walk the year index page and collect session URLs.
  *   2. Fetch each session page, extract title/description/topics/transcript excerpt/sample-code links.
- *   3. Persist to SQLite + embed with Ollama.
+ *   3. Persist to SQLite + embed with local embedding model.
  */
 
 import type { Database as DatabaseType } from "better-sqlite3";
@@ -14,7 +14,7 @@ import { APPLE_BASE, APPLE_WWDC_BASE, REQUEST_CONCURRENCY, WWDC_YEARS } from "..
 import { httpGet } from "../services/http.js";
 import type { WwdcSession } from "../types.js";
 import { upsertSession, upsertSampleCode, recordIngest } from "../db/queries.js";
-import { checkOllama, embed, storeEmbedding } from "../services/ollama.js";
+import { checkEmbeddings, embed, storeEmbedding } from "../services/embeddings.js";
 
 interface DiscoveredSession {
   year: number;
@@ -217,7 +217,7 @@ export async function ingestWwdc(
 ): Promise<{ ingested: number; errors: number }> {
   let ingested = 0;
   let errors = 0;
-  const ollamaOn = await checkOllama();
+  const embeddingsOn = await checkEmbeddings();
   const limit = pLimit(REQUEST_CONCURRENCY);
 
   for (const y of years) {
@@ -249,7 +249,7 @@ export async function ingestWwdc(
           });
         }
 
-        if (ollamaOn) {
+        if (embeddingsOn) {
           const text = `${session.title}\n${session.description}\n${(session.transcript ?? "").slice(0, 3000)}`;
           const vec = await embed(text.slice(0, 4000));
           if (vec) storeEmbedding(db, `session:${session.id}`, "session", vec);
