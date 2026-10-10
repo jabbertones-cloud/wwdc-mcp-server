@@ -408,7 +408,7 @@ Most query tools read from the local SQLite index. `apple_doc_lookup` is intenti
 - `wwdc_get_session`, `wwdc_session_summary`, `wwdc_related_sessions`
 - `wwdc_transcript_search`, `wwdc_session_transcript_full`
 - `wwdc_session_deep_link`
-- `wwdc_list_session_code`, `wwdc_sample_code_list`, `wwdc_sample_code_grep`
+- `wwdc_list_session_code`, `wwdc_sample_code_list`, `wwdc_sample_code_grep` (grep matches titles and URLs; empty results say what was searched)
 
 ### Apple docs, HIG, Swift, and forums
 
