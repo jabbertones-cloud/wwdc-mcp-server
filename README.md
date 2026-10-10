@@ -408,7 +408,7 @@ Most query tools read from the local SQLite index. `apple_doc_lookup` is intenti
 - `wwdc_get_session`, `wwdc_session_summary`, `wwdc_related_sessions`
 - `wwdc_transcript_search`, `wwdc_session_transcript_full`
 - `wwdc_session_deep_link`
-- `wwdc_list_session_code`, `wwdc_sample_code_list`, `wwdc_sample_code_grep`
+- `wwdc_list_session_code`, `wwdc_sample_code_list`, `wwdc_sample_code_grep` (grep matches titles and URLs; empty results say what was searched)
 
 ### Apple docs, HIG, Swift, and forums
 
@@ -437,7 +437,7 @@ The test suite asserts that both stdio and Streamable HTTP expose exactly 45 too
 
 ## Search example
 
-`wwdc_search` supports year ranges, topics, platforms, transcript requirements, output detail, and conservative judgment metadata.
+`wwdc_search` supports year ranges, topics, platforms, transcript requirements, output detail, and conservative judgment metadata. Year constraints (`year`, `year_min`, `year_max`) filter WWDC sessions only; when a year constraint is combined with other kinds, the response says so via `filters.year_applies_to` and a judgment caveat instead of implying every kind was year-filtered. If a query is narrowed before execution (duplicate terms removed, or more than 32 unique terms), the response discloses it via `query_normalization` and a judgment caveat rather than presenting the raw query as the executed one. A fully-misspelled query that matches nothing returns a proposed correction from the corpus vocabulary (`did_you_mean`) instead of a bare zero — the suggestion is labeled and never auto-run.
 
 ```json
 {
