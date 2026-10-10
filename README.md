@@ -437,7 +437,7 @@ The test suite asserts that both stdio and Streamable HTTP expose exactly 45 too
 
 ## Search example
 
-`wwdc_search` supports year ranges, topics, platforms, transcript requirements, output detail, and conservative judgment metadata. Year constraints (`year`, `year_min`, `year_max`) filter WWDC sessions only; when a year constraint is combined with other kinds, the response says so via `filters.year_applies_to` and a judgment caveat instead of implying every kind was year-filtered.
+`wwdc_search` supports year ranges, topics, platforms, transcript requirements, output detail, and conservative judgment metadata. Year constraints (`year`, `year_min`, `year_max`) filter WWDC sessions only; when a year constraint is combined with other kinds, the response says so via `filters.year_applies_to` and a judgment caveat instead of implying every kind was year-filtered. If a query is narrowed before execution (duplicate terms removed, or more than 32 unique terms), the response discloses it via `query_normalization` and a judgment caveat rather than presenting the raw query as the executed one.
 
 ```json
 {
