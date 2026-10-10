@@ -7,6 +7,19 @@ on:
     branches: [main]
 
 jobs:
+  inspector-compatibility:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: External MCP Inspector compatibility
+        run: npm run test:inspector
+
   build-and-test:
     runs-on: ubuntu-latest
 
@@ -38,8 +51,20 @@ jobs:
       - name: Parse test
         run: npm run test:parse
 
-      - name: E2E test (MCP protocol)
+      - name: Security evaluation
+        run: npm run test:security
+
+      - name: Search regression
+        run: npm run test:search-regression
+
+      - name: Retrieval evaluation
+        run: npm run eval
+
+      - name: E2E test (stdio MCP protocol)
         run: npm run test:e2e
+
+      - name: E2E test (remote Streamable HTTP MCP)
+        run: npm run test:http
 
       - name: Package smoke
         run: npm run test:package
