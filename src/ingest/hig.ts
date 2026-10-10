@@ -10,7 +10,7 @@ import { APPLE_BASE, APPLE_HIG_JSON } from "../constants.js";
 import { httpGet } from "../services/http.js";
 import type { HigEntry } from "../types.js";
 import { upsertHig, recordIngest } from "../db/queries.js";
-import { checkOllama, embed, storeEmbedding } from "../services/ollama.js";
+import { checkEmbeddings, embed, storeEmbedding } from "../services/embeddings.js";
 
 /** Top-level HIG topic slugs (extend as Apple adds more). */
 export const HIG_SEEDS: readonly string[] = [
@@ -64,7 +64,7 @@ export async function ingestHig(
   let ingested = 0;
   let errors = 0;
   const visited = new Set<string>();
-  const ollamaOn = await checkOllama();
+  const embeddingsOn = await checkEmbeddings();
 
   async function walk(slug: string, category = "foundations", depth = 0): Promise<void> {
     if (visited.has(slug) || depth > 3) return;
@@ -91,7 +91,7 @@ export async function ingestHig(
     upsertHig(db, entry);
     ingested++;
 
-    if (ollamaOn) {
+    if (embeddingsOn) {
       const vec = await embed(`${title}\n${summary}\n${body}`.slice(0, 4000));
       if (vec) storeEmbedding(db, `hig:${slug}`, "hig", vec);
     }

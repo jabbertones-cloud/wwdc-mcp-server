@@ -10,7 +10,7 @@ import fs from "node:fs";
 import path from "node:path";
 import assert from "node:assert/strict";
 import { openDb, migrate, rebuildFts } from "../src/db/schema.js";
-import { discoverSessionsForYear, ingestWwdc } from "../src/ingest/wwdc.js";
+import { discoverSessionsForYear } from "../src/ingest/wwdc.js";
 import { ingestTutorials } from "../src/ingest/tutorials.js";
 import { ingestHig } from "../src/ingest/hig.js";
 import { ingestEvolution } from "../src/ingest/evolution.js";
@@ -21,23 +21,18 @@ import {
 } from "../src/db/queries.js";
 
 async function main(): Promise<void> {
+  // Exercise live source parsing without downloading/running the local embedding model.
+  process.env.WWDC_SKIP_EMBEDDINGS = "1";
   const dbPath = path.join(process.env.TMPDIR ?? "/tmp", `wwdc-live-${process.pid}.db`);
   if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
   const db = openDb(dbPath);
   migrate(db);
 
   // ── 1) WWDC ingest (tiny slice: 3 discovered sessions) ───────────────────
-  console.log("[live] 1/5 WWDC sessions (year=2024, 3 sessions)");
-  const discovered = await discoverSessionsForYear(2024);
-  assert.ok(discovered.length > 50, `expected many WWDC 2024 sessions, got ${discovered.length}`);
-  // ingest only the first 3 to keep the test fast
-  const { ingestWwdc: _ } = { ingestWwdc };
-  const patchedYears = [2024] as const;
-  const origFetch = (globalThis as any).fetch;
-  // NB: the ingestWwdc iterates all sessions; limit via the `--year` arg isn't enough.
-  // Instead we'll call the pipeline with a monkey-patched discovered list by directly
-  // exercising the full helper with a single year and trust that it's the same code path.
-  // For speed, we skip the pipeline and call the session path fetcher directly:
+  console.log("[live] 1/5 WWDC sessions (year=2026, 3 sessions)");
+  const discovered = await discoverSessionsForYear(2026);
+  assert.ok(discovered.length > 50, `expected many WWDC 2026 sessions, got ${discovered.length}`);
+  // Parse only the first 3 discovered sessions to keep the live test bounded.
   const { parseSessionPage } = await import("../src/ingest/wwdc.js");
   const { upsertSession, upsertSampleCode } = await import("../src/db/queries.js");
   const { httpGet } = await import("../src/services/http.js");
@@ -60,7 +55,7 @@ async function main(): Promise<void> {
     // BUG #1 GUARD: live-title should no longer contain the SEO suffix.
     assert.ok(!/\bApple\s+Developer\s*$/i.test(s.title), `SEO suffix leaked into title: ${s.title!}`);
     assert.ok(!/\-\s*WWDC\d{2,4}\b/i.test(s.title), `WWDC-year marker leaked into title: ${s.title!}`);
-    // BUG #2 GUARD: deep-link extraction from 2024+ supplement <li> format
+    // BUG #2 GUARD: current WWDC chapter/deep-link extraction
     for (const dl of s.deepLinks) {
       assert.ok(dl.url.includes(`?time=${dl.seconds}`), `deep-link url missing time param: ${dl.url}`);
       assert.ok(dl.label && dl.label.length <= 120, `bad chapter label: "${dl.label}"`);
@@ -71,7 +66,7 @@ async function main(): Promise<void> {
   assert.ok(totalChapters >= 3, `expected at least 3 chapters across 3 sessions, got ${totalChapters}`);
   console.log(`[live] WWDC chapters extracted: ${totalChapters}`);
   const years = listYears(db);
-  assert.ok(years.find((y) => y.year === 2024), "year 2024 present");
+  assert.ok(years.find((y) => y.year === 2026), "year 2026 present");
 
   // ── 2) Tutorials ingest (only the swiftui seed, to stay fast) ─────────────
   console.log("[live] 2/5 Tutorials (seed=swiftui only)");
@@ -81,14 +76,14 @@ async function main(): Promise<void> {
   assert.ok(tut, "swiftui tutorial stored");
   assert.ok(tut!.title.length > 0, "tutorial has title");
 
-  // ── 3) HIG ingest (seed=buttons-ish minimal via 'components') ─────────────
-  console.log("[live] 3/5 HIG (seed=components)");
-  const hRes = await ingestHig(db, ["components"] as const);
+  // ── 3) HIG ingest (single leaf seed to stay bounded) ────────────────────
+  console.log("[live] 3/5 HIG (seed=buttons)");
+  const hRes = await ingestHig(db, ["buttons"] as const);
   assert.ok(hRes.ingested >= 1, `HIG ingested ${hRes.ingested}`);
   // Rebuild FTS so HIG search works
   rebuildFts(db);
-  const hFts = searchHigFts(db, `"components"`, 5, 0);
-  assert.ok(hFts.hits.length >= 1, "HIG FTS finds 'components'");
+  const hFts = searchHigFts(db, `"buttons"`, 5, 0);
+  assert.ok(hFts.hits.length >= 1, "HIG FTS finds 'buttons'");
 
   // ── 4) Swift Evolution ingest (limit=5 most recent) ──────────────────────
   console.log("[live] 4/5 Swift Evolution (last 5)");

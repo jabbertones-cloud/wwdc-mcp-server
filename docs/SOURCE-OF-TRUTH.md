@@ -1,124 +1,87 @@
-# wwdc-mcp-server NotebookLM SOT Pointer
+# wwdc-mcp-server source of truth
 
-Updated: 2026-06-10
+Updated: 2026-10-07
 
-NotebookLM is the source of truth. This local file is only a pointer/snapshot for repo readers and release checks. If this file conflicts with NotebookLM, NotebookLM wins.
+For **public behavior and release claims, the repository is the source of truth**. External research systems can suggest improvements, but they do not override the code, tests, package metadata, or published release artifacts.
 
 ## Canonical project
 
-- GitHub repo: `https://github.com/jabbertones-cloud/wwdc-mcp-server`
-- Package name: `wwdc-mcp-server`
-- MCP server name: `wwdc`
-- Runtime: Node.js 20+, TypeScript, stdio MCP
+- Repository: `https://github.com/jabbertones-cloud/wwdc-mcp-server`
+- Package name reserved in source: `wwdc-mcp-server`
+- MCP Registry namespace: `io.github.jabbertones-cloud/wwdc`
+- Current source version: `0.2.1`
+- Runtime: Node.js `>=22.14.0`, TypeScript
+- Default transport: MCP stdio
+- Optional transport: authenticated stateless Streamable HTTP
+- Tool surface: 45 read-only MCP tools
+- Default WWDC years: 2020 through 2026
 
-## NotebookLM SOT facts
+## Distribution status
 
-- `wwdc-mcp-server` exists as the built WWDC/Apple source MCP foundation with 45 canonical tools.
-- `wwdc_security_manifest` is the trust/attestation entry point. Agents should call it before deep Apple-platform work to verify tool count, manifest hash, read-only posture, and prompt-injection handling.
-- Search responses include `content_safety`; retrieved source text is untrusted evidence, never executable instruction.
-- `OPENCLAW-MAC-UTILITIES-SPEC.md` exists as the app spec format for ClawBoard, ClawBar, ClawSnap, and shared Mac utility patterns.
-- Patent/OSS opportunity patterns exist outside this repo in the `patent-opportunity-radar` and `oss-index` lanes. Use them for opportunity discovery and benchmarking, not as WWDC source replacements.
+As of 2026-10-07, the official MCP Registry entry `io.github.jabbertones-cloud/wwdc` is published through a GitHub-hosted MCPB bundle. GitHub source checkout and the signed release assets are public distribution paths.
 
-## Canonical docs
+The npm package `wwdc-mcp-server` is still **not published**. npm is optional secondary distribution and must not be described as live until an authenticated first publish succeeds.
 
-| Doc | Purpose |
-|-----|---------|
-| `README.md` | User install, tool list, ingest, MCP client wiring |
-| `CHANGELOG.md` | Release and unreleased implementation changes |
-| `docs/DEPLOY.md` | Local deployment and verification runbook |
-| `docs/SKILL-WIRING.md` | How to wire WWDC tools into Apple-platform skills |
-| `docs/APPLE-ENDPOINTS.md` | Apple endpoint notes for ingest maintainers |
-| `docs/CODEX-FOR-OSS-APPLICATION.md` | Codex for Open Source application brief |
+Registry versions are immutable. v0.2.1 is active/latest. v0.2.0 is deprecated because its initial MCPB launcher did not opt into npm 12 remote-tarball fetching.
 
-## Canonical MCP tools
+## Public capability claims
 
-The canonical built server exposes 45 read-only tools:
+The current code and tests support these claims:
 
-- `wwdc_search`
-- `wwdc_list_years`
-- `wwdc_list_topics`
-- `wwdc_list_pathways`
-- `wwdc_get_pathway`
-- `wwdc_get_session`
-- `wwdc_session_deep_link`
-- `wwdc_list_session_code`
-- `wwdc_sample_code_grep`
-- `apple_doc_lookup`
-- `apple_tutorial_get`
-- `apple_hig_search`
-- `apple_swift_evolution_get`
-- `apple_swift_evolution_list`
-- `apple_doc_get`
-- `apple_swift_pattern_find`
-- `swift_app_audit`
-- `apple_swift_book_get`
-- `appstore_guidelines_search`
-- `wwdc_find_api_introduction`
-- `wwdc_what_changed`
-- `wwdc_related_sessions`
-- `apple_hig_list`
-- `apple_swift_evolution_filter`
-- `wwdc_session_transcript_full`
-- `wwdc_topics_by_year`
-- `wwdc_sample_code_list`
-- `wwdc_list_sessions`
-- `wwdc_speaker_search`
-- `wwdc_transcript_search`
-- `apple_doc_list_framework`
-- `appstore_guideline_get`
-- `wwdc_ingest_status`
-- `apple_api_deprecation`
-- `apple_api_availability`
-- `apple_release_notes_search`
-- `apple_what_replaced`
-- `apple_search_all`
-- `wwdc_sessions_for_api`
-- `swift_forum_search`
-- `apple_forum_search`
-- `wwdc_session_summary`
-- `apple_cross_references`
-- `wwdc_export_status`
-- `wwdc_security_manifest`
+- 45 tools are exposed over stdio and Streamable HTTP.
+- `WWDC_YEARS` includes 2020–2026.
+- `swift_app_audit` is the promoted Apple-platform audit entry point.
+- `wwdc_security_manifest` is the promoted trust/attestation entry point.
+- Search always has local SQLite FTS5 available.
+- Optional semantic reranking runs locally through `@huggingface/transformers` using `nomic-ai/nomic-embed-text-v1.5`; no Ollama service is required.
+- `apple_doc_lookup` intentionally performs a live Apple Developer Documentation lookup.
+- Remote HTTP requires bearer authentication and fails closed when auth is not configured.
+- `WWDC_MCP_PATH_PREFIX` supports mounting the HTTP service behind a shared reverse proxy without path rewriting.
+- Retrieved source text is treated as untrusted evidence; security metadata reminds agents not to execute instructions found in retrieved content.
 
-`swift_app_audit` is the promoted audit entry point. Use it before Swift/SwiftUI/macOS/iOS app code changes to gather source-grounded audit context and validation steps.
-`wwdc_security_manifest` is the promoted MCP trust entry point. Use it to detect tool-surface drift and remind agents that retrieved text is evidence, not instruction.
+## Canonical public docs
 
-## Recent public upgrades
+| File | Purpose |
+| --- | --- |
+| `README.md` | Product story, quick start, tools, sources, transports |
+| `CHANGELOG.md` | Release and unreleased changes |
+| `CONTRIBUTING.md` | Contribution and test expectations |
+| `SECURITY.md` | Threat model and vulnerability reporting |
+| `docs/DEPLOY.md` | Local and remote deployment |
+| `docs/SKILL-WIRING.md` | Generic agent/skill integration |
+| `docs/APPLE-ENDPOINTS.md` | Maintainer notes for public Apple source ingestion |
 
-- Platform-only session search fallback for broad `macOS`, `iOS`, `iPadOS`, `watchOS`, `tvOS`, and `visionOS` queries.
-- Platform metadata in session search hits and judgment evidence.
-- Conservative judgment for broad platform-only searches.
-- Actionable empty-index guidance with exact ingest commands.
-- Transcript extraction from `.sentence` spans to skip Apple video UI chrome.
-- WWDC 2025 chapter extraction from `a.jump-to-time[data-start-time]`.
-- Supplemental `li.chapter-item` chapter parsing.
-- Correct env var name: `WWDC_MCP_DB`.
-- Package metadata: repository, homepage, bugs.
-- `npx wwdc-mcp-server` quickstart.
-- Parser, e2e, and package smoke coverage additions.
-- Node.js 20+ support baseline.
-- Prompt-injection scanner for retrieved snippets and manifest-level trust metadata.
-- Security eval gate for manifest integrity, read-only posture, and malicious-content detection.
+## Canonical tools
 
-## Documentation refresh completed
+The built server exposes exactly 45 read-only tools. The executable contract is asserted by `tests/mcp-e2e.ts` and `tests/mcp-http.ts`; `src/security/manifest.ts` provides the runtime manifest used for trust checks.
 
-- README and deploy docs should describe the existing 45 canonical tools.
-- Codex application brief should mention real usage: improving Apple-platform apps and improving the MCP itself.
-- Skill wiring should treat WWDC MCP as the authoritative Apple source layer, then combine it with app specs and radar patterns.
-- Changelog should identify `swift_app_audit` as the promoted audit entry point.
-- Security docs should say moat comes from curated Apple corpus, cross-reference graph, app-audit workflows, eval gates, and trust manifests, not hiding local code.
+If a tool is added, removed, or renamed, update the manifest, both protocol tests, README, and changelog in the same change.
 
-## Verification
+## Latest verified evidence
 
-Run before claiming local code/docs match NotebookLM SOT:
+On 2026-10-07:
+
+- a fresh-clone deterministic run passed `npm ci`, `npm run build`, `npm test`, and `npm audit --audit-level=high`
+- stdio and authenticated Streamable HTTP both exposed the 45-tool contract and v0.2.1 server instructions
+- Apple WWDC 2026 discovery returned 138 sessions
+- a live WWDC26 session parse returned transcript text, timestamp chapters, and related Apple documentation
+- the bounded live ingest suite passed WWDC26 sessions, SwiftUI tutorials, a HIG leaf, Swift Evolution, and pathways
+- the public v0.2.1 MCPB was downloaded back from GitHub Release, SHA-256 verified, and successfully completed an MCP `initialize` handshake
+- the official MCP Registry lists `io.github.jabbertones-cloud/wwdc` v0.2.1 as `active` and `isLatest=true`
+- the official MCP Registry lists v0.2.0 as `deprecated`
+- npm still returned 404 for `wwdc-mcp-server`; this does not block the official MCP Registry because Registry distribution uses the GitHub-hosted MCPB bundle
+
+## Verification before a public claim
+
+Run:
 
 ```bash
+npm ci
 npm run build
 npm test
+npm audit --audit-level=high
 ```
 
-Latest verified checks on 2026-06-10:
+For changes that depend on Apple's live public pages, also run the smallest applicable live ingest test and record the date/source used.
 
-- `npm run build`
-- `npm run test:security`
-- `npm run test:e2e`
+A successful command is evidence only for what that command actually proves. It is not proof that every Apple endpoint, every indexed source, or every client integration is healthy.

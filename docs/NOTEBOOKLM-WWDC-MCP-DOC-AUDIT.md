@@ -1,54 +1,68 @@
-# NotebookLM WWDC MCP Documentation Audit
+# Historical documentation audit — June 2026
 
-Updated: 2026-06-10
+Updated for public-repo consistency: 2026-10-07
 
-NotebookLM is the source of truth for this audit. Local docs are pointers/snapshots only.
+This file preserves the useful conclusions from an earlier June 2026 research pass. It is **not** the current source of truth and intentionally omits private notebook identifiers and internal-only project references.
 
-## NotebookLM Sources Queried
+For current public behavior, use the repository code, tests, package metadata, README, and `docs/SOURCE-OF-TRUTH.md`.
 
-- Notebook: `9266b7eb-013e-4288-958b-f4d444636448`
-- Current correction source: `7ab770f4-eed1-4874-9b64-a955ffe71bc6`
-- Relevant older sources in notebook may still mention a local/pending 16th tool. Scott has now promoted `swift_app_audit` as canonical tool 16; prefer the latest promotion source if sources conflict.
+## What the June audit established
 
-## SOT Facts
+The earlier audit helped drive several capabilities that are now part of the public server:
 
-- `wwdc-mcp-server` exists and is fully built as the WWDC/Apple source MCP.
-- Canonical public/current surface: 45 tools.
-- Canonical capabilities include search, HIG, sessions, session deep links, sample code grep/listing, pathways, Apple docs/tutorials, Swift Evolution, and ingest status.
-- SOT lives in NotebookLM, not local docs.
-- Local files should describe themselves as pointers, snapshots, runbooks, or docs, never as final authority.
+- a broad Apple-source retrieval layer rather than WWDC title search alone
+- `swift_app_audit` as the repo-level Apple-platform audit entry point
+- conservative search judgment and caveats
+- source-coverage metadata
+- prompt-injection/content-safety handling for retrieved text
+- a canonical trust surface through `wwdc_security_manifest`
+- parser regression coverage for Apple source-layout changes
+- stronger public documentation and package metadata
 
-## Adjacent Existing Inputs
+At the time of that audit, the project was still expanding from a much smaller tool surface. The current executable contract is **45 read-only MCP tools**, verified by the stdio and Streamable HTTP E2E tests.
 
-- `OPENCLAW-MAC-UTILITIES-SPEC.md` already defines Mac utility app spec format and shared app patterns.
-- `oss-index` already exists for OSS/pattern benchmarking.
-- `patent-opportunity-radar` already exists for opportunity discovery.
-- These lanes complement WWDC MCP; they do not replace Apple/WWDC/HIG/tutorial source retrieval.
+## Current public facts that supersede the historical snapshot
 
-## Current Local Repo Drift
+As of 2026-10-07:
 
-- Local `src/tools/index.ts` and `tests/mcp-e2e.ts` contain `swift_app_audit`.
-- `swift_app_audit` is now promoted as the 16th canonical tool and should appear in README, deploy docs, skill wiring, the Codex OSS brief, and release notes.
-- Local `npm run build` passes.
-- Local `npm test` should accept conservative `swift_app_audit` readiness when fixture data falls back from platform-filtered sessions.
+- default WWDC coverage includes 2020 through 2026
+- runtime requirement is Node.js `>=22.14.0`
+- stdio remains the default transport
+- authenticated stateless Streamable HTTP is also supported
+- `swift_app_audit` is one of the 45 canonical tools
+- `wwdc_security_manifest` is the trust/attestation entry point
+- the npm package is not yet published, so source checkout is the supported install path
+- official MCP Registry publication should follow npm publication and package verification
+- public repository code/tests, not an external notebook, determine release truth
 
-## README/Docs Must Contain
+## Durable recommendations from the earlier audit
 
-- 45 canonical tools and their exact names, including `swift_app_audit`, `apple_swift_book_get`, `appstore_guidelines_search`, and `wwdc_security_manifest`.
-- Local-first/no paid API baseline: SQLite FTS5 plus optional Ollama embeddings.
-- Apple-platform breadth: iOS, macOS, visionOS, watchOS, tvOS, iPadOS, Swift, SwiftUI, UIKit, AppKit, Metal, StoreKit, GameKit, Vision, AVFoundation, Foundation Models, HIG, DocC tutorials, Swift Evolution.
-- Clear note that NotebookLM is the SOT and local docs are snapshots/pointers.
-- Security/trust note: `wwdc_security_manifest` is the MCP trust entry point; search `content_safety` treats retrieved text as untrusted evidence.
-- How WWDC MCP is used in app improvement workflows:
-  - WWDC/HIG/tutorial/evolution source retrieval.
-  - App spec context from `OPENCLAW-MAC-UTILITIES-SPEC.md`.
-  - Competitive/pattern context from `oss-index`.
-  - Opportunity context from `patent-opportunity-radar`.
-- Codex for Open Source brief should mention the six-month token/credit submission only if status is known.
+These principles still apply:
 
-## SOT Notebook Questions
+1. **Lead with the developer outcome.** Explain why Apple developers need source-grounded context before listing every tool.
+2. **Make retrieval evidence explicit.** Separate Apple/Swift source material from model inference.
+3. **Treat retrieved text as untrusted.** Content can inform an answer but must never become an instruction channel.
+4. **Prefer conservative confidence.** A broad platform hit is not the same as strong framework/API evidence.
+5. **Test source drift.** When Apple changes public HTML or DocC shapes, add a regression fixture before declaring the parser fixed.
+6. **Keep tool-count and transport claims executable.** Protocol tests should fail when public docs and implementation diverge.
+7. **Optimize onboarding.** Public MCP adoption benefits from a clear quick start, client examples, concrete prompts, and truthful distribution status.
 
-1. Was the Codex for Open Source six-month token/credit application accepted, pending, or rejected?
-2. Should stale/older NotebookLM sources that describe `swift_app_audit` as pending be deleted or left with the latest promotion source taking precedence?
-3. Should local `SWIFT-APP-AUDIT.md` remain in this repo, or should app-improvement audits live in a separate reports/notebook export lane?
-4. Should README include a short "Used With" section naming `OPENCLAW-MAC-UTILITIES-SPEC.md`, `oss-index`, and `patent-opportunity-radar`?
+## Current verification
+
+The current deterministic release gates are:
+
+```bash
+npm ci
+npm run build
+npm test
+npm audit --audit-level=high
+```
+
+For source-layout changes, also run the smallest applicable live ingest check.
+
+See:
+
+- `README.md`
+- `docs/SOURCE-OF-TRUTH.md`
+- `docs/RELEASING.md`
+- `SECURITY.md`
