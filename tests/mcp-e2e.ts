@@ -188,6 +188,13 @@ function seedDb(dbPath: string): void {
 interface CallResult {
   content?: Array<{ type: string; text?: string }>;
   isError?: boolean;
+  structuredContent?: {
+    error?: string;
+    status?: string;
+    tool?: string;
+    message?: string;
+    [k: string]: unknown;
+  };
 }
 
 function textOf(r: CallResult): string {
@@ -406,10 +413,29 @@ async function main(): Promise<void> {
       assert.equal(data.judgment.coverage.related_doc_count, 0);
       assert.ok(data.transcript.includes("truncated"), "transcript was truncated");
     }
-    // 6b) not found
+    // 6b) not found — TL-009: structured envelope rides alongside the Error: text
     {
       const r = await call("wwdc_get_session", { id: "nonexistent-9999", format: "markdown" });
       assert.ok(r.isError, "missing session → isError");
+      assert.match(textOf(r), /^Error: session not found/, "error text keeps the Error: prefix");
+      const sc = r.structuredContent ?? {};
+      assert.equal(sc.error, "session_not_found");
+      assert.equal(sc.status, "not_found");
+      assert.equal(sc.tool, "wwdc_get_session");
+      assert.equal(sc.id, "nonexistent-9999");
+    }
+    // 6c) hostile id — echo must be bounded + sanitised, never unbounded raw reflection
+    {
+      const hostile = `nope' OR 1=1 -- <script>alert(1)</script>\n${"A".repeat(5000)}`;
+      const r = await call("wwdc_get_session", { id: hostile, format: "markdown" });
+      assert.ok(r.isError, "hostile missing session → isError");
+      const t = textOf(r);
+      assert.ok(t.length < 600, `echo bounded (got ${t.length} chars)`);
+      assert.ok(!t.includes("\nA"), "control chars/newlines stripped from echo");
+      assert.ok(t.includes("[+"), "truncation marker present");
+      const sc = r.structuredContent ?? {};
+      assert.equal(sc.status, "not_found");
+      assert.ok(String(sc.id ?? "").length <= 100, "structured id field bounded");
     }
 
     // 7) wwdc_session_deep_link — seconds
@@ -439,10 +465,14 @@ async function main(): Promise<void> {
       assert.ok(data.url.includes("time=42"));
       assert.ok(!data.url.includes("?foo=bar?time="));
     }
-    // 7e) invalid timestamp
+    // 7e) invalid timestamp — structured invalid_input
     {
       const r = await call("wwdc_session_deep_link", { id: "wwdc2024-10150", timestamp: "not-a-time", format: "markdown" });
       assert.ok(r.isError, "invalid timestamp → isError");
+      const sc = r.structuredContent ?? {};
+      assert.equal(sc.error, "invalid_timestamp");
+      assert.equal(sc.status, "invalid_input");
+      assert.equal(sc.tool, "wwdc_session_deep_link");
     }
     // 7f) error when neither
     {
@@ -476,6 +506,9 @@ async function main(): Promise<void> {
       const r = await call("wwdc_sample_code_grep", { pattern: "[", is_regex: true, format: "markdown" });
       assert.ok(r.isError, "invalid regex → isError");
       assert.match(textOf(r), /Invalid regex/);
+      const scrx = r.structuredContent ?? {};
+      assert.equal(scrx.error, "invalid_regex");
+      assert.equal(scrx.status, "invalid_input");
     }
 
     // 10) apple_doc_lookup — offline (embeddings/network disabled). Accept either success or error, but should return a tool response (no protocol crash).
@@ -511,6 +544,8 @@ async function main(): Promise<void> {
     {
       const r = await call("apple_tutorial_get", { id: "does-not-exist", format: "markdown" });
       assert.ok(r.isError);
+      assert.equal(r.structuredContent?.error, "tutorial_not_found");
+      assert.equal(r.structuredContent?.status, "not_found");
     }
 
     // 12) apple_hig_search
@@ -531,6 +566,8 @@ async function main(): Promise<void> {
     {
       const r = await call("apple_swift_evolution_get", { id: "SE-9999", format: "markdown" });
       assert.ok(r.isError);
+      assert.equal(r.structuredContent?.error, "proposal_not_found");
+      assert.equal(r.structuredContent?.status, "not_found");
     }
 
     // 14) apple_swift_evolution_list

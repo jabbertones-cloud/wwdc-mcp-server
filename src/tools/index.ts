@@ -28,6 +28,9 @@ import {
   getEvolution,
   getAppleDoc,
   listIngestStatus,
+  latestStateTimestamp,
+  corpusCounts,
+  isCorpusEmpty,
   listSessionsAddedSince,
   searchSwiftBookFts,
   getSwiftBookChapter,
@@ -58,12 +61,12 @@ import {
   getCrossReferences,
   getExportStatus,
 } from "../db/queries.js";
-import { httpGet } from "../services/http.js";
+import { httpGet, HttpError } from "../services/http.js";
 import { APPLE_DOCS_BASE } from "../constants.js";
-import { formatResponse, errorText, truncate } from "../services/format.js";
+import { formatResponse, truncate, toolError, sanitizeEcho } from "../services/format.js";
 import { semanticSearch, checkEmbeddings } from "../services/embeddings.js";
 import { getLatestCorpusVersion } from "../db/corpus.js";
-import { DB_PATH, DEFAULT_LIMIT, MAX_LIMIT, MAX_QUERY_CHARS, MAX_QUERY_TOKENS } from "../constants.js"
+import { DB_PATH, DEFAULT_LIMIT, MAX_LIMIT, MAX_QUERY_CHARS, MAX_QUERY_TOKENS } from "../constants.js";
 import { getSecurityManifest, scanUntrustedText } from "../security/manifest.js";
 
 const formatArg = z.enum(["markdown", "json"]).default("markdown").describe("Response format");
@@ -830,7 +833,11 @@ function buildSwiftAuditSummary(args: {
   };
 }
 
-export function registerAllTools(server: McpServer, db: DatabaseType): void {
+export function registerAllTools(
+  server: McpServer,
+  db: DatabaseType,
+  opts: { dbFreshlyCreated?: boolean } = {},
+): void {
   // ---------- wwdc_search ----------
   server.registerTool(
     "wwdc_search",
@@ -908,8 +915,18 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
         }
       }
 
-      // Semantic rerank if the local embedding model is available.
-      const embeddingsOn = await checkEmbeddings();
+      // Semantic rerank is optional and must never block a search answer.
+      // With nothing indexed/matched there is nothing to rerank, so skip
+      // the embedding probe entirely: a first-time user on an empty index
+      // gets the honest "index appears empty" verdict below immediately
+      // instead of waiting on a first model download/load. Otherwise the
+      // probe is time-bounded (WWDC_EMBED_TIMEOUT_MS, default 3000ms) and
+      // search falls back to FTS-only while the model is still loading.
+      const ingestStatus = listIngestStatus(db);
+      const embedTimeoutMs = Number(process.env.WWDC_EMBED_TIMEOUT_MS ?? 3000);
+      const embeddingsOn = hits.length > 1
+        ? await checkEmbeddings(Number.isFinite(embedTimeoutMs) ? embedTimeoutMs : 3000)
+        : false;
       if (embeddingsOn && hits.length > 1) {
         try {
           const vecHits = await semanticSearch(db, query, kinds.map((k) => k), Math.max(limit * 2, 20));
@@ -920,7 +937,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
 
       const page = hits.slice(0, limit);
       const judgedPage = page.map((hit) => judgment || detail === "detailed" ? { ...hit, judgment: judgeHit(query, hit) } : hit);
-      const searchJudgment = judgment || detail === "detailed" ? judgeSearch(query, judgedPage, total, embeddingsOn, listIngestStatus(db)) : undefined;
+      const searchJudgment = judgment || detail === "detailed" ? judgeSearch(query, judgedPage, total, embeddingsOn, ingestStatus) : undefined;
       if (fallback && searchJudgment) {
         searchJudgment.caveats.push("No all-terms match (a term may be misspelled); showing broader any-term matches.");
       }
@@ -1020,7 +1037,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
     },
     async ({ id, format }) => {
       const p = getPathway(db, id);
-      if (!p) return { isError: true, content: [{ type: "text", text: errorText(`pathway not found: ${id}`, "Use wwdc_list_pathways to enumerate IDs.") }] };
+      if (!p) return toolError({ tool: "wwdc_get_pathway", error: "pathway_not_found", status: "not_found", message: `pathway not found: ${sanitizeEcho(id)}`, hint: "Use wwdc_list_pathways to enumerate IDs.", fields: { id: sanitizeEcho(id) } });
       const md = `# ${p.title}\n\n${p.description}\n\n**Category:** ${p.category}\n\n## Steps\n${p.steps.map((s) => `${s.order}. [${s.kind}] ${s.title} — ${s.url}${s.estimatedTime ? ` (${s.estimatedTime})` : ""}`).join("\n")}`;
       return { content: [{ type: "text", text: formatResponse(format, md, p) }] };
     },
@@ -1046,7 +1063,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
     },
     async ({ id, include_transcript, transcript_chars, include_chapters, include_sample_code, include_related_docs, include_judgment, format }) => {
       const s = getSession(db, id);
-      if (!s) return { isError: true, content: [{ type: "text", text: errorText(`session not found: ${id}`, "Use wwdc_search or wwdc_list_years → session list.") }] };
+      if (!s) return toolError({ tool: "wwdc_get_session", error: "session_not_found", status: "not_found", message: `session not found: ${sanitizeEcho(id)}`, hint: "Use wwdc_search or wwdc_list_years → session list.", fields: { id: sanitizeEcho(id) } });
       if (!include_transcript) s.transcript = undefined;
       if (s.transcript && s.transcript.length > transcript_chars) s.transcript = truncate(s.transcript, transcript_chars);
       if (!include_chapters) s.deepLinks = [];
@@ -1087,7 +1104,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
     },
     async ({ id, seconds, timestamp, format }) => {
       const s = getSession(db, id);
-      if (!s) return { isError: true, content: [{ type: "text", text: errorText(`session not found: ${id}`) }] };
+      if (!s) return toolError({ tool: "wwdc_session_deep_link", error: "session_not_found", status: "not_found", message: `session not found: ${sanitizeEcho(id)}`, fields: { id: sanitizeEcho(id) } });
       let total = seconds;
       if (total === undefined && timestamp) {
         const rawParts = timestamp.split(":");
@@ -1097,12 +1114,12 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
           rawParts.length > 3 ||
           parts.some((part) => !Number.isInteger(part) || part < 0)
         ) {
-          return { isError: true, content: [{ type: "text", text: errorText("Invalid timestamp. Use HH:MM:SS, MM:SS, or seconds.") }] };
+          return toolError({ tool: "wwdc_session_deep_link", error: "invalid_timestamp", status: "invalid_input", message: "Invalid timestamp. Use HH:MM:SS, MM:SS, or seconds." });
         }
         total = parts.length === 3 ? parts[0]! * 3600 + parts[1]! * 60 + parts[2]! : parts.length === 2 ? parts[0]! * 60 + parts[1]! : parts[0]!;
       }
-      if (total === undefined) return { isError: true, content: [{ type: "text", text: errorText("Provide either `seconds` or `timestamp`.") }] };
-      if (!Number.isInteger(total) || total < 0) return { isError: true, content: [{ type: "text", text: errorText("Time must resolve to a non-negative integer number of seconds.") }] };
+      if (total === undefined) return toolError({ tool: "wwdc_session_deep_link", error: "missing_time_argument", status: "invalid_input", message: "Provide either `seconds` or `timestamp`." });
+      if (!Number.isInteger(total) || total < 0) return toolError({ tool: "wwdc_session_deep_link", error: "invalid_time_value", status: "invalid_input", message: "Time must resolve to a non-negative integer number of seconds." });
       const url = deepLinkUrl(s.url, total);
       const md = `[${s.title}](${url}) — ${Math.floor(total / 60)}:${(total % 60).toString().padStart(2, "0")}`;
       return { content: [{ type: "text", text: formatResponse(format, md, { id, url, seconds: total }) }] };
@@ -1148,7 +1165,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
         try {
           re = new RegExp(pattern, "i");
         } catch (e: any) {
-          return { isError: true, content: [{ type: "text", text: errorText(`Invalid regex: ${e?.message ?? String(e)}`) }] };
+          return toolError({ tool: "wwdc_sample_code_grep", error: "invalid_regex", status: "invalid_input", message: `Invalid regex: ${sanitizeEcho(e?.message ?? String(e), 120)}` });
         }
       }
       const needle = pattern.toLowerCase();
@@ -1178,7 +1195,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
     async ({ path, format }) => {
       const normalized = documentationPathFromInput(path);
       if (normalized.error || !normalized.clean) {
-        return { isError: true, content: [{ type: "text", text: errorText(normalized.error ?? "Invalid documentation path.") }] };
+        return toolError({ tool: "apple_doc_lookup", error: "invalid_doc_path", status: "invalid_input", message: sanitizeEcho(normalized.error ?? "Invalid documentation path.") });
       }
       const clean = normalized.clean;
       const jsonUrl = `https://developer.apple.com/tutorials/data/documentation/${clean}.json`;
@@ -1186,14 +1203,22 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
       try {
         const { data, status } = await httpGet<{ metadata?: { title?: string; role?: string }; abstract?: Array<{ text: string }> }>(jsonUrl);
         if (status >= 400 || !data) {
-          return { isError: true, content: [{ type: "text", text: errorText(`apple docs: HTTP ${status} for ${jsonUrl}`, `Try the path without trailing segments. Browser URL: ${htmlUrl}`) }] };
+          return toolError({ tool: "apple_doc_lookup", error: "apple_docs_upstream_error", status: "upstream_failure", retryable: true, message: `apple docs: HTTP ${status} for ${sanitizeEcho(jsonUrl, 160)}`, hint: `Try the path without trailing segments. Browser URL: ${htmlUrl}` });
         }
         const title = data.metadata?.title ?? clean;
         const abstract = (data.abstract ?? []).map((a) => a.text).join("");
         const md = `# ${title}\n\n${abstract}\n\n${htmlUrl}`;
         return { content: [{ type: "text", text: formatResponse(format, md, { title, abstract, url: htmlUrl, raw: data }) }] };
       } catch (e: any) {
-        return { isError: true, content: [{ type: "text", text: errorText(e?.message ?? String(e)) }] };
+        if (e instanceof HttpError && e.status >= 400 && e.status < 500) {
+          // httpGet throws HttpError on any 4xx, so the >=400 branch above is
+          // unreachable; without this a 404 from Apple would be reported as a
+          // generic network failure instead of "no such doc".
+          return toolError({ tool: "apple_doc_lookup", error: "apple_docs_upstream_error", status: "upstream_failure", retryable: false, message: `apple docs: HTTP ${e.status} for ${sanitizeEcho(jsonUrl, 160)} — no documentation at that path.`, hint: `Try the path without trailing segments. Browser URL: ${htmlUrl}` });
+        }
+        // TL-009: network/upstream failure — generic client message, detail to stderr only.
+        console.error(`[apple_doc_lookup] upstream request failed: ${e?.message ?? String(e)}`);
+        return toolError({ tool: "apple_doc_lookup", error: "apple_docs_request_failed", status: "upstream_failure", retryable: true, message: "apple docs: request failed before a usable response was received." });
       }
     },
   );
@@ -1215,10 +1240,10 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
     async ({ path, include_raw, body_chars, format }) => {
       const normalized = documentationPathFromInput(path);
       if (normalized.error || !normalized.clean) {
-        return { isError: true, content: [{ type: "text", text: errorText(normalized.error ?? "Invalid documentation path.") }] };
+        return toolError({ tool: "apple_doc_get", error: "invalid_doc_path", status: "invalid_input", message: sanitizeEcho(normalized.error ?? "Invalid documentation path.") });
       }
       const doc = getAppleDoc(db, normalized.clean.toLowerCase());
-      if (!doc) return { isError: true, content: [{ type: "text", text: errorText(`indexed Apple doc not found: ${normalized.clean}`, "Run: npm run ingest:docs") }] };
+      if (!doc) return toolError({ tool: "apple_doc_get", error: "apple_doc_not_found", status: "not_found", message: `indexed Apple doc not found: ${sanitizeEcho(normalized.clean)}`, hint: "Run: npm run ingest:docs", fields: { path: sanitizeEcho(normalized.clean) } });
       const md = `# ${doc.title}\n\n${doc.abstract}\n\n**Path:** ${doc.id}\n**Modules:** ${doc.modules.join(", ") || "none"}\n**Platforms:** ${doc.platforms.join(", ") || "none"}\n**Role:** ${doc.role ?? "unknown"}${doc.symbolKind ? `\n**Symbol kind:** ${doc.symbolKind}` : ""}\n\n${truncate(doc.body, body_chars)}\n\n${doc.url}`;
       return { content: [{ type: "text", text: formatResponse(format, md, include_raw ? doc : { ...doc, rawJson: undefined }) }] };
     },
@@ -1235,7 +1260,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
     },
     async ({ id, format }) => {
       const t = getTutorial(db, id);
-      if (!t) return { isError: true, content: [{ type: "text", text: errorText(`tutorial not found: ${id}`, "Run: npm run ingest:tutorials") }] };
+      if (!t) return toolError({ tool: "apple_tutorial_get", error: "tutorial_not_found", status: "not_found", message: `tutorial not found: ${sanitizeEcho(id)}`, hint: "Run: npm run ingest:tutorials", fields: { id: sanitizeEcho(id) } });
       const md = `# ${t.title}\n\n*${t.category ?? ""}*${t.estimatedTime ? ` — ${t.estimatedTime}` : ""}\n\n${truncate(t.body, 8000)}\n\n${t.url}`;
       return { content: [{ type: "text", text: formatResponse(format, md, t) }] };
     },
@@ -1252,7 +1277,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
     },
     async ({ query, limit, format }) => {
       const { hits, total } = searchHigFts(db, ftsQuote(query), limit, 0);
-      const md = `# HIG results for: ${query}\n\n${hits.map((h) => `- **${h.title}** — ${h.url}\n  ${h.snippet ?? ""}`).join("\n")}`;
+      const md = `# HIG results for: ${sanitizeEcho(query)}\n\n${hits.map((h) => `- **${h.title}** — ${h.url}\n  ${h.snippet ?? ""}`).join("\n")}`;
       return { content: [{ type: "text", text: formatResponse(format, md, { total, hits }) }] };
     },
   );
@@ -1268,7 +1293,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
     },
     async ({ id, format }) => {
       const p = getEvolution(db, id);
-      if (!p) return { isError: true, content: [{ type: "text", text: errorText(`proposal not found: ${id}`, "Run npm run ingest:evolution; id format: SE-0428.") }] };
+      if (!p) return toolError({ tool: "apple_swift_evolution_get", error: "proposal_not_found", status: "not_found", message: `proposal not found: ${sanitizeEcho(id)}`, hint: "Run npm run ingest:evolution; id format: SE-0428.", fields: { id: sanitizeEcho(id) } });
       const md = `# ${p.id}: ${p.title}\n\n**Status:** ${p.status}  **Authors:** ${p.authors.join(", ")}${p.swiftVersion ? `  **Swift:** ${p.swiftVersion}` : ""}\n\n${truncate(p.body, 10000)}\n\n${p.url}`;
       return { content: [{ type: "text", text: formatResponse(format, md, p) }] };
     },
@@ -1363,7 +1388,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
         ...(patterns.length === 0 ? ["No indexed pattern evidence found; broaden query or ingest more docs/sessions"] : []),
         ...(strong.length === 0 && patterns.length > 0 ? [`No pattern reached ${min_source_kinds} source kinds; treat as weak signal`] : []),
       ];
-      const md = `# Swift pattern find: ${query}\n\n${patterns.map((pattern) => {
+      const md = `# Swift pattern find: ${sanitizeEcho(query)}\n\n${patterns.map((pattern) => {
         const lines = pattern.evidence.slice(0, 6).map((hit) => `  - [${hit.kind}] ${hit.title}${hit.year ? ` — WWDC ${hit.year}` : ""}\n    ${hit.url}`);
         return `## ${pattern.term}\n- strength: ${pattern.strength}\n- sources: ${pattern.sourceKinds.join(", ")}\n- next tools: ${pattern.suggested_next_tools.join(", ") || "none"}\n${lines.join("\n")}`;
       }).join("\n\n")}\n\n## Judgment\n- strong patterns: ${strong.length}\n- caveats: ${caveats.join("; ") || "none"}`;
@@ -1616,10 +1641,11 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
     async ({ query, limit, offset, format }) => {
       const safeFts = ftsQuote(query);
       const hits = searchAppStoreGuidelinesFts(db, safeFts, limit, offset);
+      const safeQuery = sanitizeEcho(query); // TL-035: no raw caller input in rendered markdown
       if (hits.length === 0) {
-        return { content: [{ type: "text", text: `No App Store guideline sections matched '${query}'. Run 'npm run ingest:appstore' to populate the index.` }] };
+        return { content: [{ type: "text", text: `No App Store guideline sections matched '${safeQuery}'. Run 'npm run ingest:appstore' to populate the index.` }] };
       }
-      const md = `# App Store Review Guidelines: ${query}\n\n${hits.map((h) => `- **${h.title}**\n  ${h.url}${h.snippet ? `\n  _${h.snippet}_` : ""}`).join("\n")}\n\n_${hits.length} sections shown_`;
+      const md = `# App Store Review Guidelines: ${safeQuery}\n\n${hits.map((h) => `- **${h.title}**\n  ${h.url}${h.snippet ? `\n  _${h.snippet}_` : ""}`).join("\n")}\n\n_${hits.length} sections shown_`;
       return { content: [{ type: "text", text: formatResponse(format, md, { hits, query }) }] };
     },
   );
@@ -1651,7 +1677,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
       const sessionList = hits
         .map((h) => `- **WWDC ${h.year ?? "?"}** — ${h.title}\n  ${h.url}${h.snippet ? `\n  _${h.snippet}_` : ""}`)
         .join("\n");
-      const md = `# API Introduction: ${symbol}\n\n${introLine}\n\n## Sessions (oldest first)\n\n${sessionList}\n\n_${hits.length} session(s) shown_`;
+      const md = `# API Introduction: ${sanitizeEcho(symbol)}\n\n${introLine}\n\n## Sessions (oldest first)\n\n${sessionList}\n\n_${hits.length} session(s) shown_`;
       return { content: [{ type: "text", text: formatResponse(format, md, { symbol, hits, earliestYear }) }] };
     },
   );
@@ -1682,10 +1708,19 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
           : "_No sessions indexed for this year/topic._";
       const titlesA = new Set(hitsA.map((h) => h.title));
       const newInB = hitsB.filter((h) => !titlesA.has(h.title));
-      const newNote = newInB.length
-        ? `\n\n> **Likely new in WWDC ${year_b}:** ${newInB.map((h) => h.title).join(", ")}`
-        : `\n\n> All sessions in WWDC ${year_b} also appear in WWDC ${year_a} results.`;
-      const md = `# What changed: ${topic} (WWDC ${year_a} vs ${year_b})\n\n## WWDC ${year_a}\n\n${renderList(hitsA)}\n\n## WWDC ${year_b}\n\n${renderList(hitsB)}${newNote}\n\n_Sessions from WWDC ${year_b} that don't appear in WWDC ${year_a} are likely new additions._`;
+      // Honesty: with zero sessions indexed for either year the coverage
+      // inference below would assert vacuous "facts" ("all sessions in
+      // 2024 also appear in 2023") — say the corpus is empty instead.
+      const bothEmpty = hitsA.length === 0 && hitsB.length === 0;
+      const newNote = bothEmpty
+        ? `\n\n> No sessions indexed for **${sanitizeEcho(topic)}** in WWDC ${year_a} or WWDC ${year_b}. The local index appears empty — run \`npm run ingest:all\` (or \`npm run ingest:wwdc -- --year ${year_a} --year ${year_b}\`) to ingest sessions before comparing coverage.`
+        : newInB.length
+          ? `\n\n> **Likely new in WWDC ${year_b}:** ${newInB.map((h) => h.title).join(", ")}`
+          : `\n\n> All sessions in WWDC ${year_b} also appear in WWDC ${year_a} results.`;
+      const tail = bothEmpty
+        ? ""
+        : `\n\n_Sessions from WWDC ${year_b} that don't appear in WWDC ${year_a} are likely new additions._`;
+      const md = `# What changed: ${sanitizeEcho(topic)} (WWDC ${year_a} vs ${year_b})\n\n## WWDC ${year_a}\n\n${renderList(hitsA)}\n\n## WWDC ${year_b}\n\n${renderList(hitsB)}${newNote}${tail}`;
       return { content: [{ type: "text", text: formatResponse(format, md, { topic, year_a, year_b, hitsA, hitsB }) }] };
     },
   );
@@ -1707,7 +1742,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
     async ({ session_id, limit, format }) => {
       const result = findRelatedSessions(db, session_id, limit);
       if (!result) {
-        return { isError: true, content: [{ type: "text", text: errorText(`session not found: ${session_id}`, "Use wwdc_search or wwdc_list_years to find valid session IDs.") }] };
+        return toolError({ tool: "wwdc_related_sessions", error: "session_not_found", status: "not_found", message: `session not found: ${sanitizeEcho(session_id)}`, hint: "Use wwdc_search or wwdc_list_years to find valid session IDs.", fields: { id: sanitizeEcho(session_id) } });
       }
       const { seedTitle, seedYear, hits } = result;
       if (hits.length === 0) {
@@ -1804,7 +1839,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
     async ({ id, chunk_index, chunk_size, format }) => {
       const result = getSessionTranscriptChunk(db, id, chunk_index, chunk_size);
       if (!result) {
-        return { isError: true, content: [{ type: "text", text: errorText(`session not found: ${id}`, "Use wwdc_search or wwdc_list_years to find valid session IDs.") }] };
+        return toolError({ tool: "wwdc_session_transcript_full", error: "session_not_found", status: "not_found", message: `session not found: ${sanitizeEcho(id)}`, hint: "Use wwdc_search or wwdc_list_years to find valid session IDs.", fields: { id: sanitizeEcho(id) } });
       }
       const { title, year, url, chunk, chunkIndex, totalChunks, transcriptLength } = result;
       if (transcriptLength === 0) {
@@ -2008,14 +2043,15 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
     },
     async ({ query, year, year_min, year_max, limit, offset, format }) => {
       const { hits, total } = searchTranscripts(db, ftsQuote(query), { year, yearMin: year_min, yearMax: year_max, limit, offset });
+      const safeQuery = sanitizeEcho(query); // TL-035: no raw caller input in rendered markdown
       if (hits.length === 0) {
-        return { content: [{ type: "text", text: `No transcript matches for **${query}**. Try broader terms or check \`wwdc_ingest_status\` to confirm transcripts are indexed.` }] };
+        return { content: [{ type: "text", text: `No transcript matches for **${safeQuery}**. Try broader terms or check \`wwdc_ingest_status\` to confirm transcripts are indexed.` }] };
       }
       const lines = hits.map((h) => {
         const snippet = h.snippet ? `\n  _${h.snippet}_` : "";
         return `- **${h.title}**${h.year ? ` — WWDC ${h.year}` : ""}\n  ${h.url}${snippet}`;
       });
-      const md = `# Transcript search: "${query}"\n\n${lines.join("\n")}\n\n_${hits.length} shown / ${total} matched_`;
+      const md = `# Transcript search: "${safeQuery}"\n\n${lines.join("\n")}\n\n_${hits.length} shown / ${total} matched_`;
       return { content: [{ type: "text", text: formatResponse(format, md, { query, total, count: hits.length, hits }) }] };
     },
   );
@@ -2092,30 +2128,52 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
       title: "Ingest status + what's new",
       description: "Shows the corpus version stamp (ingest date, per-source status, session count), per-source last-run metadata, and the most recent sessions added. Use to confirm which corpus this is and that the index is fresh before querying.",
       inputSchema: {
-        since: z.string().optional().describe("ISO timestamp; defaults to 7 days ago."),
+        since: z.string().optional().describe("ISO timestamp; defaults to 7 days before the latest activity recorded in the index (state-derived, so repeated calls with unchanged state return identical output)."),
         limit: limitArg,
         format: formatArg,
       },
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     async ({ since, limit, format }) => {
-      const sinceIso = since ?? new Date(Date.now() - 7 * 24 * 3600_000).toISOString();
+      // Default window is anchored to the newest timestamp in index state
+      // (latest ingest run / session update), never to wall-clock call
+      // time: this output used to embed `Date.now() - 7d` with millisecond
+      // precision, so two calls with unchanged state never matched
+      // byte-for-byte and replay/drift checks false-flagged it (TL-006).
+      // State is empty -> fixed epoch, so the output is still stable.
+      const anchor = latestStateTimestamp(db);
+      const sinceIso = since ?? (anchor
+        ? new Date(Date.parse(anchor) - 7 * 24 * 3600_000).toISOString()
+        : "1970-01-01T00:00:00.000Z");
       const status = listIngestStatus(db);
       const recent = listSessionsAddedSince(db, sinceIso, limit);
-      const corpus = getLatestCorpusVersion(db);
+      // TL-020: name the corpus state explicitly. Before this, a
+      // missing/fresh DB (server creates the volume silently on open)
+      // produced a near-blank report ("# Ingest status" + "## Added
+      // since 1970-01-01...") that was indistinguishable from a healthy
+      // empty index. Corpus state is a pure function of index state, so
+      // TL-006 determinism is preserved: the disclosure is stable within
+      // a process, and dbFreshlyCreated can only flip across process
+      // restarts when the DB file itself was created/deleted between
+      // runs (a genuine state change).
+      const counts = corpusCounts(db);
+      const versionStamp = getLatestCorpusVersion(db);
       // An absent DB file is silently auto-created empty by openDb, so "no
       // stamp + zero sessions" can mean a missing/misconfigured corpus volume
       // rather than a fresh install. Name that state explicitly instead of
       // presenting a healthy-looking empty status.
       const sessionsIndexed = listYears(db).reduce((n, y) => n + y.count, 0);
-      const corpusState = corpus ? "stamped" : sessionsIndexed > 0 ? "unstamped" : "empty";
-      const corpusMd = corpus
-        ? `\n\n## Corpus version\n- version: ${corpus.version}\n- ingested: ${corpus.ingestedAt} (via \`--source ${corpus.ingestSource}\`)\n- sessions: ${corpus.sessionCount}${corpus.wwdcYears ? ` (WWDC ${corpus.wwdcYears})` : ""}\n- total indexed items: ${corpus.totalItems}\n- server version at ingest: ${corpus.serverVersion ?? "unknown"}`
+      const corpusState = versionStamp ? "stamped" : sessionsIndexed > 0 ? "unstamped" : "empty";
+      const freshNote = opts.dbFreshlyCreated
+        ? ` The database file was created by the server on this launch — expected on a fresh install, but if you already have an index elsewhere, \`WWDC_MCP_DB\` may be pointing at the wrong path.`
+        : ``;
+      const corpusMd = versionStamp
+        ? `\n\n## Corpus version\n- version: ${versionStamp.version}\n- ingested: ${versionStamp.ingestedAt} (via \`--source ${versionStamp.ingestSource}\`)\n- sessions: ${versionStamp.sessionCount}${versionStamp.wwdcYears ? ` (WWDC ${versionStamp.wwdcYears})` : ""}\n- total indexed items: ${versionStamp.totalItems}\n- server version at ingest: ${versionStamp.serverVersion ?? "unknown"}`
         : corpusState === "empty"
-          ? `\n\n## Corpus version\n- **EMPTY CORPUS — 0 sessions indexed** in the database at \`${DB_PATH}\`. If this deployment is supposed to have a corpus, the data volume is missing or the DB path is wrong; an absent DB file is created empty on open, so this is how a missing corpus presents. Only run \`npm run ingest:all\` if this is a genuinely new install.`
+          ? `\n\n## Corpus version\n- **EMPTY CORPUS — 0 sessions indexed** in the database at \`${DB_PATH}\`. If this deployment is supposed to have a corpus, the data volume is missing or the DB path is wrong; an absent DB file is created empty on open, so this is how a missing corpus presents.${freshNote} Only run \`npm run ingest:all\` if this is a genuinely new install.`
           : `\n\n## Corpus version\n- none recorded yet; run \`npm run ingest:all\` to stamp the corpus`;
       const md = `# Ingest status\n\n${status.map((s) => `- **${s.source}** — last run: ${s.lastRunAt}, items: ${s.itemsIngested}, errors: ${s.errors}${s.notes ? ` (${s.notes})` : ""}`).join("\n")}${corpusMd}\n\n## Added since ${sinceIso}\n${recent.map((r) => `- [${r.year}] ${r.title} (${r.id})`).join("\n")}`;
-      return { content: [{ type: "text", text: formatResponse(format, md, { status, recent, since: sinceIso, corpus, corpus_state: corpusState, db_path: DB_PATH, sessions_indexed: sessionsIndexed }) }] };
+      return { content: [{ type: "text", text: formatResponse(format, md, { status, recent, since: sinceIso, corpus: versionStamp, corpus_state: corpusState, db_path: DB_PATH, sessions_indexed: sessionsIndexed, db_freshly_created: opts.dbFreshlyCreated === true, corpus_counts: counts }) }] };
     },
   );
 
@@ -2133,16 +2191,28 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
     },
     async ({ api_name, format }) => {
       const { rows, fallback } = getApiDeprecation(db, api_name);
+      // TL-035: caller input reflected in rendered markdown must stay a
+      // single inert line — strip newlines / bound length so a crafted
+      // api_name can't forge headings or echo unboundedly.
+      const safeApi = sanitizeEcho(api_name);
       let md: string;
       if (fallback) {
         if (rows.length === 0) {
-          md = `# ${api_name} — deprecation unknown\n\nDeprecation metadata not yet populated (schema migration may not have run). Re-run ingest to populate.\n\nNo matching API found in index.`;
+          md = `# ${safeApi} — deprecation unknown\n\nDeprecation metadata not yet populated (schema migration may not have run). Re-run ingest to populate.\n\nNo matching API found in index.`;
         } else {
           const found = rows.map((r: any) => `- **${r.title}** — ${r.url}`).join("\n");
-          md = `# ${api_name} — deprecation metadata not yet populated\n\nSchema migration may not have run. Re-run ingest with \`--source apple-docs\` to populate deprecation columns.\n\n## Matching docs\n${found}`;
+          md = `# ${safeApi} — deprecation metadata not yet populated\n\nSchema migration may not have run. Re-run ingest with \`--source apple-docs\` to populate deprecation columns.\n\n## Matching docs\n${found}`;
         }
       } else if (rows.length === 0) {
-        md = `# ${api_name} — not deprecated\n\nNo deprecated entries found in the index for **${api_name}**. The symbol may not be deprecated, not yet indexed, or the name may differ.\n\nTip: try \`apple_doc_lookup\` for availability info.`;
+        // W-C1 (TL-034): gate the verdict on non-empty backing data. An
+        // empty apple_docs index cannot support "not deprecated" — the
+        // verdict is only honest when the index actually holds entries.
+        const docsIndexed = corpusCounts(db).appleDocs;
+        if (docsIndexed === 0) {
+          md = `# ${safeApi} — deprecation unknown\n\nThe API index has no entries yet, so deprecation status can't be determined. Re-run ingest (\`npm run ingest:docs\`) to populate it, then try again.`;
+        } else {
+          md = `# ${safeApi} — not deprecated\n\nNo deprecated entries found in the index for **${safeApi}**. The symbol may not be deprecated, not yet indexed, or the name may differ.\n\nTip: try \`apple_doc_lookup\` for availability info.`;
+        }
       } else {
         const items = rows.map((r: any) => {
           const dep = r.deprecated_at ? ` (deprecated ${r.deprecated_at})` : "";
@@ -2150,7 +2220,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
           const msg = r.deprecated_message ? `\n- **Replacement:** ${r.deprecated_message}` : "";
           return `## ${r.title}${dep}\n- **ID:** ${r.id}\n- **URL:** ${r.url}${intro}${msg}`;
         }).join("\n\n");
-        md = `# ${api_name} — deprecated\n\n${items}`;
+        md = `# ${safeApi} — deprecated\n\n${items}`;
       }
       return { content: [{ type: "text", text: formatResponse(format, md, { api_name, rows, fallback }) }] };
     },
@@ -2170,16 +2240,17 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
     },
     async ({ api_name, format }) => {
       const rows = getApiAvailability(db, api_name);
+      const safeApi = sanitizeEcho(api_name); // TL-035: no raw caller input in markdown headings
       let md: string;
       if (rows.length === 0) {
-        md = `# ${api_name} — not found\n\nNo entries found in the index. The symbol may not be indexed yet. Try \`wwdc_search\` or \`apple_doc_lookup\`.`;
+        md = `# ${safeApi} — not found\n\nNo entries found in the index. The symbol may not be indexed yet. Try \`wwdc_search\` or \`apple_doc_lookup\`.`;
       } else {
         const items = rows.map((r: any) => {
           const intro = r.introduced_at ? `\n- **Introduced:** ${r.introduced_at}` : "\n- **Introduced:** unknown";
           const dep = r.deprecated === 1 ? `\n- **Deprecated:** ${r.deprecated_at ?? "yes (version unknown)"}` : "\n- **Deprecated:** no";
           return `## ${r.title}\n- **ID:** ${r.id}\n- **URL:** ${r.url}${intro}${dep}`;
         }).join("\n\n");
-        md = `# ${api_name} — availability\n\n${items}`;
+        md = `# ${safeApi} — availability\n\n${items}`;
       }
       return { content: [{ type: "text", text: formatResponse(format, md, { api_name, rows }) }] };
     },
@@ -2203,16 +2274,17 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
     async ({ query, os, limit, offset, format }) => {
       const fts = ftsQuote(query);
       const { rows, tableExists } = searchReleaseNotes(db, fts, { os, limit, offset });
+      const safeQuery = sanitizeEcho(query); // TL-035
       let md: string;
       if (!tableExists) {
         md = `# Release notes — not yet ingested\n\nThe \`release_notes\` table does not exist. Run ingest with \`--source release-notes\` to populate.`;
       } else if (rows.length === 0) {
-        md = `# Release notes search: ${query}\n\nNo matches found${os ? ` for ${os}` : ""}.`;
+        md = `# Release notes search: ${safeQuery}\n\nNo matches found${os ? ` for ${os}` : ""}.`;
       } else {
         const items = rows.map((r: any) =>
           `- **[${r.os} ${r.version}]** ${r.title}\n  ${r.url}${r.snip ? `\n  _${r.snip}_` : ""}`,
         ).join("\n");
-        md = `# Release notes: ${query}${os ? ` (${os})` : ""}\n\n${items}\n\n_${rows.length} results shown_`;
+        md = `# Release notes: ${safeQuery}${os ? ` (${os})` : ""}\n\n${items}\n\n_${rows.length} results shown_`;
       }
       return { content: [{ type: "text", text: formatResponse(format, md, { query, os, rows, tableExists }) }] };
     },
@@ -2232,9 +2304,10 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
     },
     async ({ api_name, format }) => {
       const { deprecation, sessions } = findApiReplacement(db, api_name);
+      const safeApi = sanitizeEcho(api_name); // TL-035: no raw caller input in markdown headings
       let md: string;
       if (deprecation.length === 0) {
-        md = `# ${api_name} — no replacement info found\n\nNo deprecated entry found in the index for **${api_name}**. The symbol may not be deprecated or not yet indexed.\n\nTry \`apple_api_deprecation\` to check deprecation status.`;
+        md = `# ${safeApi} — no replacement info found\n\nNo deprecated entry found in the index for **${safeApi}**. The symbol may not be deprecated or not yet indexed.\n\nTry \`apple_api_deprecation\` to check deprecation status.`;
       } else {
         const depMd = deprecation.map((r: any) => {
           const at = r.deprecated_at ? ` (deprecated ${r.deprecated_at})` : "";
@@ -2244,7 +2317,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
         const sessMd = sessions.length > 0
           ? `\n\n## WWDC sessions for replacement\n${sessions.map((s: any) => `- **WWDC ${s.year}** — ${s.title}\n  ${s.url}`).join("\n")}`
           : "\n\n## WWDC sessions\nNo sessions matched the replacement symbol.";
-        md = `# What replaced ${api_name}?\n\n${depMd}${sessMd}`;
+        md = `# What replaced ${safeApi}?\n\n${depMd}${sessMd}`;
       }
       return { content: [{ type: "text", text: formatResponse(format, md, { api_name, deprecation, sessions }) }] };
     },
@@ -2267,9 +2340,10 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
     async ({ query, types, limit, format }) => {
       const fts = ftsQuote(query);
       const rows = searchAll(db, fts, { types, limit });
+      const safeQuery = sanitizeEcho(query); // TL-035: query reflected in the # heading
       let md: string;
       if (rows.length === 0) {
-        md = `# Search all: ${query}\n\nNo matches found across ${types.join(", ")}.`;
+        md = `# Search all: ${safeQuery}\n\nNo matches found across ${types.join(", ")}.`;
       } else {
         // Group by type
         const grouped: Record<string, any[]> = {};
@@ -2284,7 +2358,7 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
           ).join("\n");
           return `## ${label}\n${items}`;
         }).join("\n\n");
-        md = `# Search all: ${query}\n\n_${rows.length} results across ${types.join(", ")}_\n\n${sections}`;
+        md = `# Search all: ${safeQuery}\n\n_${rows.length} results across ${types.join(", ")}_\n\n${sections}`;
       }
       return { content: [{ type: "text", text: formatResponse(format, md, { query, types, rows }) }] };
     },
@@ -2307,15 +2381,16 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
     async ({ symbol, year, include_transcript, format }) => {
       const fts = ftsQuote(symbol);
       const rows = findSessionsForApi(db, fts, year);
+      const safeSymbol = sanitizeEcho(symbol); // TL-035: no raw caller input in markdown headings
       let md: string;
       if (rows.length === 0) {
-        md = `# Sessions for: ${symbol}\n\nNo sessions found${year ? ` in WWDC ${year}` : ""}. The symbol may not appear in indexed transcripts or session metadata.`;
+        md = `# Sessions for: ${safeSymbol}\n\nNo sessions found${year ? ` in WWDC ${year}` : ""}. The symbol may not appear in indexed transcripts or session metadata.`;
       } else {
         const items = rows.map((r: any) => {
           const snip = include_transcript && r.transcript_snip ? `\n  _${r.transcript_snip}_` : "";
           return `- **WWDC ${r.year}** — ${r.title}\n  ${r.url}${snip}`;
         }).join("\n");
-        md = `# Sessions mentioning: ${symbol}${year ? ` (WWDC ${year})` : ""}\n\n${items}\n\n_${rows.length} sessions found_`;
+        md = `# Sessions mentioning: ${safeSymbol}${year ? ` (WWDC ${year})` : ""}\n\n${items}\n\n_${rows.length} sessions found_`;
       }
       return { content: [{ type: "text", text: formatResponse(format, md, { symbol, year, rows }) }] };
     },
@@ -2343,15 +2418,16 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
     async ({ query, category, limit, offset, format }) => {
       const safeFts = ftsQuote(query);
       const rows = searchSwiftForums(db, safeFts, { category, limit, offset });
+      const safeQuery = sanitizeEcho(query); // TL-035: no raw caller input in rendered markdown
       if (rows.length === 0) {
         const catNote = category ? ` in category '${category}'` : "";
-        const md = `No Swift Forum posts matched '${query}'${catNote}. Run \`npm run ingest -- --source swift-forums\` to populate the index.`;
+        const md = `No Swift Forum posts matched '${safeQuery}'${catNote}. Run \`npm run ingest -- --source swift-forums\` to populate the index.`;
         return { content: [{ type: "text", text: formatResponse(format, md, { query, rows: [] }) }] };
       }
       const items = rows.map((r: any) =>
         `- **${r.title}** [${r.category ?? ""}]\n  ${r.url}${r.snip ? `\n  _${r.snip}_` : ""}`,
       ).join("\n");
-      const md = `# Swift Forums: ${query}\n\n${items}\n\n_${rows.length} posts shown_`;
+      const md = `# Swift Forums: ${safeQuery}\n\n${items}\n\n_${rows.length} posts shown_`;
       return { content: [{ type: "text", text: formatResponse(format, md, { query, category, rows }) }] };
     },
   );
@@ -2374,14 +2450,15 @@ export function registerAllTools(server: McpServer, db: DatabaseType): void {
     async ({ query, limit, offset, format }) => {
       const safeFts = ftsQuote(query);
       const rows = searchAppleDevForums(db, safeFts, { limit, offset });
+      const safeQuery = sanitizeEcho(query); // TL-035: no raw caller input in rendered markdown
       if (rows.length === 0) {
-        const md = `No Apple Developer Forum posts matched '${query}'. Run \`npm run ingest -- --source apple-dev-forums\` to populate the index.`;
+        const md = `No Apple Developer Forum posts matched '${safeQuery}'. Run \`npm run ingest -- --source apple-dev-forums\` to populate the index.`;
         return { content: [{ type: "text", text: formatResponse(format, md, { query, rows: [] }) }] };
       }
       const items = rows.map((r: any) =>
         `- **${r.title}**${r.author ? ` — ${r.author}` : ""}${r.published_at ? ` (${r.published_at})` : ""}\n  ${r.url}${r.snip ? `\n  _${r.snip}_` : ""}`,
       ).join("\n");
-      const md = `# Apple Developer Forums: ${query}\n\n${items}\n\n_${rows.length} posts shown_`;
+      const md = `# Apple Developer Forums: ${safeQuery}\n\n${items}\n\n_${rows.length} posts shown_`;
       return { content: [{ type: "text", text: formatResponse(format, md, { query, rows }) }] };
     },
   );
@@ -2536,7 +2613,13 @@ function renderSearchMd(
   judgment?: ReturnType<typeof judgeSearch>,
   detail: "compact" | "standard" | "detailed" = "standard",
 ): string {
-  if (hits.length === 0) return `No matches for **${query}** (total=${total}).`;
+  // TL-035: query is caller input; keep it an inert single line everywhere
+  // it's reflected in rendered markdown.
+  const safeQuery = sanitizeEcho(query);
+  const judgmentMd = judgment
+    ? `\n\n## Search judgment\n- confidence: ${judgment.confidence}\n- answer readiness: ${judgment.answer_readiness}${judgment.caveats.length ? `\n- caveats: ${judgment.caveats.join("; ")}` : ""}${judgment.suggested_next_tools.length ? `\n- next tools: ${judgment.suggested_next_tools.join(", ")}` : ""}`
+    : "";
+  if (hits.length === 0) return `No matches for **${safeQuery}** (total=${total}).${judgmentMd}`;
   const lines = hits.map((h) => {
     const basics = `- **[${h.kind}]** ${h.title}${h.year ? ` — WWDC ${h.year}` : ""}\n  ${h.url}`;
     if (detail === "compact") return basics;
@@ -2546,10 +2629,7 @@ function renderSearchMd(
       : "";
     return `${basics}${snippet}${reasons}`;
   });
-  const judgmentMd = judgment
-    ? `\n\n## Search judgment\n- confidence: ${judgment.confidence}\n- answer readiness: ${judgment.answer_readiness}${judgment.caveats.length ? `\n- caveats: ${judgment.caveats.join("; ")}` : ""}${judgment.suggested_next_tools.length ? `\n- next tools: ${judgment.suggested_next_tools.join(", ")}` : ""}`
-    : "";
-  return `# Search: ${query}\n\n${lines.join("\n")}\n\n_${hits.length} shown / ${total} matched_${judgmentMd}`;
+  return `# Search: ${safeQuery}\n\n${lines.join("\n")}\n\n_${hits.length} shown / ${total} matched_${judgmentMd}`;
 }
 
 function renderSessionMd(s: {
