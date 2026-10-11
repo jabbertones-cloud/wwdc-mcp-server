@@ -27,7 +27,7 @@ export function openWwdcDatabase(): DatabaseType {
   return db;
 }
 
-export function createWwdcServer(db: DatabaseType): McpServer {
+export function createWwdcServer(db: DatabaseType, opts: { dbFreshlyCreated?: boolean } = {}): McpServer {
   const server = new McpServer(
     {
       name: SERVER_NAME,
@@ -35,6 +35,6 @@ export function createWwdcServer(db: DatabaseType): McpServer {
     },
     { instructions: SERVER_INSTRUCTIONS },
   );
-  registerAllTools(server, db);
+  registerAllTools(server, db, opts);
   return server;
 }
