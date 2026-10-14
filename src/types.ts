@@ -194,7 +194,7 @@ export interface AppStoreGuidelineEntry {
 // ---------- Ingest status ----------
 
 export interface IngestStatus {
-  source: "wwdc" | "tutorials" | "pathways" | "hig" | "evolution" | "sample-code" | "docs" | "swiftbook" | "appstore" | "release-notes" | "deprecation-backfill" | "swift-forums" | "apple-dev-forums" | "session-summaries" | "cross-reference";
+  source: "wwdc" | "tutorials" | "pathways" | "hig" | "evolution" | "sample-code" | "docs" | "swiftbook" | "appstore" | "release-notes" | "deprecation-backfill" | "swift-forums" | "apple-dev-forums" | "session-summaries" | "cross-reference" | "export-deprecation-qa";
   lastRunAt: string;
   lastSuccessAt?: string;
   itemsIngested: number;

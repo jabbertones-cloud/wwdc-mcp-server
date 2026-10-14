@@ -12,14 +12,27 @@ const client = axios.create({
   validateStatus: () => true, // handle ourselves
 });
 
+export interface HttpGetOptions extends AxiosRequestConfig {
+  /**
+   * Per-call retry override (default REQUEST_RETRY). Interactive callers
+   * (TL-157: apple_doc_lookup) bound their total worst case below the MCP
+   * client's 60s default request timeout; ingest callers keep the default.
+   * A per-call `timeout` (AxiosRequestConfig) likewise overrides the
+   * client's REQUEST_TIMEOUT_MS for that call only.
+   */
+  retries?: number;
+}
+
 export async function httpGet<T = unknown>(
   url: string,
-  opts: AxiosRequestConfig = {},
+  opts: HttpGetOptions = {},
 ): Promise<{ data: T; status: number; headers: Record<string, string> }> {
+  const maxRetries = opts.retries ?? REQUEST_RETRY;
+  const { retries: _retries, ...axiosOpts } = opts;
   let lastErr: unknown = null;
-  for (let attempt = 0; attempt <= REQUEST_RETRY; attempt++) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const resp = await client.get<T>(url, opts);
+      const resp = await client.get<T>(url, axiosOpts);
       if (resp.status >= 200 && resp.status < 300) {
         return {
           data: resp.data,
@@ -36,7 +49,7 @@ export async function httpGet<T = unknown>(
     } catch (e) {
       const isAxios = e instanceof AxiosError;
       const retriable = isAxios && (!e.response || e.code === "ECONNABORTED" || e.code === "ETIMEDOUT");
-      if (retriable && attempt < REQUEST_RETRY) {
+      if (retriable && attempt < maxRetries) {
         await delay(300 * (attempt + 1) ** 2);
         lastErr = e;
         continue;

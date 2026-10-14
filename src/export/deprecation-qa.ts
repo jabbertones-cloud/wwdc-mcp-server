@@ -17,6 +17,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { Database as DatabaseType } from "better-sqlite3";
 import { DATA_DIR } from "../constants.js";
+import { recordIngest } from "../db/queries.js";
 
 const DEFAULT_OUTPUT = path.join(DATA_DIR, "deprecation-qa.jsonl");
 
@@ -200,5 +201,9 @@ export async function exportDeprecationQA(
   });
 
   console.log(`[export-deprecation-qa] Wrote ${exported} Q&A pairs to ${outputPath}`);
+  // TL-098: the export is a registered --source in the ingest orchestrator
+  // (run.ts holds it to the stamp-refusal contract), so it must write the
+  // ingest_status ledger like every other source.
+  recordIngest(db, "export-deprecation-qa", exported, 0, `output: ${outputPath}`);
   return { exported };
 }

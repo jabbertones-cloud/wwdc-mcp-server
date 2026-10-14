@@ -48,9 +48,13 @@ export async function extractSessionSummaries(
   } = opts;
 
   if (!apiKey) {
+    // TL-098: a skip is still a run — record it in the ingest_status ledger
+    // so wwdc_ingest_status shows the attempt instead of a stale success row.
+    // items=0 keeps success=false, so last_success_at is preserved (COALESCE).
     console.warn(
       "[session-summaries] ANTHROPIC_API_KEY not set — skipping summary extraction.",
     );
+    recordIngest(db, "session-summaries", 0, 0, "skipped: ANTHROPIC_API_KEY not set");
     return { processed: 0, skipped: 0, errors: 0 };
   }
 

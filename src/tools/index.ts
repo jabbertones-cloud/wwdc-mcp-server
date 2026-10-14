@@ -64,7 +64,7 @@ import {
 import { httpGet, HttpError } from "../services/http.js";
 import { APPLE_DOCS_BASE } from "../constants.js";
 import { formatResponse, truncate, toolError, sanitizeEcho } from "../services/format.js";
-import { semanticSearch, checkEmbeddings } from "../services/embeddings.js";
+import { semanticSearch, checkEmbeddings, checkEmbeddingsState, type EmbeddingsState } from "../services/embeddings.js";
 import { getLatestCorpusVersion } from "../db/corpus.js";
 import { DB_PATH, DEFAULT_LIMIT, MAX_LIMIT, MAX_QUERY_CHARS, MAX_QUERY_TOKENS } from "../constants.js";
 import { getSecurityManifest, scanUntrustedText } from "../security/manifest.js";
@@ -512,7 +512,7 @@ function judgeHit(query: string, hit: SearchHitWithJudgment): NonNullable<Search
   return { confidence, reasons, caveats, suggested_next_tools: next };
 }
 
-function judgeSearch(query: string, hits: SearchHitWithJudgment[], total: number, hybrid: boolean, ingestStatus = [] as ReturnType<typeof listIngestStatus>) {
+function judgeSearch(query: string, hits: SearchHitWithJudgment[], total: number, hybrid: boolean, embeddingsState: EmbeddingsState = hybrid ? "available" : "unavailable", ingestStatus = [] as ReturnType<typeof listIngestStatus>) {
   const signals = analyzeQuery(query);
   const top = hits[0]?.judgment?.confidence ?? "low";
   const confidence = total === 0 ? "low" : top;
@@ -524,7 +524,14 @@ function judgeSearch(query: string, hits: SearchHitWithJudgment[], total: number
     caveats.push("no indexed matches; broaden query or run targeted ingest");
   }
   if (signals.isPlatformOnly) caveats.push("platform-only query is broad; add framework, API, error text, or app feature before making code changes");
-  if (!hybrid) caveats.push("semantic rerank unavailable; results use FTS only");
+  if (embeddingsState === "unavailable") {
+    caveats.push("semantic rerank unavailable; results use FTS only");
+  } else if (embeddingsState === "loading") {
+    // TL-092: the bounded probe timed out while the model was still
+    // loading — a transient state, not a failure. Name it so the wire
+    // output stays a pure function of (inputs + disclosed service state).
+    caveats.push("semantic rerank still loading; FTS-only results for now (repeat the query later for hybrid rerank)");
+  }
   if (hits.length < total) caveats.push("more results available via offset");
   return {
     confidence,
@@ -924,9 +931,15 @@ export function registerAllTools(
       // search falls back to FTS-only while the model is still loading.
       const ingestStatus = listIngestStatus(db);
       const embedTimeoutMs = Number(process.env.WWDC_EMBED_TIMEOUT_MS ?? 3000);
-      const embeddingsOn = hits.length > 1
-        ? await checkEmbeddings(Number.isFinite(embedTimeoutMs) ? embedTimeoutMs : 3000)
-        : false;
+      // TL-092: tri-state probe. "loading" (bounded probe timed out while
+      // init still in-flight) must not render the "unavailable" caveat —
+      // the cold-call and warm-call wire text would otherwise differ by
+      // process age alone. <=1 hit skips the probe entirely (unchanged:
+      // nothing to rerank, "unavailable" state preserved as before).
+      const embeddingsState: EmbeddingsState = hits.length > 1
+        ? await checkEmbeddingsState(Number.isFinite(embedTimeoutMs) ? embedTimeoutMs : 3000)
+        : "unavailable";
+      const embeddingsOn = embeddingsState === "available";
       if (embeddingsOn && hits.length > 1) {
         try {
           const vecHits = await semanticSearch(db, query, kinds.map((k) => k), Math.max(limit * 2, 20));
@@ -937,7 +950,7 @@ export function registerAllTools(
 
       const page = hits.slice(0, limit);
       const judgedPage = page.map((hit) => judgment || detail === "detailed" ? { ...hit, judgment: judgeHit(query, hit) } : hit);
-      const searchJudgment = judgment || detail === "detailed" ? judgeSearch(query, judgedPage, total, embeddingsOn, ingestStatus) : undefined;
+      const searchJudgment = judgment || detail === "detailed" ? judgeSearch(query, judgedPage, total, embeddingsOn, embeddingsState, ingestStatus) : undefined;
       if (fallback && searchJudgment) {
         searchJudgment.caveats.push("No all-terms match (a term may be misspelled); showing broader any-term matches.");
       }
@@ -1119,7 +1132,10 @@ export function registerAllTools(
         total = parts.length === 3 ? parts[0]! * 3600 + parts[1]! * 60 + parts[2]! : parts.length === 2 ? parts[0]! * 60 + parts[1]! : parts[0]!;
       }
       if (total === undefined) return toolError({ tool: "wwdc_session_deep_link", error: "missing_time_argument", status: "invalid_input", message: "Provide either `seconds` or `timestamp`." });
-      if (!Number.isInteger(total) || total < 0) return toolError({ tool: "wwdc_session_deep_link", error: "invalid_time_value", status: "invalid_input", message: "Time must resolve to a non-negative integer number of seconds." });
+      // NOTE (TL-049): no invalid_time_value branch here by design. `seconds`
+      // is z.number().int().min(0) and `timestamp` parts are validated as
+      // non-negative integers above, so total is always a non-negative
+      // integer at this point — the enum would be unreachable contract text.
       const url = deepLinkUrl(s.url, total);
       const md = `[${s.title}](${url}) — ${Math.floor(total / 60)}:${(total % 60).toString().padStart(2, "0")}`;
       return { content: [{ type: "text", text: formatResponse(format, md, { id, url, seconds: total }) }] };
@@ -1138,8 +1154,8 @@ export function registerAllTools(
     async ({ id, format }) => {
       const refs = listSampleCodeForSession(db, id);
       const md = refs.length
-        ? `# Sample code for ${id}\n\n${refs.map((r) => `- [${r.kind}] ${r.title} — ${r.url}`).join("\n")}`
-        : `No sample-code links recorded for ${id}.`;
+        ? `# Sample code for ${sanitizeEcho(id)}\n\n${refs.map((r) => `- [${r.kind}] ${r.title} — ${r.url}`).join("\n")}`
+        : `No sample-code links recorded for ${sanitizeEcho(id)}.`;
       return { content: [{ type: "text", text: formatResponse(format, md, { id, count: refs.length, refs }) }] };
     },
   );
@@ -1175,7 +1191,7 @@ export function registerAllTools(
       const emptyNote = hits.length === 0
         ? `\n\nNo sample-code refs match. Searched ${rows.length} indexed refs (${searched.mode} over title + URL). Browse what is indexed with \`wwdc_sample_code_list\`, or broaden the pattern.`
         : "";
-      const md = `# Sample-code grep: ${pattern}\n\n${hits.map((h) => `- [${h.session_id ?? "?"}] ${h.title}\n  ${h.url}`).join("\n")}${emptyNote}`;
+      const md = `# Sample-code grep: ${sanitizeEcho(pattern)}\n\n${hits.map((h) => `- [${h.session_id ?? "?"}] ${h.title}\n  ${h.url}`).join("\n")}${emptyNote}`;
       return { content: [{ type: "text", text: formatResponse(format, md, { pattern, count: hits.length, hits, searched }) }] };
     },
   );
@@ -1201,9 +1217,18 @@ export function registerAllTools(
       const jsonUrl = `https://developer.apple.com/tutorials/data/documentation/${clean}.json`;
       const htmlUrl = `${APPLE_DOCS_BASE}/${clean}`;
       try {
-        const { data, status } = await httpGet<{ metadata?: { title?: string; role?: string }; abstract?: Array<{ text: string }> }>(jsonUrl);
-        if (status >= 400 || !data) {
-          return toolError({ tool: "apple_doc_lookup", error: "apple_docs_upstream_error", status: "upstream_failure", retryable: true, message: `apple docs: HTTP ${status} for ${sanitizeEcho(jsonUrl, 160)}`, hint: `Try the path without trailing segments. Browser URL: ${htmlUrl}` });
+        // TL-157: interactive lookup gets a bounded budget — 2 attempts x
+        // 15s + backoff ~= 30.3s worst case. The shared httpGet default
+        // (3 x 20s ~= 61.5s) exceeds the MCP client's 60s default request
+        // timeout, so a stalled upstream timed the CLIENT out first.
+        // (15s/attempt: a normal fabricated-path 404 via the egress proxy
+        // measures ~7.5s and varies — 10s proved too thin in retest.)
+        const { data, status } = await httpGet<{ metadata?: { title?: string; role?: string }; abstract?: Array<{ text: string }> }>(jsonUrl, { timeout: 15_000, retries: 1 });
+        // NOTE (TL-049): httpGet only resolves on 2xx (4xx/5xx throw
+        // HttpError), so a `status >= 400` check here would be dead
+        // contract text — `!data` is the live guard.
+        if (!data) {
+          return toolError({ tool: "apple_doc_lookup", error: "apple_docs_upstream_error", status: "upstream_failure", retryable: true, message: `apple docs: empty response for ${sanitizeEcho(jsonUrl, 160)}`, hint: `Try the path without trailing segments. Browser URL: ${htmlUrl}` });
         }
         const title = data.metadata?.title ?? clean;
         const abstract = (data.abstract ?? []).map((a) => a.text).join("");
@@ -1317,7 +1342,8 @@ export function registerAllTools(
       const rows = status
         ? db.prepare(`SELECT id, number, title, status, url FROM evolution WHERE status LIKE ? ORDER BY number LIMIT ? OFFSET ?`).all(`%${status}%`, limit, offset)
         : db.prepare(`SELECT id, number, title, status, url FROM evolution ORDER BY number LIMIT ? OFFSET ?`).all(limit, offset);
-      const md = `# Swift Evolution proposals${status ? ` — ${status}` : ""} (${rows.length})\n\n${(rows as any[]).map((r) => `- **${r.id}** ${r.title} — ${r.status}`).join("\n")}`;
+      const safeStatus = sanitizeEcho(status ?? "");
+      const md = `# Swift Evolution proposals${status ? ` — ${safeStatus}` : ""} (${rows.length})\n\n${(rows as any[]).map((r) => `- **${r.id}** ${r.title} — ${r.status}`).join("\n")}`;
       return { content: [{ type: "text", text: formatResponse(format, md, { count: rows.length, rows }) }] };
     },
   );
@@ -1617,7 +1643,7 @@ export function registerAllTools(
     async ({ chapter, format }) => {
       const row = getSwiftBookChapter(db, chapter.toLowerCase().replace(/\s+/g, "-"));
       if (!row) {
-        return { content: [{ type: "text", text: `No Swift book chapter found for '${chapter}'. Run 'npm run ingest:swiftbook' first, or search with wwdc_search.` }] };
+        return { content: [{ type: "text", text: `No Swift book chapter found for '${sanitizeEcho(chapter)}'. Run 'npm run ingest:swiftbook' first, or search with wwdc_search.` }] };
       }
       const md = `# [Swift Book] ${row.title}\n**Section:** ${row.section}\n${row.url}\n\n${row.body}`;
       return { content: [{ type: "text", text: formatResponse(format, md, row) }] };
@@ -1668,7 +1694,7 @@ export function registerAllTools(
       const fts = ftsQuote(symbol);
       const { hits, earliestYear } = findApiIntroduction(db, fts, limit);
       if (hits.length === 0) {
-        const md = `No WWDC sessions found mentioning **${symbol}**. The symbol may not be indexed, or it may predate the indexed sessions. Try \`wwdc_search\` with a broader term.`;
+        const md = `No WWDC sessions found mentioning **${sanitizeEcho(symbol)}**. The symbol may not be indexed, or it may predate the indexed sessions. Try \`wwdc_search\` with a broader term.`;
         return { content: [{ type: "text", text: formatResponse(format, md, { symbol, hits: [], earliestYear: null }) }] };
       }
       const introLine = earliestYear
@@ -1968,6 +1994,7 @@ export function registerAllTools(
     async ({ year, sort_by, sort_dir, topic, has_transcript, has_sample_code, limit, offset, format }) => {
       const { rows, total } = listSessionsByYearFull(db, year, {
         sortBy: sort_by,
+        sortDir: sort_dir,
         topic,
         hasTranscript: has_transcript,
         hasSampleCode: has_sample_code,
@@ -1975,7 +2002,7 @@ export function registerAllTools(
         offset,
       });
       if (rows.length === 0) {
-        return { content: [{ type: "text", text: `No sessions found for WWDC ${year}${topic ? ` with topic '${topic}'` : ""}. Run \`npm run ingest:wwdc\` to populate the index.` }] };
+        return { content: [{ type: "text", text: `No sessions found for WWDC ${year}${topic ? ` with topic '${sanitizeEcho(topic)}'` : ""}. Run \`npm run ingest:wwdc\` to populate the index.` }] };
       }
       const lines = rows.map((r) => {
         const flags = [r.has_transcript ? "📝" : "", r.has_sample_code ? "💻" : ""].filter(Boolean).join(" ");
@@ -2003,7 +2030,7 @@ export function registerAllTools(
     async ({ speaker, year, limit, format }) => {
       const hits = findSessionsBySpeaker(db, speaker, year, limit);
       if (hits.length === 0) {
-        return { content: [{ type: "text", text: `No sessions found for speaker matching '${speaker}'${year ? ` in WWDC ${year}` : ""}.` }] };
+        return { content: [{ type: "text", text: `No sessions found for speaker matching '${sanitizeEcho(speaker)}'${year ? ` in WWDC ${year}` : ""}.` }] };
       }
       // Group by year
       const grouped = new Map<number, typeof hits>();
@@ -2012,7 +2039,7 @@ export function registerAllTools(
         if (!grouped.has(yr)) grouped.set(yr, []);
         grouped.get(yr)!.push(h);
       }
-      const mdLines: string[] = [`# Speaker search: "${speaker}"\n`];
+      const mdLines: string[] = [`# Speaker search: "${sanitizeEcho(speaker)}"\n`];
       for (const [yr, sessions] of [...grouped.entries()].sort((a, b) => b[0] - a[0])) {
         mdLines.push(`## WWDC ${yr}`);
         for (const s of sessions) {
@@ -2074,7 +2101,7 @@ export function registerAllTools(
     async ({ framework, type, limit, offset, format }) => {
       const { rows, total } = listDocsByFramework(db, framework, { type, limit, offset });
       if (rows.length === 0) {
-        return { content: [{ type: "text", text: `No docs indexed for framework '${framework}'${type ? ` with type '${type}'` : ""}. Run \`npm run ingest:appledocs\` to populate the index.` }] };
+        return { content: [{ type: "text", text: `No docs indexed for framework '${sanitizeEcho(framework)}'${type ? ` with type '${sanitizeEcho(type)}'` : ""}. Run \`npm run ingest:appledocs\` to populate the index.` }] };
       }
       // Group by role
       const grouped = new Map<string, typeof rows>();
@@ -2083,7 +2110,7 @@ export function registerAllTools(
         if (!grouped.has(key)) grouped.set(key, []);
         grouped.get(key)!.push(r);
       }
-      const mdLines: string[] = [`## ${framework} — ${total} symbols indexed\n`];
+      const mdLines: string[] = [`## ${sanitizeEcho(framework)} — ${total} symbols indexed\n`];
       for (const [role, entries] of [...grouped.entries()].sort()) {
         mdLines.push(`### ${role}`);
         for (const e of entries) {
@@ -2114,10 +2141,10 @@ export function registerAllTools(
         return { content: [{ type: "text", text: formatResponse(format, md, exact) }] };
       }
       if (partialMatches.length > 0) {
-        const md = `No exact match for '${id}'. Closest matches:\n\n${partialMatches.map((g) => `- **${g.sectionNumber || g.id}** — [${g.title}](${g.url})`).join("\n")}`;
+        const md = `No exact match for '${sanitizeEcho(id)}'. Closest matches:\n\n${partialMatches.map((g) => `- **${g.sectionNumber || g.id}** — [${g.title}](${g.url})`).join("\n")}`;
         return { content: [{ type: "text", text: formatResponse(format, md, { query: id, partialMatches }) }] };
       }
-      return { content: [{ type: "text", text: `No guideline found for '${id}'. Use \`appstore_guidelines_search\` to browse by keyword.` }] };
+      return { content: [{ type: "text", text: `No guideline found for '${sanitizeEcho(id)}'. Use \`appstore_guidelines_search\` to browse by keyword.` }] };
     },
   );
 
@@ -2171,7 +2198,7 @@ export function registerAllTools(
         ? `\n\n## Corpus version\n- version: ${versionStamp.version}\n- ingested: ${versionStamp.ingestedAt} (via \`--source ${versionStamp.ingestSource}\`)\n- sessions: ${versionStamp.sessionCount}${versionStamp.wwdcYears ? ` (WWDC ${versionStamp.wwdcYears})` : ""}\n- total indexed items: ${versionStamp.totalItems}\n- server version at ingest: ${versionStamp.serverVersion ?? "unknown"}`
         : corpusState === "empty"
           ? `\n\n## Corpus version\n- **EMPTY CORPUS — 0 sessions indexed** in the database at \`${DB_PATH}\`. If this deployment is supposed to have a corpus, the data volume is missing or the DB path is wrong; an absent DB file is created empty on open, so this is how a missing corpus presents.${freshNote} Only run \`npm run ingest:all\` if this is a genuinely new install.`
-          : `\n\n## Corpus version\n- none recorded yet; run \`npm run ingest:all\` to stamp the corpus`;
+          : `\n\n## Corpus version\n- **UNSTAMPED CORPUS — ${sessionsIndexed} session${sessionsIndexed === 1 ? "" : "s"} indexed, but no version stamp recorded.** The last ingest run did not complete cleanly (see the per-source errors above); re-run \`npm run ingest:all\` (or the failed source's own ingest) to complete and stamp the corpus.`;
       const md = `# Ingest status\n\n${status.map((s) => `- **${s.source}** — last run: ${s.lastRunAt}, items: ${s.itemsIngested}, errors: ${s.errors}${s.notes ? ` (${s.notes})` : ""}`).join("\n")}${corpusMd}\n\n## Added since ${sinceIso}\n${recent.map((r) => `- [${r.year}] ${r.title} (${r.id})`).join("\n")}`;
       return { content: [{ type: "text", text: formatResponse(format, md, { status, recent, since: sinceIso, corpus: versionStamp, corpus_state: corpusState, db_path: DB_PATH, sessions_indexed: sessionsIndexed, db_freshly_created: opts.dbFreshlyCreated === true, corpus_counts: counts }) }] };
     },
@@ -2484,7 +2511,9 @@ export function registerAllTools(
           `SELECT id, title, year, url, description, topics FROM sessions WHERE id = ?`,
         ).get(session_id) as any;
         if (!session) {
-          return { content: [{ type: "text", text: `Session '${session_id}' not found. Use wwdc_search or wwdc_list_years to find valid session IDs.` }] };
+          // TL-083: not-found must travel through the TL-009 error envelope
+          // like every sibling get-tool (session_not_found), not as bare text.
+          return toolError({ tool: "wwdc_session_summary", error: "session_not_found", status: "not_found", message: `session not found: ${sanitizeEcho(session_id)}`, hint: "Use wwdc_search or wwdc_list_years to find valid session IDs.", fields: { session_id: sanitizeEcho(session_id) } });
         }
         let topics: string[] = [];
         try { topics = JSON.parse(session.topics ?? "[]") as string[]; } catch { /* ignore */ }
@@ -2527,9 +2556,9 @@ export function registerAllTools(
     async ({ entity_type, entity_id, direction, format }) => {
       const { outgoing, incoming } = getCrossReferences(db, entity_type, entity_id, direction);
       if (outgoing.length === 0 && incoming.length === 0) {
-        return { content: [{ type: "text", text: `No cross-references found for ${entity_type}:${entity_id} (direction=${direction}). The graph may not be built yet — run \`npm run ingest -- --source cross-reference\`.` }] };
+        return { content: [{ type: "text", text: `No cross-references found for ${sanitizeEcho(entity_type)}:${sanitizeEcho(entity_id)} (direction=${direction}). The graph may not be built yet — run \`npm run ingest -- --source cross-reference\`.` }] };
       }
-      const lines: string[] = [`# Cross-references: ${entity_type}:${entity_id}\n`];
+      const lines: string[] = [`# Cross-references: ${sanitizeEcho(entity_type)}:${sanitizeEcho(entity_id)}\n`];
       if (outgoing.length > 0) {
         lines.push(`## Outgoing (${outgoing.length})`);
         for (const edge of outgoing) {
@@ -2565,9 +2594,9 @@ export function registerAllTools(
       const md = [
         `# Database export status`,
         ``,
-        ...rows.map((r) => `- **${r.table_name}**: ${r.count.toLocaleString()} rows`),
+        ...rows.map((r) => `- **${r.table_name}**: ${r.count.toLocaleString("en-US")} rows`),
         ``,
-        `_Total: ${total.toLocaleString()} rows across ${rows.length} tables_`,
+        `_Total: ${total.toLocaleString("en-US")} rows across ${rows.length} tables_`,
       ].join("\n");
       return { content: [{ type: "text", text: formatResponse(format, md, { tables: rows, total }) }] };
     },
@@ -2686,9 +2715,9 @@ function renderSwiftAuditMd(args: {
   const target = [
     `focus=${args.focus}`,
     args.platforms.length ? `platforms=${args.platforms.join(", ")}` : undefined,
-    args.frameworks.length ? `frameworks=${args.frameworks.join(", ")}` : undefined,
-    args.feature ? `feature=${args.feature}` : undefined,
-    args.symptom ? `symptom=${args.symptom}` : undefined,
+    args.frameworks.length ? `frameworks=${args.frameworks.map((f) => sanitizeEcho(f)).join(", ")}` : undefined,
+    args.feature ? `feature=${sanitizeEcho(args.feature)}` : undefined,
+    args.symptom ? `symptom=${sanitizeEcho(args.symptom)}` : undefined,
   ].filter(Boolean).join("; ");
   const renderHits = (hits: SearchHitWithJudgment[]) => hits.length
     ? hits.map((hit) => `- **${hit.title}**${hit.year ? ` — WWDC ${hit.year}` : ""}\n  ${hit.url}${hit.snippet ? `\n  _${hit.snippet}_` : ""}`).join("\n")

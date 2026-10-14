@@ -128,9 +128,12 @@ export const MAX_ERROR_ECHO = 80;
 /** Bound + sanitise caller input before reflecting it in an error message. */
 export function sanitizeEcho(value: unknown, max = MAX_ERROR_ECHO): string {
   const raw = typeof value === "string" ? value : String(value ?? "");
-  // Strip C0/C1 control chars (incl. newlines/tabs) and collapse whitespace
-  // so echoed input stays a single inert line of data.
-  const cleaned = raw.replace(/[\u0000-\u001F\u007F-\u009F]/g, " ").replace(/\s+/g, " ").trim();
+  // Strip C0/C1 control chars (incl. newlines/tabs) and Unicode bidi/format
+  // controls (U+200B-U+200F, U+202A-U+202E, U+2066-U+2069, U+FEFF) so echoed
+  // input stays a single inert line of data — U+202E (right-to-left
+  // override) and its siblings can spoof display order (TL-053). Then
+  // collapse whitespace and cap length with the [+N chars] marker.
+  const cleaned = raw.replace(/[\u0000-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g, " ").replace(/\s+/g, " ").trim();
   if (cleaned.length <= max) return cleaned;
   return `${cleaned.slice(0, max)}…[+${cleaned.length - max} chars]`;
 }

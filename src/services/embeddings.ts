@@ -67,6 +67,23 @@ export async function checkEmbeddings(timeoutMs?: number): Promise<boolean> {
   return (await embeddingService.getBounded(timeoutMs)) !== null;
 }
 
+/**
+ * Tri-state availability for request paths whose output names the mode
+ * (TL-092): "available" (resource in hand), "unavailable" (init tried and
+ * failed), "loading" (bounded probe timed out while init is still
+ * in-flight — not a failure; a later call may succeed). Callers must not
+ * render "unavailable" for the "loading" state: the wire text must be a
+ * pure function of (inputs + disclosed service state), and the loading
+ * verdict is a different, transient state with a different caveat.
+ */
+export type EmbeddingsState = "available" | "unavailable" | "loading";
+export async function checkEmbeddingsState(timeoutMs: number): Promise<EmbeddingsState> {
+  if (process.env.WWDC_SKIP_EMBEDDINGS === "1") return "unavailable";
+  const pipe = await embeddingService.getBounded(timeoutMs);
+  if (pipe !== null) return "available";
+  return embeddingService.availability === false ? "unavailable" : "loading";
+}
+
 /** Reset cached availability so a later call may retry initialization. */
 export function resetEmbeddingStatus(): void {
   embeddingService.reset();

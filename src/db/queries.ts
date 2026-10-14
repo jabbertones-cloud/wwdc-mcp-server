@@ -1161,6 +1161,7 @@ export function listSessionsByYearFull(
   year: number,
   opts: {
     sortBy?: "session_number" | "duration" | "title";
+    sortDir?: "asc" | "desc";
     topic?: string;
     platform?: string;
     hasTranscript?: boolean;
@@ -1169,7 +1170,7 @@ export function listSessionsByYearFull(
     offset?: number;
   } = {},
 ): { rows: any[]; total: number } {
-  const { sortBy = "session_number", topic, platform, hasTranscript, hasSampleCode, limit = 20, offset = 0 } = opts;
+  const { sortBy = "session_number", sortDir = "asc", topic, platform, hasTranscript, hasSampleCode, limit = 20, offset = 0 } = opts;
   const predicates: string[] = ["year = ?"];
   const params: unknown[] = [year];
 
@@ -1189,6 +1190,9 @@ export function listSessionsByYearFull(
   }
 
   const orderCol = sortBy === "duration" ? "duration" : sortBy === "title" ? "title" : "session_number";
+  // TL-125: direction is a whitelist ternary like orderCol — caller input is
+  // never interpolated into the SQL, only the two literal keywords.
+  const orderDir = sortDir === "desc" ? "DESC" : "ASC";
   const where = predicates.join(" AND ");
   const sql = `
     SELECT id, title, session_number, duration, topics, platforms, url,
@@ -1196,7 +1200,7 @@ export function listSessionsByYearFull(
            CASE WHEN LENGTH(COALESCE(sample_code_urls,'[]')) > 2 THEN 1 ELSE 0 END as has_sample_code
     FROM sessions
     WHERE ${where}
-    ORDER BY ${orderCol} ASC
+    ORDER BY ${orderCol} ${orderDir}
     LIMIT ? OFFSET ?
   `;
   const countSql = `SELECT COUNT(*) AS c FROM sessions WHERE ${where}`;
