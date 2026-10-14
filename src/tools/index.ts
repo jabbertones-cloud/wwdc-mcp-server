@@ -831,8 +831,15 @@ function buildSwiftAuditSummary(args: {
     : args.totalMatches > 0
       ? "seed_context_only"
       : "insufficient_context";
+  // STD-OUT-1 (anti-extraction standard §4): the audit's confidence is
+  // computed internally, but only a coarse readiness band may leave the
+  // server — a field named `confidence` (even categorical) invites
+  // boundary-walking of the audit judgment layer, so the public summary
+  // carries `readiness_band` (high / medium / low) and nothing finer.
+  const confidence: "high" | "medium" | "low" =
+    args.totalMatches >= 5 && hasUsefulCoverage ? "high" : args.totalMatches > 0 ? "medium" : "low";
   return {
-    confidence: args.totalMatches >= 5 && hasUsefulCoverage ? "high" : args.totalMatches > 0 ? "medium" : "low",
+    readiness_band: confidence,
     readiness,
     caveats,
     next_tools: ["wwdc_get_session", "apple_hig_search", "apple_swift_evolution_get", "apple_doc_lookup"],
@@ -1528,7 +1535,10 @@ export function registerAllTools(
         }))
         : [];
 
-      const sessions = pickRankedAuditHits(sessionSearches, limit).map((hit) => ({ ...hit, judgment: judgeHit(sessionQueries[0] ?? focus, hit) }));
+      // STD-OUT-1: audit session hits ship WITHOUT their per-hit judgment
+      // objects — judgeHit carries a confidence value, and the audit's
+      // judgment layer must not leak through the results payload either.
+      const sessions = pickRankedAuditHits(sessionSearches, limit);
       const docs = pickRankedAuditHits(docSearches, Math.min(limit, 6));
       const tutorials = pickRankedAuditHits(tutorialSearches, Math.min(limit, 4));
       const hig = pickRankedAuditHits(higSearches, Math.min(limit, 5));
@@ -2706,7 +2716,7 @@ function renderSwiftAuditMd(args: {
   pathwayHints: Array<{ id: string; title: string; reason: string }>;
   diagnostics: ReturnType<typeof diagnoseWeakHits>;
   summary: {
-    confidence: string;
+    readiness_band: string;
     readiness: string;
     caveats: string[];
     next_tools: string[];
@@ -2737,5 +2747,5 @@ function renderSwiftAuditMd(args: {
   const swiftBookSection = args.swiftBook?.length
     ? `\n\n## Swift Language Reference\n${args.swiftBook.map((h) => `- **${h.title}**\n  ${h.url}${h.snippet ? `\n  _${h.snippet}_` : ""}`).join("\n")}`
     : "";
-  return `# Swift app audit\n\n${target}\n\n## Judgment\n- confidence: ${args.summary.confidence}\n- readiness: ${args.summary.readiness}${args.summary.caveats.length ? `\n- caveats: ${args.summary.caveats.join("; ")}` : ""}\n- next tools: ${args.summary.next_tools.join(", ")}\n\n## Indexed Apple docs\n${renderHits(args.docs)}\n\n## Direct Apple doc hints\n${docHints}\n\n## Archetype pathways\n${pathways}\n\n## WWDC sessions\n${renderHits(args.sessions)}\n\n## Apple tutorials\n${renderHits(args.tutorials)}\n\n## Human Interface Guidelines\n${renderHits(args.hig)}\n\n## Weak-hit diagnostics\n${weakHits}\n\n## Swift Evolution\n${renderHits(args.evolution)}${guidelinesSection}${swiftBookSection}\n\n## Validation checklist\n${args.validation.map((step) => `- ${step}`).join("\n")}`;
+  return `# Swift app audit\n\n${target}\n\n## Judgment\n- readiness band: ${args.summary.readiness_band}\n- readiness: ${args.summary.readiness}${args.summary.caveats.length ? `\n- caveats: ${args.summary.caveats.join("; ")}` : ""}\n- next tools: ${args.summary.next_tools.join(", ")}\n\n## Indexed Apple docs\n${renderHits(args.docs)}\n\n## Direct Apple doc hints\n${docHints}\n\n## Archetype pathways\n${pathways}\n\n## WWDC sessions\n${renderHits(args.sessions)}\n\n## Apple tutorials\n${renderHits(args.tutorials)}\n\n## Human Interface Guidelines\n${renderHits(args.hig)}\n\n## Weak-hit diagnostics\n${weakHits}\n\n## Swift Evolution\n${renderHits(args.evolution)}${guidelinesSection}${swiftBookSection}\n\n## Validation checklist\n${args.validation.map((step) => `- ${step}`).join("\n")}`;
 }

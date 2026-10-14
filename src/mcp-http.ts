@@ -7,6 +7,11 @@ import { getLatestCorpusVersion, hashCorpusContent } from "./db/corpus.js";
 import { pathToFileURL } from "node:url";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createWwdcServer, openWwdcDatabase, SERVER_NAME, SERVER_VERSION } from "./server.js";
+import {
+  clientKeyForRequest,
+  toolCallCost,
+  toolCallRateLimiterFromEnv,
+} from "./rate-limit.js";
 
 const HOST = process.env.WWDC_MCP_HTTP_HOST ?? process.env.HOST ?? "127.0.0.1";
 const PORT = Number(process.env.WWDC_MCP_HTTP_PORT ?? process.env.PORT ?? 8789);
@@ -116,6 +121,11 @@ async function readJsonBody(req: IncomingMessage): Promise<unknown> {
 }
 
 export function createHttpServer() {
+  // STD-QUOTA-1/4: one per-IP token bucket for tool calls, shared by
+  // every request this server handles (see src/rate-limit.ts). Public
+  // read-only mode stays anonymous — the bucket is the quota layer the
+  // standard still requires on a deliberately public surface.
+  const toolCallLimiter = toolCallRateLimiterFromEnv();
   const db = openWwdcDatabase();
   const { pathPrefix, healthPath, mcpPath } = httpPaths();
   // This is the database the MCP actually opened, not a declared env hash.
@@ -219,6 +229,24 @@ export function createHttpServer() {
         error: error instanceof Error ? error.message : "invalid_request",
       });
       return;
+    }
+
+    // Rate limiting runs after auth (unauthenticated callers get 401,
+    // never a bucket) and charges only tools/call requests. The 429 is
+    // opaque per STD-QUOTA-4: a generic error + Retry-After, no bucket
+    // shape, balance, or reason.
+    const cost = toolCallCost(body);
+    if (cost > 0) {
+      const decision = toolCallLimiter.check(clientKeyForRequest(req), cost);
+      if (!decision.allowed) {
+        json(
+          res,
+          429,
+          { error: "rate_limited" },
+          { "retry-after": String(decision.retryAfterSeconds) },
+        );
+        return;
+      }
     }
 
     const mcpServer = createWwdcServer(db);

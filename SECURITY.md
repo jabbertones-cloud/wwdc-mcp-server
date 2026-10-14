@@ -44,6 +44,10 @@ In private mode, requests without a valid bearer token return `401`. Public mode
 
 The built-in HTTP server does not terminate TLS. If you expose it beyond localhost, use a TLS edge/reverse proxy. Keep bearer tokens secret in private mode. For public mode, add edge rate limiting, abuse monitoring, and deployment-SHA verification.
 
+Tool calls on the HTTP transport are additionally rate limited in-process: a per-IP token bucket charges only `tools/call` requests (1 unit per call, 5 for `swift_app_audit`), with defaults of 120 units burst and 120 units/minute refill, tunable via `WWDC_MCP_TOOL_CALL_RATE_CAPACITY` / `WWDC_MCP_TOOL_CALL_RATE_REFILL_PER_MINUTE`. Throttled calls receive an opaque `429` with `Retry-After` and no bucket details. Buckets key on the socket address unless `WWDC_MCP_TRUST_PROXY_HEADERS=1` is set (only behind a trusted ingress that sets `cf-connecting-ip`, such as the Cloudflare Worker deployment).
+
+`swift_app_audit` output is coarsened: the summary reports a `readiness_band` (high / medium / low) and the coarse `readiness` verdict — it no longer returns a `confidence` field, and audit session hits no longer embed per-hit judgment/confidence objects.
+
 `WWDC_MCP_PATH_PREFIX` can mount the routes under a prefix such as `/wwdc`.
 
 ### Retrieved content is untrusted
