@@ -319,7 +319,7 @@ type SearchHitWithJudgment = {
   topics?: string[];
   platforms?: string[];
   judgment?: {
-    confidence: "high" | "medium" | "low";
+    relevance_band: "high" | "medium" | "low";
     reasons: string[];
     caveats: string[];
     suggested_next_tools: string[];
@@ -507,15 +507,18 @@ function judgeHit(query: string, hit: SearchHitWithJudgment): NonNullable<Search
   if (hit.kind === "session" && !hit.year) caveats.push("session year missing");
   if (signals.isPlatformOnly) caveats.push("platform-only query is broad; add framework, API, or failure symptom for audit-grade guidance");
 
-  const rawConfidence = reasons.length >= 2 ? "high" : reasons.length === 1 ? "medium" : "low";
-  const confidence = signals.isPlatformOnly && rawConfidence === "high" ? "medium" : rawConfidence;
-  return { confidence, reasons, caveats, suggested_next_tools: next };
+  // STD-OUT-1 (W3): the per-hit judgment leaves the server only as a
+  // coarse relevance band — a field named `confidence` invites
+  // boundary-walking of the judgment layer (same rule as W1's audit fix).
+  const rawBand = reasons.length >= 2 ? "high" : reasons.length === 1 ? "medium" : "low";
+  const relevance_band = signals.isPlatformOnly && rawBand === "high" ? "medium" : rawBand;
+  return { relevance_band, reasons, caveats, suggested_next_tools: next };
 }
 
 function judgeSearch(query: string, hits: SearchHitWithJudgment[], total: number, hybrid: boolean, embeddingsState: EmbeddingsState = hybrid ? "available" : "unavailable", ingestStatus = [] as ReturnType<typeof listIngestStatus>) {
   const signals = analyzeQuery(query);
-  const top = hits[0]?.judgment?.confidence ?? "low";
-  const confidence = total === 0 ? "low" : top;
+  const top = hits[0]?.judgment?.relevance_band ?? "low";
+  const relevance_band = total === 0 ? "low" : top;
   const caveats: string[] = [];
   const indexedItems = ingestStatus.reduce((sum, row) => sum + row.itemsIngested, 0);
   if (total === 0 && indexedItems === 0) {
@@ -534,11 +537,11 @@ function judgeSearch(query: string, hits: SearchHitWithJudgment[], total: number
   }
   if (hits.length < total) caveats.push("more results available via offset");
   return {
-    confidence,
+    relevance_band,
     basis: hits.slice(0, 3).map((hit) => `${hit.kind}:${hit.id}`),
     caveats,
     suggested_next_tools: total === 0 ? ["wwdc_ingest_status", "wwdc_list_topics", "wwdc_list_years"] : [...new Set(hits.flatMap((hit) => hit.judgment?.suggested_next_tools ?? []))].slice(0, 4),
-    answer_readiness: confidence === "high" ? "good_seed_context" : confidence === "medium" ? "needs_follow_up" : "insufficient_context",
+    answer_readiness: relevance_band === "high" ? "good_seed_context" : relevance_band === "medium" ? "needs_follow_up" : "insufficient_context",
   };
 }
 
@@ -1089,8 +1092,10 @@ export function registerAllTools(
       if (!include_chapters) s.deepLinks = [];
       if (!include_sample_code) s.sampleCodeUrls = [];
       if (!include_related_docs) s.relatedDocs = [];
+      // STD-OUT-1 (W3): coverage completeness ships as a coarse band,
+      // never as a `confidence` field.
       const sessionJudgment = include_judgment ? {
-        confidence: s.transcript ? "high" : "medium",
+        coverage_band: s.transcript ? "high" : "medium",
         coverage: {
           has_transcript: Boolean(s.transcript),
           chapter_count: s.deepLinks?.length ?? 0,
@@ -1437,7 +1442,7 @@ export function registerAllTools(
             source_coverage: coverage,
             patterns,
             judgment: {
-              confidence: strong.length > 0 ? "high" : patterns.length > 0 ? "medium" : "low",
+              evidence_band: strong.length > 0 ? "high" : patterns.length > 0 ? "medium" : "low",
               strong_patterns: strong.length,
               caveats,
             },
@@ -2656,7 +2661,7 @@ function renderSearchMd(
   // it's reflected in rendered markdown.
   const safeQuery = sanitizeEcho(query);
   const judgmentMd = judgment
-    ? `\n\n## Search judgment\n- confidence: ${judgment.confidence}\n- answer readiness: ${judgment.answer_readiness}${judgment.caveats.length ? `\n- caveats: ${judgment.caveats.join("; ")}` : ""}${judgment.suggested_next_tools.length ? `\n- next tools: ${judgment.suggested_next_tools.join(", ")}` : ""}`
+    ? `\n\n## Search judgment\n- relevance band: ${judgment.relevance_band}\n- answer readiness: ${judgment.answer_readiness}${judgment.caveats.length ? `\n- caveats: ${judgment.caveats.join("; ")}` : ""}${judgment.suggested_next_tools.length ? `\n- next tools: ${judgment.suggested_next_tools.join(", ")}` : ""}`
     : "";
   if (hits.length === 0) return `No matches for **${safeQuery}** (total=${total}).${judgmentMd}`;
   const lines = hits.map((h) => {
@@ -2664,7 +2669,7 @@ function renderSearchMd(
     if (detail === "compact") return basics;
     const snippet = h.snippet ? `\n  _${h.snippet}_` : "";
     const reasons = detail === "detailed" && h.judgment?.reasons.length
-      ? `\n  Judgment: ${h.judgment.confidence}; ${h.judgment.reasons.join("; ")}`
+      ? `\n  Judgment: ${h.judgment.relevance_band}; ${h.judgment.reasons.join("; ")}`
       : "";
     return `${basics}${snippet}${reasons}`;
   });
@@ -2677,7 +2682,7 @@ function renderSessionMd(s: {
   transcript?: string; sampleCodeUrls: string[]; relatedDocs: string[];
   deepLinks?: { label: string; seconds: number; url: string }[];
 }, judgment?: {
-  confidence: string;
+  coverage_band: string;
   coverage: { has_transcript: boolean; chapter_count: number; sample_code_count: number; related_doc_count: number };
   caveats: string[];
   suggested_next_tools: string[];
@@ -2693,7 +2698,7 @@ function renderSessionMd(s: {
   const docs = s.relatedDocs.length ? `\n## Related docs\n${s.relatedDocs.slice(0, 15).map((u) => `- ${u}`).join("\n")}\n` : "";
   const transcript = s.transcript ? `\n## Transcript (excerpt)\n${s.transcript}\n` : "";
   const judgmentMd = judgment
-    ? `\n## Session judgment\n- confidence: ${judgment.confidence}\n- coverage: transcript=${judgment.coverage.has_transcript}, chapters=${judgment.coverage.chapter_count}, sample_code=${judgment.coverage.sample_code_count}, related_docs=${judgment.coverage.related_doc_count}${judgment.caveats.length ? `\n- caveats: ${judgment.caveats.join("; ")}` : ""}\n- next tools: ${judgment.suggested_next_tools.join(", ")}\n`
+    ? `\n## Session judgment\n- coverage band: ${judgment.coverage_band}\n- coverage: transcript=${judgment.coverage.has_transcript}, chapters=${judgment.coverage.chapter_count}, sample_code=${judgment.coverage.sample_code_count}, related_docs=${judgment.coverage.related_doc_count}${judgment.caveats.length ? `\n- caveats: ${judgment.caveats.join("; ")}` : ""}\n- next tools: ${judgment.suggested_next_tools.join(", ")}\n`
     : "";
   return `# ${s.title}\nWWDC ${s.year}${dur}\n${topics}${plats}${speakers}\n${s.description}\n\n${s.url}\n${judgmentMd}${chaps}${sample}${docs}${transcript}`;
 }

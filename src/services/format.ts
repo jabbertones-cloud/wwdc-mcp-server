@@ -42,7 +42,33 @@ export function formatResponse(
   return truncate(markdown);
 }
 
-function formatJsonResponse(data: unknown): string {
+/**
+ * STD-OUT-1/5 egress strip (W3): raw judgment scores never leave the
+ * server in a JSON payload. Internal ranking keeps BM25/vector `score`
+ * values (they order the hits), and internal judgment keeps its
+ * categorical value under a band name — but a key literally named
+ * `score` or `confidence`, at any depth, is dropped here, at the one
+ * serialization boundary every tool response passes through. This is
+ * defense-in-depth behind the per-tool band renames in tools/index.ts:
+ * a future tool that returns a scored hit or a judgment object cannot
+ * reintroduce the leak by accident.
+ */
+const WIRE_STRIPPED_KEYS = new Set(["score", "confidence"]);
+
+function stripWireScores(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stripWireScores);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .filter(([key]) => !WIRE_STRIPPED_KEYS.has(key))
+        .map(([key, child]) => [key, stripWireScores(child)]),
+    );
+  }
+  return value;
+}
+
+function formatJsonResponse(rawData: unknown): string {
+  const data = stripWireScores(rawData);
   const full = JSON.stringify(data, null, 2);
   if (full.length <= CHARACTER_LIMIT) return full;
 

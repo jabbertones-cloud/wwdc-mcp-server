@@ -48,6 +48,8 @@ Tool calls on the HTTP transport are additionally rate limited in-process: a per
 
 `swift_app_audit` output is coarsened: the summary reports a `readiness_band` (high / medium / low) and the coarse `readiness` verdict — it no longer returns a `confidence` field, and audit session hits no longer embed per-hit judgment/confidence objects.
 
+The same coarsening covers every other judgment surface (W3): `wwdc_search` per-hit and overall judgments report a `relevance_band`, `wwdc_get_session` reports a `coverage_band`, and `apple_swift_pattern_find` reports an `evidence_band` — no tool returns a `confidence` field. Raw ranking scores (BM25 / vector) are internal ordering signals only: the JSON serialization boundary strips any `score` or `confidence` key at any depth, so no tool payload carries a raw numeric score.
+
 `WWDC_MCP_PATH_PREFIX` can mount the routes under a prefix such as `/wwdc`.
 
 ### Retrieved content is untrusted
