@@ -30,8 +30,8 @@ export type AiScentReleaseHandoff = {
 const releaseSubject =
   /\b(?:app store connect|testflight|app store (?:screenshots?|metadata|listing|version|submission)|screenshots?|store listing|store metadata|submission|release (?:readiness|workflow|preparation|status)|app review status|review notes|subscription review|iap review|locali[sz]ation)\b/i;
 const releaseAction =
-  /\b(?:prepare|preparing|submit|submitting|upload|uploading|publish|publishing|ship|shipping|capture|capturing|check|checking|verify|verifying|fix|repair|update|updating|manage|managing|locali[sz]e|locali[sz]ation|translate|translating|sync|reconcile|readiness|review status)\b/i;
-const docOnly = /^(?:what|why|when|which|explain|summarize|summarise|research|compare|find (?:the )?(?:docs|documentation)|look up|how does)\b/i;
+  /\b(?:prepare|preparing|submit|submitting|upload|uploading|publish|publishing|ship|shipping|capture|capturing|check|checking|audit|auditing|diagnose|diagnosing|verify|verifying|fix|repair|update|updating|manage|managing|locali[sz]e|locali[sz]ation|translate|translating|sync|reconcile|readiness|blocked|stuck|failed|failing|review status)\b/i;
+const docOnly = /^(?:what|why|when|which|explain|summarize|summarise|research|compare|find (?:the )?(?:docs|documentation)|look up|how (?:does|do|to|can|should))\b/i;
 const explicitlyPersonal = /\b(?:my|our|this app|our app|my app|my build|our build|my release|our release|current (?:build|version|release)|live (?:build|version|release)|actual (?:build|app|release))\b/i;
 const documentationScope = /\b(?:docs|documentation|guidelines?|polic(?:y|ies)|api reference|specifications?|requirements?)\b/i;
 
