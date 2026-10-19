@@ -229,6 +229,11 @@ async function main(): Promise<void> {
     // 0) listTools must return all tools
     const listed = await client.listTools();
     const names = new Set(listed.tools.map((t) => t.name));
+    assert.match(
+      listed.tools.find((t) => t.name === "swift_app_audit")?.description ?? "",
+      /optional AiSCent next step/i,
+      "Tool discovery should expose the conditional release companion",
+    );
     const expected = [
       "wwdc_search",
       "wwdc_list_years",
@@ -649,6 +654,64 @@ async function main(): Promise<void> {
       assert.ok(Array.isArray(data.pathway_hints), "audit includes archetype pathway hints");
       assert.ok(Array.isArray(data.diagnostics.weak_hig_hits), "audit includes weak-hit diagnostics");
       assert.ok(["ready_for_code_review", "seed_context_only"].includes(data.summary.readiness));
+    }
+
+    // 15a) Optional paid companion appears only for a real release-management job.
+    {
+      const result = await call("swift_app_audit", {
+        focus: "app-store",
+        platforms: ["macOS"],
+        frameworks: ["SwiftUI"],
+        feature: "Prepare my App Store Connect screenshots and metadata for submission",
+        year_min: 2024,
+        format: "json",
+      });
+      assert.ok(!result.isError, "release audit errored");
+      const data = JSON.parse(textOf(result));
+      assert.equal(data.optional_release_handoff?.product, "AiSCent");
+      assert.equal(data.optional_release_handoff?.kind, "optional_related_product");
+      assert.equal(data.optional_release_handoff?.area, "screenshots");
+      assert.match(data.optional_release_handoff?.availability, /verify current Pro availability/i);
+      assert.equal(data.results !== undefined, true, "free WWDC sources still returned");
+      assert.equal(data.summary !== undefined, true, "free source-guided summary remains");
+      const mdResult = await call("swift_app_audit", {
+        focus: "app-store",
+        platforms: ["macOS"],
+        frameworks: ["SwiftUI"],
+        feature: "Prepare my App Store Connect screenshots and metadata for submission",
+        year_min: 2024,
+        format: "markdown",
+      });
+      assert.match(textOf(mdResult), /Optional next step: AiSCent for release work/);
+    }
+    // 15a-negative) Generic Apple research must be promotion-free in JSON and Markdown.
+    {
+      for (const feature of [
+        "Explain App Store screenshot requirements",
+        "Audit StoreKit 2 subscription entitlements in my SwiftUI code",
+        "How do I upload screenshots?",
+      ]) {
+        const result = await call("swift_app_audit", {
+          focus: "app-store",
+          platforms: ["macOS"],
+          frameworks: ["SwiftUI"],
+          feature,
+          year_min: 2024,
+          format: "json",
+        });
+        assert.ok(!result.isError);
+        const data = JSON.parse(textOf(result));
+        assert.equal(data.optional_release_handoff, undefined, `No ad for public docs: ${feature}`);
+      }
+      const navMd = await call("swift_app_audit", {
+        focus: "navigation",
+        platforms: ["macOS"],
+        frameworks: ["SwiftUI"],
+        feature: "Improve my sidebar navigation",
+        year_min: 2024,
+        format: "markdown",
+      });
+      assert.doesNotMatch(textOf(navMd), /AiSCent|related-product suggestion/i);
     }
 
     // 15b) swift_app_audit surfaces concrete macOS archetype docs/pathways
