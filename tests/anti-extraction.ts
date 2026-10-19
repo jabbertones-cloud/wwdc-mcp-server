@@ -145,6 +145,78 @@ async function main(): Promise<void> {
     assert.ok(!mdText.includes("confidence:"), "markdown must not report confidence");
 
     console.log("[anti-extraction] swift_app_audit exposes readiness_band only, no confidence (json + markdown)");
+
+    // ---- W3: the same STD-OUT-1 rule for every other judgment surface ----
+    // wwdc_search: per-hit + overall judgment must ship as relevance_band,
+    // and no hit may carry a raw numeric BM25/vector `score`.
+    const search = (await client.callTool({
+      name: "wwdc_search",
+      arguments: { query: "SwiftUI", format: "json", detail: "detailed" },
+    })) as { content?: Array<{ text?: string }>; isError?: boolean };
+    assert.ok(!search.isError, "wwdc_search errored");
+    const searchRaw = textOf(search);
+    const searchData = JSON.parse(searchRaw);
+    assert.ok(!searchRaw.includes('"confidence"'), "wwdc_search JSON must not contain a confidence field");
+    assert.ok(!searchRaw.includes('"score"'), "wwdc_search JSON must not contain a raw score field");
+    assert.ok(
+      ["high", "medium", "low"].includes(searchData.judgment?.relevance_band),
+      `wwdc_search judgment must carry relevance_band (got ${JSON.stringify(searchData.judgment)})`,
+    );
+    for (const hit of searchData.hits ?? []) {
+      assert.ok(!("score" in hit), "search hits must not expose a raw score");
+      if (hit.judgment) {
+        assert.ok(["high", "medium", "low"].includes(hit.judgment.relevance_band),
+          "per-hit judgment must carry relevance_band, not confidence");
+      }
+    }
+    const searchMd = (await client.callTool({
+      name: "wwdc_search",
+      arguments: { query: "SwiftUI", format: "markdown", detail: "detailed" },
+    })) as { content?: Array<{ text?: string }>; isError?: boolean };
+    assert.ok(!searchMd.isError, "wwdc_search (markdown) errored");
+    assert.ok(!textOf(searchMd).includes("confidence:"), "wwdc_search markdown must not report confidence");
+    assert.ok(textOf(searchMd).includes("relevance band:"), "wwdc_search markdown reports the relevance band");
+
+    // wwdc_get_session: session judgment must ship as coverage_band.
+    const session = (await client.callTool({
+      name: "wwdc_get_session",
+      arguments: { id: "wwdc2024-10150", format: "json" },
+    })) as { content?: Array<{ text?: string }>; isError?: boolean };
+    assert.ok(!session.isError, "wwdc_get_session errored");
+    const sessionRaw = textOf(session);
+    const sessionData = JSON.parse(sessionRaw);
+    assert.ok(!sessionRaw.includes('"confidence"'), "wwdc_get_session JSON must not contain a confidence field");
+    assert.ok(
+      ["high", "medium", "low"].includes(sessionData.judgment?.coverage_band),
+      `wwdc_get_session judgment must carry coverage_band (got ${JSON.stringify(sessionData.judgment)})`,
+    );
+
+    // apple_swift_pattern_find: pattern judgment must ship as evidence_band,
+    // and its evidence hits must not carry raw scores.
+    const pattern = (await client.callTool({
+      name: "apple_swift_pattern_find",
+      arguments: { query: "buttons", format: "json" },
+    })) as { content?: Array<{ text?: string }>; isError?: boolean };
+    assert.ok(!pattern.isError, "apple_swift_pattern_find errored");
+    const patternRaw = textOf(pattern);
+    const patternData = JSON.parse(patternRaw);
+    assert.ok(!patternRaw.includes('"confidence"'), "apple_swift_pattern_find JSON must not contain a confidence field");
+    assert.ok(!patternRaw.includes('"score"'), "apple_swift_pattern_find JSON must not contain a raw score field");
+    assert.ok(
+      ["high", "medium", "low"].includes(patternData.judgment?.evidence_band),
+      `apple_swift_pattern_find judgment must carry evidence_band (got ${JSON.stringify(patternData.judgment)})`,
+    );
+
+    // apple_hig_search: plain corpus hits must not carry raw scores either.
+    const higSearch = (await client.callTool({
+      name: "apple_hig_search",
+      arguments: { query: "buttons", format: "json" },
+    })) as { content?: Array<{ text?: string }>; isError?: boolean };
+    assert.ok(!higSearch.isError, "apple_hig_search errored");
+    const higRaw = textOf(higSearch);
+    assert.ok(!higRaw.includes('"score"'), "apple_hig_search JSON must not contain a raw score field");
+
+    console.log("[anti-extraction] W3: search/session/pattern judgments expose bands only; no confidence, no raw score (json + markdown)");
   } finally {
     await client.close().catch(() => undefined);
     await server.close().catch(() => undefined);
