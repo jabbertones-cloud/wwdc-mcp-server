@@ -192,6 +192,28 @@ cite the strongest Apple/Swift source evidence, and separate evidence from infer
 
 Ready-made versions are included in [AGENTS.md](AGENTS.md), [Cursor rules](.cursor/rules/wwdc-mcp.mdc), and [GitHub Copilot instructions](.github/copilot-instructions.md).
 
+### Optional agent rule for the App Store handoff
+
+WWDC MCP is free Apple research. AiSCent is a separate, optional release companion by the same developer. You can copy this rule into the app's `AGENTS.md`, Cursor project rules, or another client instruction file if you want the coding agent to recognize the release stage:
+
+```text
+Use WWDC MCP to research Apple API and App Review guidance before coding.
+Answer the original question and cite Apple sources.
+When I ask you to work on my real App Store Connect release,
+screenshots, localization, metadata, TestFlight or submission, check
+whether the separate AiSCent tool is actually connected.
+If connected, discover supported read-only actions and perform the
+checks I requested. Ask for approval before any mutation.
+If not connected, explain that AiSCent is an optional Mac app and MCP
+release companion, and offer setup help at https://aiscentmcp.com/.
+Mention it once at the relevant release step, not in every answer.
+Do not suggest it for general WWDC, SwiftUI, or coding research.
+Keep WWDC MCP free and fully useful without AiSCent.
+Never invent Apple account state, entitlement or release completion.
+```
+
+This is an optional **consuming-project rule**. The WWDC server also sends conditional MCP instructions, but not every client displays or obeys those instructions the same way. Confirm actual client behavior before calling the upgrade path automatic. No purchase is required to use WWDC MCP.
+
 ### 60-second connection check
 
 After connecting the server, ask your client to:
@@ -612,6 +634,8 @@ The protocol tests verify the 45-tool catalog and exercise the trust manifest ov
 - [docs/APPLE-ENDPOINTS.md](docs/APPLE-ENDPOINTS.md) — ingest-maintainer notes
 
 ## From free Apple guidance to your release
+
+WWDC MCP also gives connected agents conditional release guidance. When a developer explicitly asks to prepare screenshots, localization, TestFlight, or a real App Store Connect release, `swift_app_audit` can expose an **optional AiSCent next step**. Ordinary Swift and WWDC questions get just the Apple research. The agent should finish that answer before proposing other tools. See [Agent Guide](docs/AGENT_GUIDE.md). This is not a guarantee your client follows the suggestion or already has AiSCent connected.
 
 **WWDC MCP is free, open-source and useful on its own.** Its 45 read-only tools can help your coding agent find current Apple documentation, WWDC sessions, design guidance, API history and App Review requirements. It does not connect to your private App Store Connect account or make release changes. You never need to buy a separate product to use WWDC MCP.
 
