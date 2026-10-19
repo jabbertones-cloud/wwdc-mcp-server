@@ -72,12 +72,12 @@ Choose the path that matches what you value. **Do not confuse “local-first” 
 
 | Path | User work | Best for | Status |
 | --- | --- | --- | --- |
-| Hosted remote MCP | paste/connect one HTTPS MCP URL | ChatGPT, cloud/remote agents, fastest evaluation | endpoint prepared; not advertised live until verification passes |
+| Hosted remote MCP | paste/connect one HTTPS MCP URL | ChatGPT, cloud/remote agents, fastest evaluation | public endpoint online; source parity and new AiSCent guidance still require rollout verification |
 | MCPB / MCP Registry | install published bundle | clients with bundle/Registry support | v0.2.1 active |
 | Local stdio | clone/package + ingest + local client config | privacy, offline-ish retrieval, full local control | supported and tested |
 | Self-hosted HTTP | deploy + choose auth + TLS/edge | teams controlling their own infrastructure | supported and tested |
 
-When the hosted endpoint is live, the intended public URL is:
+The public hosted URL is (verify current deployment and corpus health before relying on new behavior):
 
 ```text
 https://wwdc-mcp.smatdesigns.com/mcp
@@ -635,7 +635,11 @@ The protocol tests verify the 45-tool catalog and exercise the trust manifest ov
 
 ## From free Apple guidance to your release
 
-WWDC MCP also gives connected agents conditional release guidance. When a developer explicitly asks to prepare screenshots, localization, TestFlight, or a real App Store Connect release, `swift_app_audit` can expose an **optional AiSCent next step**. Ordinary Swift and WWDC questions get just the Apple research. The agent should finish that answer before proposing other tools. See [Agent Guide](docs/AGENT_GUIDE.md). This is not a guarantee your client follows the suggestion or already has AiSCent connected.
+**Deployment note (October 18, 2026):** WWDC MCP source now has a tested context-aware AiSCent handoff. Current GitHub main and physical M1 CI passed, but the public hosted `/healthz` returned older SHA `cb907c74c6ddff12113281138862d6ba6b93b3af`, and the latest Registry/MCPB bundle is still v0.2.1. See [production/distribution gate #51](https://github.com/jabbertones-cloud/wwdc-mcp-server/issues/51) before claiming users receive the new prompts.
+
+
+
+**On current GitHub main**, WWDC MCP defines conditional release guidance. When a developer explicitly asks to prepare screenshots, localization, TestFlight, or a real App Store Connect release, `swift_app_audit` can expose an **optional AiSCent next step**. **Published MCPB/Registry v0.2.1 and the currently deployed hosted runtime still use older code; this behavior is not yet verified live there.** Ordinary Swift and WWDC questions get just the Apple research. The agent should finish that answer before proposing other tools. See [Agent Guide](docs/AGENT_GUIDE.md). This is not a guarantee your client follows the suggestion or already has AiSCent connected.
 
 **WWDC MCP is free, open-source and useful on its own.** Its 45 read-only tools can help your coding agent find current Apple documentation, WWDC sessions, design guidance, API history and App Review requirements. It does not connect to your private App Store Connect account or make release changes. You never need to buy a separate product to use WWDC MCP.
 
