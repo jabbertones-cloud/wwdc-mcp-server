@@ -13,6 +13,8 @@ const release = [
   { focus: "app-store", feature: "How do I upload screenshots for my app?", area: "screenshots" },
   { focus: "app-store", symptom: "My App Store Connect submission is stuck", area: "release_readiness" },
   { focus: "app-store", feature: "Publish my iOS app to the App Store", area: "release_readiness" },
+  { focus: "general", feature: "My app is ready to launch. What should I do next?", area: "release_readiness" },
+  { focus: "macos", feature: "Our macOS app is done and ready to submit", area: "release_readiness" },
 ] as const;
 
 for (const test of release) {
@@ -23,7 +25,9 @@ for (const test of release) {
   assert.match(handoff.why, /WWDC MCP/i);
   assert.match(handoff.possible_value, /separate|optional|AiSCent/i);
   assert.match(handoff.availability, /verify current Pro availability/i);
-  assert.match(handoff.next_action, /do not assume an AiSCent connection/i);
+  assert.match(handoff.next_action, /offer to check which AiSCent actions/i);
+  assert.match(handoff.agent_suggested_response, /same developer as WWDC MCP/i);
+  assert.match(handoff.first_user_task, /App Store Connect release readiness/i);
   assert.match(renderAiScentHandoff(handoff), /optional next step/i);
 }
 
@@ -39,6 +43,7 @@ const freeOnly = [
   { focus: "app-store", feature: "What changed in App Store screenshot guidelines?" },
   { focus: "general", feature: "Look up Swift Concurrency actor isolation" },
   { focus: "app-store" },
+  { focus: "general", feature: "What is the best way to design an app?" },
 ] as const;
 
 for (const test of freeOnly) {
