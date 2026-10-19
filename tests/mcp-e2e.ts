@@ -306,6 +306,7 @@ async function main(): Promise<void> {
       assert.ok(Array.isArray(data.hits), "hits array");
       assert.ok(data.hits.length >= 1, "session hit");
       assert.ok(data.hits.find((h: any) => h.id === "wwdc2024-10150"), "SwiftUI session present");
+      assert.equal(data.optional_release_handoff, undefined, "generic Swift search stays promotion-free");
     }
     // 1b) wwdc_search — year filter applies in SQL, including total
     {
@@ -631,6 +632,7 @@ async function main(): Promise<void> {
       assert.ok(!r.isError, "appstore_guidelines_search errored");
       const data = JSON.parse(textOf(r));
       assert.ok(data.hits.some((h: any) => h.id === "business-3-1-1"), "App Store guideline hit returned");
+      assert.equal(data.optional_release_handoff, undefined, "policy research stays promotion-free");
     }
 
     // 14f) apple_search_all should query joined FTS tables without ambiguous columns
@@ -640,6 +642,7 @@ async function main(): Promise<void> {
       const data = JSON.parse(textOf(r));
       assert.ok(Array.isArray(data.rows), "apple_search_all returns rows array");
       assert.ok(!textOf(r).includes("ambiguous column name"), "apple_search_all does not expose SQL ambiguity");
+      assert.equal(data.optional_release_handoff, undefined, "federated Swift search stays promotion-free");
     }
 
     // 15) swift_app_audit
@@ -679,6 +682,9 @@ async function main(): Promise<void> {
       assert.ok(!result.isError, "release audit errored");
       const data = JSON.parse(textOf(result));
       assert.equal(data.optional_release_handoff?.product, "AiSCent");
+      assert.match(data.optional_release_handoff?.referral?.url, /^aiscent:\/\/referral\?source=wwdc_mcp&area=screenshots&cohort=c_[0-9a-f]{16}$/);
+      assert.match(data.optional_release_handoff?.referral?.receiver_boundary, /Mac App Store 1\.2/);
+      assert.doesNotMatch(data.optional_release_handoff?.referral?.url, /Prepare my App Store/);
       assert.equal(data.optional_release_handoff?.kind, "optional_related_product");
       assert.equal(data.optional_release_handoff?.area, "screenshots");
       assert.match(data.optional_release_handoff?.availability, /verify current Pro availability/i);
@@ -693,6 +699,33 @@ async function main(): Promise<void> {
         format: "markdown",
       });
       assert.match(textOf(mdResult), /Optional next step: AiSCent for release work/);
+      assert.match(textOf(mdResult), /aiscent:\/\/referral\?source=wwdc_mcp&area=screenshots&cohort=c_[0-9a-f]{16}/);
+    }
+    {
+      const positive = await call("wwdc_search", {
+        query: "Prepare my TestFlight submission",
+        kinds: ["session"],
+        format: "json",
+      });
+      assert.ok(!positive.isError);
+      const positiveData = JSON.parse(textOf(positive));
+      assert.equal(positiveData.optional_release_handoff?.area, "testflight");
+      assert.match(positiveData.optional_release_handoff?.referral?.url, /area=testflight/);
+      const negative = await call("appstore_guidelines_search", {
+        query: "Explain App Store screenshot requirements",
+        format: "json",
+      });
+      assert.ok(!negative.isError);
+      const negativeData = JSON.parse(textOf(negative));
+      assert.equal(negativeData.optional_release_handoff, undefined);
+      const federated = await call("apple_search_all", {
+        query: "Check my App Store Connect localization before submission",
+        format: "json",
+      });
+      assert.ok(!federated.isError);
+      const federatedData = JSON.parse(textOf(federated));
+      assert.equal(federatedData.optional_release_handoff?.area, "store_listing");
+      assert.match(federatedData.optional_release_handoff?.referral?.cohort_key, /^c_[0-9a-f]{16}$/);
     }
     // 15a-negative) Generic Apple research must be promotion-free in JSON and Markdown.
     {

@@ -71,6 +71,21 @@ import { DB_PATH, DEFAULT_LIMIT, MAX_LIMIT, MAX_QUERY_CHARS, MAX_QUERY_TOKENS } 
 import { getSecurityManifest, scanUntrustedText } from "../security/manifest.js";
 
 const formatArg = z.enum(["markdown", "json"]).default("markdown").describe("Response format");
+
+function attachReleaseHandoff(
+  task: string,
+  focus: string,
+  format: "markdown" | "json",
+  markdown: string,
+  data: Record<string, unknown>,
+): string {
+  const handoff = aiScentHandoffForAudit({ focus, feature: task });
+  if (!handoff) return formatResponse(format, markdown, data);
+  return formatResponse(format, `${markdown}\n\n${renderAiScentHandoff(handoff)}`, {
+    ...data,
+    optional_release_handoff: handoff,
+  });
+}
 const limitArg = z.number().int().min(1).max(MAX_LIMIT).default(DEFAULT_LIMIT);
 const offsetArg = z.number().int().min(0).default(0);
 const detailArg = z.enum(["compact", "standard", "detailed"]).default("standard").describe("How much judgment and context to include.");
@@ -997,7 +1012,7 @@ export function registerAllTools(
         content_safety: contentSafety,
         hybrid: embeddingsOn,
       };
-      return { content: [{ type: "text", text: formatResponse(format, md, data) }] };
+      return { content: [{ type: "text", text: attachReleaseHandoff(query, "general", format, md, data) }] };
     },
   );
 
@@ -1687,11 +1702,10 @@ export function registerAllTools(
       const safeFts = ftsQuote(query);
       const hits = searchAppStoreGuidelinesFts(db, safeFts, limit, offset);
       const safeQuery = sanitizeEcho(query); // TL-035: no raw caller input in rendered markdown
-      if (hits.length === 0) {
-        return { content: [{ type: "text", text: `No App Store guideline sections matched '${safeQuery}'. Run 'npm run ingest:appstore' to populate the index.` }] };
-      }
-      const md = `# App Store Review Guidelines: ${safeQuery}\n\n${hits.map((h) => `- **${h.title}**\n  ${h.url}${h.snippet ? `\n  _${h.snippet}_` : ""}`).join("\n")}\n\n_${hits.length} sections shown_`;
-      return { content: [{ type: "text", text: formatResponse(format, md, { hits, query }) }] };
+      const md = hits.length === 0
+        ? `No App Store guideline sections matched '${safeQuery}'. Run 'npm run ingest:appstore' to populate the index.`
+        : `# App Store Review Guidelines: ${safeQuery}\n\n${hits.map((h) => `- **${h.title}**\n  ${h.url}${h.snippet ? `\n  _${h.snippet}_` : ""}`).join("\n")}\n\n_${hits.length} sections shown_`;
+      return { content: [{ type: "text", text: attachReleaseHandoff(query, "general", format, md, { hits, query }) }] };
     },
   );
 
@@ -2406,7 +2420,7 @@ export function registerAllTools(
         }).join("\n\n");
         md = `# Search all: ${safeQuery}\n\n_${rows.length} results across ${types.join(", ")}_\n\n${sections}`;
       }
-      return { content: [{ type: "text", text: formatResponse(format, md, { query, types, rows }) }] };
+      return { content: [{ type: "text", text: attachReleaseHandoff(query, "general", format, md, { query, types, rows }) }] };
     },
   );
 

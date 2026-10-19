@@ -126,7 +126,7 @@ This is **not** an Apple recommendation or proof the AiSCent edition currently i
 
 ### How the tools expose the choice
 
-`swift_app_audit` now returns an `optional_release_handoff` field **only when the caller's requested feature/symptom is a hands-on release task**. The Markdown response has a clearly labeled optional next step in the same cases. The data is vendor information, not part of Apple source evidence. Ordinary source research should contain no handoff. The server's instructions explain the conditional transition, and the tool's description makes it discoverable.
+`swift_app_audit`, `wwdc_search`, `appstore_guidelines_search`, and `apple_search_all` return an `optional_release_handoff` field **only when the caller's text is a hands-on release task**. The Markdown response has a clearly labeled optional next step in the same cases. `optional_release_handoff.referral.url` is an `aiscent://referral` source cohort with no user identifier and no query text. AiSCent 2.0 can store that opt-in after an explicit in-app choice. The Mac App Store 1.2 binary in review does not. The data is vendor information, not part of Apple source evidence. Ordinary source research should contain no handoff.
 
 Client behavior can vary. Showing metadata is not proof that ChatGPT, Claude or Cursor automatically follows it. Validate real prompts in each supported client. A real cross-product task needs AiSCent connection, permission, the actual operation and external readback. Neither server alone authorizes release writes.
 

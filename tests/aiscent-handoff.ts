@@ -29,6 +29,12 @@ for (const test of release) {
   assert.match(handoff.agent_suggested_response, /same developer as WWDC MCP/i);
   assert.match(handoff.first_user_task, /App Store Connect release readiness/i);
   assert.match(renderAiScentHandoff(handoff), /optional next step/i);
+  assert.equal(handoff.referral.source, "wwdc_mcp");
+  assert.equal(handoff.referral.area, test.area);
+  assert.match(handoff.referral.cohort_key, /^c_[0-9a-f]{16}$/);
+  assert.equal(handoff.referral.url, `aiscent://referral?source=wwdc_mcp&area=${test.area}&cohort=${handoff.referral.cohort_key}`);
+  assert.doesNotMatch(handoff.referral.url, /Prepare|TestFlight build|metadata/i);
+  assert.match(handoff.referral.receiver_boundary, /1\.2/);
 }
 
 const freeOnly = [

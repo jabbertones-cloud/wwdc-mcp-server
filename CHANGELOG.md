@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Relevant release-tool results now include an `aiscent://referral` source cohort for AiSCent 2.0. The link has no user identifier. Generic Swift and policy research stays promotion-free. The Mac App Store 1.2 binary cannot receive the opt-in.
 - Added an optional, intent-matched AiSCent release-workflow handoff to `swift_app_audit` in both JSON and Markdown. Pure Apple/WWDC/Swift research stays free of promotional content. Server instructions and the audit tool description now help agents explain when the separate AiSCent release workspace is relevant without claiming it is connected. Includes positive and negative tests, no paid claims or automatic tool calls.
 - Hardened GitHub Actions CI to run exclusively on the physical `smat-m1-mini` ARM64 runner with `smat-m1` and `wwdc-ci` labels, exact hostname validation, and no hosted Linux fallbacks. WWDC repository runner registration is still required before CI can be reported green.
 
