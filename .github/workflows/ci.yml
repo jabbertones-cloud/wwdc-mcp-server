@@ -16,6 +16,8 @@ concurrency:
 
 jobs:
   build-and-test:
+    # Never execute untrusted fork code on a physical self-hosted runner.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, macOS, ARM64, smat-m1, wwdc-ci]
     timeout-minutes: 60
     steps:
