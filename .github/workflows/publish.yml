@@ -6,10 +6,19 @@ on:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macOS, ARM64, smat-m1, wwdc-ci]
     permissions:
       contents: read
     steps:
+      - name: Verify physical M1 runner authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${RUNNER_NAME}" = "smat-m1-wwdc-ci"
+          test "${RUNNER_OS}" = "macOS"
+          test "$(hostname)" = "Tatsheens-Mini"
+          test "$(uname -m)" = "arm64"
+
       - uses: actions/checkout@v5
         with:
           ref: ${{ github.event.release.tag_name }}
@@ -46,11 +55,20 @@ jobs:
 
   registry:
     needs: verify
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macOS, ARM64, smat-m1, wwdc-ci]
     permissions:
       contents: read
       id-token: write
     steps:
+      - name: Verify physical M1 runner authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${RUNNER_NAME}" = "smat-m1-wwdc-ci"
+          test "${RUNNER_OS}" = "macOS"
+          test "$(hostname)" = "Tatsheens-Mini"
+          test "$(uname -m)" = "arm64"
+
       - uses: actions/checkout@v5
         with:
           ref: ${{ github.event.release.tag_name }}
@@ -70,7 +88,7 @@ jobs:
           URL="$(node -p "require('./server.json').packages[0].identifier")"
           EXPECTED="$(node -p "require('./server.json').packages[0].fileSha256")"
           curl -fsSL "$URL" -o /tmp/wwdc.mcpb
-          ACTUAL="$(sha256sum /tmp/wwdc.mcpb | awk '{print $1}')"
+          ACTUAL="$(shasum -a 256 /tmp/wwdc.mcpb | awk '{print $1}')"
           test "$ACTUAL" = "$EXPECTED"
           rm -rf /tmp/wwdc-bundle
           mkdir -p /tmp/wwdc-bundle
@@ -130,7 +148,9 @@ jobs:
 
       - name: Install MCP publisher
         run: |
-          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
+          curl -fsSL --retry 2 --max-time 90 "https://github.com/modelcontextprotocol/registry/releases/download/v1.8.1/mcp-publisher_darwin_arm64.tar.gz" -o mcp-publisher.tgz
+          echo "e45e520892460732a4bdf37255576415d4a53ec171f8b913faf15bb1aef7cb77  mcp-publisher.tgz" | shasum -a 256 -c -
+          tar xzf mcp-publisher.tgz mcp-publisher
 
       - name: Validate Registry manifest
         run: ./mcp-publisher validate server.json
@@ -149,11 +169,20 @@ jobs:
   npm:
     needs: verify
     if: ${{ vars.ENABLE_NPM_PUBLISH == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macOS, ARM64, smat-m1, wwdc-ci]
     permissions:
       contents: read
       id-token: write
     steps:
+      - name: Verify physical M1 runner authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${RUNNER_NAME}" = "smat-m1-wwdc-ci"
+          test "${RUNNER_OS}" = "macOS"
+          test "$(hostname)" = "Tatsheens-Mini"
+          test "$(uname -m)" = "arm64"
+
       - uses: actions/checkout@v5
         with:
           ref: ${{ github.event.release.tag_name }}
