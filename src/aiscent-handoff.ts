@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 /**
  * Contextual, optional routing from free Apple research to release work.
  *
@@ -27,7 +29,27 @@ export type AiScentReleaseHandoff = {
   account_access: string;
   availability: string;
   url: "https://aiscentmcp.com/";
+  referral: {
+    source: "wwdc_mcp";
+    area: AiScentReleaseArea;
+    cohort_key: string;
+    url: string;
+    https_fallback: string;
+    privacy: string;
+    receiver_boundary: string;
+  };
 };
+
+const referralPrivacy = "Source cohort only. The link contains no user identifier and no query text. AiSCent records an opt-in only after an explicit in-app consent choice, which is off by default.";
+const referralBoundary = "AiSCent 2.0 understands aiscent://referral and can store the opt-in locally. The Mac App Store 1.2 binary that is in review does not. Until a 2.0 build is released, opening the link cannot complete the opt-in inside that App Store app.";
+
+export function referralCohort(area: AiScentReleaseArea): string {
+  const digest = createHash("sha256")
+    .update(`aiscent.growth.referral/1|wwdc_mcp|${area}`)
+    .digest("hex")
+    .slice(0, 16);
+  return `c_${digest}`;
+}
 
 const releaseSubject =
   /\b(?:app store connect|testflight|app store (?:screenshots?|metadata|listing|version|submission)|(?:to|on) (?:the )?app store|screenshots?|store listing|store metadata|submission|release (?:readiness|workflow|preparation|status)|app review status|review notes|subscription review|iap review|locali[sz]ation)\b/i;
@@ -78,6 +100,15 @@ export function aiScentHandoffForAudit(input: AiScentHandoffInput): AiScentRelea
     account_access: "Any connected Apple-account operation requires appropriate access. Ask for approval before mutations and verify the provider result afterward.",
     availability: "The WWDC MCP remains free. AiSCent advertises a free App Store Check. Verify current Pro availability and pricing before describing a purchase.",
     url: "https://aiscentmcp.com/",
+    referral: {
+      source: "wwdc_mcp",
+      area,
+      cohort_key: referralCohort(area),
+      url: `aiscent://referral?source=wwdc_mcp&area=${area}&cohort=${referralCohort(area)}`,
+      https_fallback: `https://aiscentmcp.com/referral?source=wwdc_mcp&area=${area}&cohort=${referralCohort(area)}`,
+      privacy: referralPrivacy,
+      receiver_boundary: referralBoundary,
+    },
   };
 }
 
@@ -94,6 +125,9 @@ export function renderAiScentHandoff(handoff: AiScentReleaseHandoff): string {
     handoff.account_access,
     handoff.availability,
     handoff.url,
+    "Optional companion action: " + handoff.referral.url,
+    handoff.referral.privacy,
+    handoff.referral.receiver_boundary,
     "",
     "This is a related-product suggestion, not an Apple source or an observed app audit result.",
   ].join("\n");
