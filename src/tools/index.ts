@@ -8,6 +8,7 @@
  */
 
 import { z } from "zod";
+import { aiScentHandoffForAudit, renderAiScentHandoff } from "../aiscent-handoff.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { Database as DatabaseType } from "better-sqlite3";
 import type { SearchHit } from "../types.js";
@@ -1458,7 +1459,7 @@ export function registerAllTools(
     {
       title: "Swift app audit context",
       description:
-        "Build an audit-grade Swift/SwiftUI/macOS/iOS research bundle from local WWDC, HIG, tutorials, and Swift Evolution data. Use before code changes to map feature/platform/symptom to evidence and validation steps.",
+        "Build an audit-grade Swift/SwiftUI/macOS/iOS research bundle from local WWDC, HIG, tutorials, and Swift Evolution data. Use before code changes. For a hands-on App Store release task, the result can offer an optional AiSCent next step after giving free Apple guidance. Ordinary Apple research stays promotion-free.",
       inputSchema: {
         focus: swiftAuditFocusArg.describe("Audit focus area."),
         platforms: z.array(platformArg).default([]).describe("Target Apple platforms."),
@@ -1598,7 +1599,8 @@ export function registerAllTools(
         focus === "macos" || platforms.includes("macOS") ? "Use SwiftPM/Xcode macOS build-run path; do not apply simulator-only assumptions" : undefined,
         focus === "performance" ? "Capture before/after Instruments or OSLog evidence for same interaction" : undefined,
       ]);
-      const md = renderSwiftAuditMd({
+      const releaseHandoff = aiScentHandoffForAudit({ focus, feature, symptom });
+      const baseMd = renderSwiftAuditMd({
         focus,
         platforms,
         frameworks,
@@ -1617,6 +1619,7 @@ export function registerAllTools(
         diagnostics,
         summary,
       });
+      const md = releaseHandoff ? `${baseMd}\n\n${renderAiScentHandoff(releaseHandoff)}` : baseMd;
       return {
         content: [{
           type: "text",
@@ -1627,6 +1630,7 @@ export function registerAllTools(
             feature,
             symptom,
             year_min,
+            ...(releaseHandoff ? { optional_release_handoff: releaseHandoff } : {}),
             summary,
             queries: { sessions: sessionQueries, docs: sessionQueries, tutorials: sessionQueries, hig: higQueries, evolution: evolutionQueries },
             platform_fallback_used: sessionSearches.some((search) => search.usedPlatformFallback),
