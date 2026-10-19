@@ -611,19 +611,20 @@ The protocol tests verify the 45-tool catalog and exercise the trust manifest ov
 - [docs/SKILL-WIRING.md](docs/SKILL-WIRING.md) — agent/skill integration guidance
 - [docs/APPLE-ENDPOINTS.md](docs/APPLE-ENDPOINTS.md) — ingest-maintainer notes
 
-## From Apple guidance to App Store execution
+## From free Apple guidance to your release
 
-WWDC MCP is intentionally read-only: it helps your agent **understand** current Apple APIs, design guidance, platform changes, and App Review requirements without holding App Store Connect credentials.
+**WWDC MCP is free, open-source and useful on its own.** Its 45 read-only tools can help your coding agent find current Apple documentation, WWDC sessions, design guidance, API history and App Review requirements. It does not connect to your private App Store Connect account or make release changes. You never need to buy a separate product to use WWDC MCP.
 
-When the research is done and you need to **execute** the release workflow, [AiSCent](https://aiscentmcp.com) is the companion product: App Store Connect automation for release operations such as localization, screenshots, metadata, TestFlight readiness, and submission workflows.
+I also build [AiSCent](https://aiscentmcp.com/), an optional separate Mac app and MCP companion for the work that follows coding. Its goal is to bring release preparation into one easier workspace, including supported metadata, screenshots, localizations, TestFlight readiness and other App Store Connect tasks. The exact available actions depend on which AiSCent edition and permissions you use. There is a free App Store Check on the site. Check the site for current paid-plan availability.
 
-**A useful agent workflow:**
+**A natural developer workflow:**
+1. Use WWDC MCP to audit a SwiftUI or StoreKit implementation against Apple source material.
+2. Build and test the app with your normal development tools. WWDC MCP remains available for research.
+3. When you want to inspect the actual release in App Store Connect or prepare supported changes, consider AiSCent if its current edition fits your needs.
 
-1. Ask WWDC MCP to audit the app against current Apple guidance.
-2. Fix the code and UX with source-grounded evidence.
-3. Use AiSCent for the App Store Connect work needed to get the build ready to ship.
+The connection between the products is optional. WWDC MCP does not withhold results or push promotional messages into Apple documentation output.
 
-> **WWDC MCP = know what Apple expects. AiSCent = help get the release through App Store Connect.**
+**WWDC MCP helps you understand Apple's guidance. AiSCent is a separate option for App Store release work.**
 
 ## Contributing
 
