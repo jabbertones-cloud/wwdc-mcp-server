@@ -5,16 +5,27 @@ on:
 
 jobs:
   publish:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macOS, ARM64, smat-m1, wwdc-ci]
     permissions:
       contents: read
       id-token: write
     steps:
+      - name: Verify physical M1 runner authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${RUNNER_NAME}" = "smat-m1-wwdc-ci"
+          test "${RUNNER_OS}" = "macOS"
+          test "$(hostname)" = "Tatsheens-Mini"
+          test "$(uname -m)" = "arm64"
+
       - uses: actions/checkout@v5
 
       - name: Install MCP publisher
         run: |
-          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
+          curl -fsSL --retry 2 --max-time 90 "https://github.com/modelcontextprotocol/registry/releases/download/v1.8.1/mcp-publisher_darwin_arm64.tar.gz" -o mcp-publisher.tgz
+          echo "e45e520892460732a4bdf37255576415d4a53ec171f8b913faf15bb1aef7cb77  mcp-publisher.tgz" | shasum -a 256 -c -
+          tar xzf mcp-publisher.tgz mcp-publisher
 
       - name: Validate Registry manifest
         run: ./mcp-publisher validate server.json
