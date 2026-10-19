@@ -12,6 +12,7 @@ const release = [
   { focus: "app-store", feature: "Update my localized App Store metadata for the next release", area: "store_listing" },
   { focus: "app-store", feature: "How do I upload screenshots for my app?", area: "screenshots" },
   { focus: "app-store", symptom: "My App Store Connect submission is stuck", area: "release_readiness" },
+  { focus: "app-store", feature: "Publish my iOS app to the App Store", area: "release_readiness" },
 ] as const;
 
 for (const test of release) {
@@ -34,6 +35,7 @@ const freeOnly = [
   { focus: "app-store", feature: "Read Apple's App Store Review Guidelines on IAP" },
   { focus: "app-store", feature: "Audit StoreKit 2 subscription entitlements in my SwiftUI code" },
   { focus: "app-store", feature: "Compare App Store Connect API references" },
+  { focus: "app-store", feature: "Localization best practices and Apple documentation" },
   { focus: "app-store", feature: "What changed in App Store screenshot guidelines?" },
   { focus: "general", feature: "Look up Swift Concurrency actor isolation" },
   { focus: "app-store" },
