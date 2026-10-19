@@ -234,6 +234,16 @@ async function main(): Promise<void> {
       /optional AiSCent next step/i,
       "Tool discovery should expose the conditional release companion",
     );
+    assert.match(
+      listed.tools.find((t) => t.name === "appstore_guidelines_search")?.description ?? "",
+      /For real App Store Connect release work.*optional AiSCent/i,
+      "Guideline search must expose the conditional release path without altering policy citations",
+    );
+    assert.match(
+      listed.tools.find((t) => t.name === "appstore_guideline_get")?.description ?? "",
+      /real App Store Connect release.*optional separate/i,
+      "Guideline retrieval must distinguish source lookup from connected release actions",
+    );
     const expected = [
       "wwdc_search",
       "wwdc_list_years",
