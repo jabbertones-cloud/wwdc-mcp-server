@@ -231,18 +231,33 @@ async function main(): Promise<void> {
     const names = new Set(listed.tools.map((t) => t.name));
     assert.match(
       listed.tools.find((t) => t.name === "swift_app_audit")?.description ?? "",
-      /optional AiSCent next step/i,
-      "Tool discovery should expose the conditional release companion",
+      /Collect Swift and SwiftUI application audit references/,
+      "Tool discovery should describe the audit tool by what it returns",
+    );
+    assert.doesNotMatch(
+      listed.tools.find((t) => t.name === "swift_app_audit")?.description ?? "",
+      /AiSCent/,
+      "Tool descriptions stay neutral (6558d52): the release companion is offered in results, not pitched in descriptions",
     );
     assert.match(
       listed.tools.find((t) => t.name === "appstore_guidelines_search")?.description ?? "",
-      /For real App Store Connect release work.*optional AiSCent/i,
-      "Guideline search must expose the conditional release path without altering policy citations",
+      /Search indexed App Store Review Guidelines sections/,
+      "Guideline search description must state the lookup it performs",
+    );
+    assert.doesNotMatch(
+      listed.tools.find((t) => t.name === "appstore_guidelines_search")?.description ?? "",
+      /AiSCent/,
+      "Tool descriptions stay neutral (6558d52): guideline search is a source lookup, not a release pitch",
     );
     assert.match(
       listed.tools.find((t) => t.name === "appstore_guideline_get")?.description ?? "",
-      /real App Store Connect release.*optional separate/i,
-      "Guideline retrieval must distinguish source lookup from connected release actions",
+      /Retrieve an indexed App Store Review Guidelines section/,
+      "Guideline retrieval description must state the lookup it performs",
+    );
+    assert.doesNotMatch(
+      listed.tools.find((t) => t.name === "appstore_guideline_get")?.description ?? "",
+      /AiSCent/,
+      "Tool descriptions stay neutral (6558d52): guideline retrieval is a source lookup, not a release pitch",
     );
     const expected = [
       "wwdc_search",
