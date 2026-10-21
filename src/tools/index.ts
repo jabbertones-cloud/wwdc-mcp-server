@@ -156,6 +156,15 @@ export function describeQueryNormalization(q: string): {
   };
 }
 
+/** Accent-fold a term for comparison: "modèles" (French spelling of
+ * models, with a grave accent) should compare against the corpus term
+ * "models" at distance 1, not 2 — an accent is a spelling variant, not a
+ * different word. Folding is comparison-only; proposals always use the
+ * corpus's own display form. */
+function foldTerm(s: string): string {
+  return s.normalize("NFD").replace(/\p{M}/gu, "");
+}
+
 function levenshtein(a: string, b: string): number {
   if (a === b) return 0;
   const m = a.length;
@@ -181,12 +190,16 @@ function levenshtein(a: string, b: string): number {
  * vocabulary is session titles + topics: the text a user is most likely
  * echoing. Corrections are PROPOSED, never executed — silently running a
  * guess would hide the miss behind plausible-looking results.
- * Returns null when the query contains quoted phrases, or when any term
- * has no plausible correction (better silence than a fabricated guess). */
+ * A term with no plausible correction no longer vetoes the whole
+ * suggestion (TestLabs Job 6, GAP-02): it is carried verbatim into the
+ * suggested query and named in `unmatched_terms`, so the proposal shows
+ * exactly what could not be matched instead of dead-ending. Returns null
+ * when the query contains quoted phrases, or when NO term corrects
+ * (better silence than a fabricated guess). */
 export function suggestQueryCorrection(
   db: DatabaseType,
   rawQuery: string,
-): { suggested_query: string; corrections: Array<{ from: string; to: string }> } | null {
+): { suggested_query: string; corrections: Array<{ from: string; to: string }>; unmatched_terms?: string[] } | null {
   if (rawQuery.includes('"')) return null;
   const terms = rawQuery.split(/\s+/).filter(Boolean);
   if (terms.length === 0) return null;
@@ -218,8 +231,16 @@ export function suggestQueryCorrection(
     const entry = vocab.get(key)!;
     return [...entry.forms.entries()].sort((a, b) => b[1] - a[1])[0][0];
   };
+  // Accent-folded view of the vocabulary (folded form -> corpus key), so a
+  // term that differs from a corpus term only by accents still matches it.
+  const foldedVocab = new Map<string, string>();
+  for (const k of vocab.keys()) {
+    const f = foldTerm(k);
+    if (!foldedVocab.has(f)) foldedVocab.set(f, k);
+  }
 
   const corrections: Array<{ from: string; to: string }> = [];
+  const unmatched: string[] = [];
   const suggested: string[] = [];
   for (const term of terms) {
     const key = term.toLowerCase();
@@ -227,22 +248,41 @@ export function suggestQueryCorrection(
       suggested.push(term);
       continue;
     }
+    const foldedKey = foldTerm(key);
+    const foldedHit = foldedVocab.get(foldedKey);
+    if (foldedHit) {
+      corrections.push({ from: term, to: display(foldedHit) });
+      suggested.push(display(foldedHit));
+      continue;
+    }
     const maxDist = term.length >= 8 ? 2 : 1;
     let best: { key: string; dist: number; count: number } | null = null;
     for (const [candidate, entry] of vocab) {
-      if (Math.abs(candidate.length - key.length) > maxDist) continue;
-      const dist = levenshtein(key, candidate);
+      const foldedCandidate = foldTerm(candidate);
+      if (Math.abs(foldedCandidate.length - foldedKey.length) > maxDist) continue;
+      const dist = levenshtein(foldedKey, foldedCandidate);
       if (dist > maxDist) continue;
       if (!best || dist < best.dist || (dist === best.dist && entry.count > best.count)) {
         best = { key: candidate, dist, count: entry.count };
       }
     }
-    if (!best) return null; // one uncorrectable term: do not guess the rest
+    if (!best) {
+      // Uncorrectable term: carry it verbatim and name it as unmatched —
+      // never invent a correction for it, and never let it veto the
+      // corrections that do exist.
+      unmatched.push(term);
+      suggested.push(term);
+      continue;
+    }
     corrections.push({ from: term, to: display(best.key) });
     suggested.push(display(best.key));
   }
   if (corrections.length === 0) return null;
-  return { suggested_query: suggested.join(" "), corrections };
+  return {
+    suggested_query: suggested.join(" "),
+    corrections,
+    ...(unmatched.length ? { unmatched_terms: unmatched } : {}),
+  };
 }
 
 /** Any-term (OR) variant of ftsQuote, used only as a labeled fallback when
@@ -965,6 +1005,15 @@ export function registerAllTools(
       if (fallback && searchJudgment) {
         searchJudgment.caveats.push("No all-terms match (a term may be misspelled); showing broader any-term matches.");
       }
+      // First-class no-hit disclosure (TestLabs Job 6, GAP-01): the fallback
+      // label must not live only in the machine `fallback` field and a
+      // caveat nested under judgment. A query naming a target that matches
+      // nothing in full (e.g. a session that does not exist) otherwise
+      // presents partial matches at the top of the answer as if they
+      // answered it. State the no-hit first, in both output formats.
+      const fallbackNotice = fallback
+        ? `No result matched the full query "${sanitizeEcho(query)}". The ${total} result${total === 1 ? "" : "s"} below matched only some of its terms (any-term fallback) — partial matches, not a match for the full query.`
+        : undefined;
       const yearRequested = year !== undefined || year_min !== undefined || year_max !== undefined;
       if (yearRequested && kinds.some((k) => k !== "session") && searchJudgment) {
         searchJudgment.caveats.push("Year filters apply to WWDC sessions only; tutorial, doc, HIG, and Swift Evolution results are not filtered by year.");
@@ -978,15 +1027,24 @@ export function registerAllTools(
         searchJudgment.caveats.push(`Query narrowed before execution (${bits.join("; ")}); ${normalization.executedTokens} of ${normalization.rawTokens} searchable terms were used.`);
       }
       const didYouMean = total === 0 ? suggestQueryCorrection(db, query) : null;
+      const unmatchedNote = didYouMean?.unmatched_terms?.length
+        ? `; no close corpus match for: ${didYouMean.unmatched_terms.join(", ")}`
+        : "";
       if (didYouMean && searchJudgment) {
-        searchJudgment.caveats.push(`No matches for the query as typed. Did you mean: "${didYouMean.suggested_query}"? (suggested, not run)`);
+        searchJudgment.caveats.push(`No matches for the query as typed. Did you mean: "${didYouMean.suggested_query}"? (suggested, not run${unmatchedNote})`);
       }
       const contentSafety = scanUntrustedText(judgedPage.map((hit) => `${hit.title}\n${hit.snippet ?? ""}`).join("\n\n"));
       const baseMd = renderSearchMd(query, judgedPage, total, searchJudgment, detail);
-      const md = didYouMean ? `${baseMd}\n\nDid you mean: **${didYouMean.suggested_query}**? (suggested, not run)` : baseMd;
+      const noticedMd = fallbackNotice
+        ? (baseMd.startsWith("# Search:")
+            ? baseMd.replace(/^(# Search: .*)$/m, `$1\n\n> **No full match.** ${fallbackNotice}`)
+            : `> **No full match.** ${fallbackNotice}\n\n${baseMd}`)
+        : baseMd;
+      const md = didYouMean ? `${noticedMd}\n\nDid you mean: **${didYouMean.suggested_query}**? (suggested, not run${unmatchedNote})` : noticedMd;
       const data = {
         query,
         ...(fallback ? { fallback } : {}),
+        ...(fallbackNotice ? { notice: fallbackNotice } : {}),
         ...(narrowed ? { query_normalization: normalization } : {}),
         ...(didYouMean ? { did_you_mean: didYouMean } : {}),
         filters: { kinds, year, year_min, year_max, topics, platforms, require_transcript, ...(yearRequested ? { year_applies_to: ["session"] } : {}) },

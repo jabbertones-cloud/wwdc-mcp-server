@@ -163,6 +163,43 @@ async function main(): Promise<void> {
     assert.equal(c.json.did_you_mean, undefined);
     console.log("  ok  uncorrectable query stays silent (no fabrication)");
 
+    // D) Partial correction (GAP-02): one term corrects, one has no close
+    // corpus match. The correctable term is proposed; the uncorrectable one
+    // is carried verbatim and NAMED in unmatched_terms — not a veto, not a
+    // fabricated correction.
+    const d = await callSearch(dbPath, {
+      query: "SwftUI zzqx",
+      kinds: ["session"],
+      format: "json",
+    });
+    assert.equal(d.json.total, 0);
+    assert.equal(d.json.did_you_mean.suggested_query, "SwiftUI zzqx");
+    assert.deepEqual(
+      d.json.did_you_mean.corrections.map((x: any) => `${x.from}->${x.to}`),
+      ["SwftUI->SwiftUI"],
+    );
+    assert.deepEqual(d.json.did_you_mean.unmatched_terms, ["zzqx"]);
+    console.log("  ok  partial correction proposed, unmatched term named not invented");
+
+    // E) Accent-folded near-miss (GAP-02 locale case): "navigación" differs
+    // from the corpus term "Navigation" by an accented letter — the
+    // unfolded comparison prices the accent as a full substitution on top
+    // of the letter change; folded, it is one edit. The correction must
+    // fire. (Plain accent variants like "modèles" never reach this path:
+    // the FTS index itself folds them and returns the sessions.)
+    const e = await callSearch(dbPath, {
+      query: "navigación",
+      kinds: ["session"],
+      format: "json",
+    });
+    assert.equal(e.json.total, 0);
+    assert.equal(e.json.did_you_mean.suggested_query, "navigation");
+    assert.deepEqual(
+      e.json.did_you_mean.corrections.map((x: any) => `${x.from}->${x.to}`),
+      ["navigación->navigation"],
+    );
+    console.log("  ok  accent-folded near-miss proposes the corpus term");
+
     console.log("[search-did-you-mean] all assertions pass");
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
