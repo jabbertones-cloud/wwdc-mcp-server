@@ -1,17 +1,32 @@
 {
+  "contractVersion": 2,
   "product": "wwdc",
-  "environment": "production",
   "tenantFixture": "public-local",
-  "principal": { "kind": "real-test-user", "requiredEntitlements": [] },
-  "deployment": { "requireExactSha": true },
+  "principal": {
+    "kind": "real-test-user",
+    "requiredEntitlements": []
+  },
+  "transport": "http",
+  "runtimeAuthority": "production",
   "journeys": [
     {
-      "name": "search-wwdc-session-evidence",
-      "capability": "wwdc_search",
-      "safe": true,
-      "providerOracle": "apple-developer",
-      "mustMatchProvider": false,
-      "fixture": { "note": "Reads local SQLite index of Apple sources; only apple_doc_lookup is a live provider call" }
+      "id": "search-wwdc-session-evidence",
+      "question": "Find WWDC sessions about Swift concurrency.",
+      "tool": "wwdc_search",
+      "args": {
+        "query": "Swift concurrency"
+      },
+      "expect": {
+        "contains": [
+          "Swift"
+        ],
+        "absent": [
+          "Traceback",
+          "Internal Server Error"
+        ]
+      }
     }
-  ]
+  ],
+  "endpoint": "https://wwdc-mcp.smatdesigns.com/mcp",
+  "note": "Endpoint from the repo README (hosted MCP). wwdc_search reads a local SQLite index of Apple sources, so no provider oracle is bound; only apple_doc_lookup is a live provider call."
 }
