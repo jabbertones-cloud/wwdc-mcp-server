@@ -1,0 +1,17 @@
+{
+  "product": "wwdc",
+  "environment": "production",
+  "tenantFixture": "public-local",
+  "principal": { "kind": "real-test-user", "requiredEntitlements": [] },
+  "deployment": { "requireExactSha": true },
+  "journeys": [
+    {
+      "name": "search-wwdc-session-evidence",
+      "capability": "wwdc_search",
+      "safe": true,
+      "providerOracle": "apple-developer",
+      "mustMatchProvider": false,
+      "fixture": { "note": "Reads local SQLite index of Apple sources; only apple_doc_lookup is a live provider call" }
+    }
+  ]
+}
