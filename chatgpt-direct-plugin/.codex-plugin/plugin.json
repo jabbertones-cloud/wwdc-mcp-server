@@ -8,12 +8,15 @@
       "Use WWDC MCP to audit the SwiftUI design of my app.",
       "Find current Apple App Store Review guidance for this app feature."
     ],
-    "developerName": "Scott Manthey",
+    "developerName": "SMAT Designs",
     "displayName": "SMAT WWDC Direct",
     "longDescription": "Use SMAT Designs' read-only Apple developer knowledge MCP: current indexed WWDC sessions, Human Interface Guidelines, Apple documentation, Swift Evolution, API compatibility, and App Store guidelines. All tool calls go to the direct hosted WWDC service without RemoteDesk.",
-    "shortDescription": "Research current Apple guidance directly through WWDC MCP",
-    "websiteURL": "https://github.com/jabbertones-cloud/wwdc-mcp-server",
-    "category": "Other"
+    "shortDescription": "Apple developer evidence",
+    "websiteURL": "https://wwdcmcp.smatdesigns.com/",
+    "category": "Developer Tools",
+    "supportURL": "https://wwdcmcp.smatdesigns.com/support",
+    "privacyPolicyURL": "https://wwdcmcp.smatdesigns.com/privacy",
+    "termsOfServiceURL": "https://wwdcmcp.smatdesigns.com/terms"
   },
   "name": "smat-wwdc-direct",
   "version": "0.1.0",
@@ -58,11 +61,11 @@
         "displayName": "SMAT WWDC Direct",
         "logo": "./assets/icon.png",
         "longDescription": "WWDC MCP connects your AI agent to SMAT Designs' read-only index of current Apple developer material: WWDC20-WWDC26 sessions and transcripts, Apple Developer Documentation, Human Interface Guidelines, Swift Evolution proposals, The Swift Programming Language, and App Store Review Guidelines. Ask what Apple says, what changed between WWDC years, whether an API is available or deprecated, or audit a SwiftUI feature against current guidance. The service is public and read-only: no account, no sign-in, and it cannot change App Store Connect, submit apps, or access anyone's Apple account.",
-        "privacyPolicyURL": "https://wwdc-mcp.smatdesigns.com/privacy",
-        "shortDescription": "Current Apple developer guidance, direct",
-        "supportURL": "https://wwdc-mcp.smatdesigns.com/support",
-        "termsOfServiceURL": "https://wwdc-mcp.smatdesigns.com/terms",
-        "websiteURL": "https://wwdc-mcp.smatdesigns.com/"
+        "privacyPolicyURL": "https://wwdcmcp.smatdesigns.com/privacy",
+        "shortDescription": "Apple developer evidence",
+        "supportURL": "https://wwdcmcp.smatdesigns.com/support",
+        "termsOfServiceURL": "https://wwdcmcp.smatdesigns.com/terms",
+        "websiteURL": "https://wwdcmcp.smatdesigns.com/"
       },
       "publication": {
         "release_notes": "Initial OpenAI plugin package for the public read-only WWDC MCP (v0.2.1, 45 tools): adds declared support/privacy/terms pages, composer icon and logo assets, and 5 positive / 3 negative review test cases verified against the live service."
@@ -120,7 +123,8 @@
               "tools_triggered": "wwdc_what_changed"
             }
           ]
-        }
+        },
+        "demo_recording_url": "https://wwdcmcp.smatdesigns.com/demo.mp4"
       }
     }
   }
