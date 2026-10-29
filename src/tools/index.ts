@@ -2294,7 +2294,7 @@ export function registerAllTools(
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     async ({ api_name, format }) => {
-      const { rows, fallback } = getApiDeprecation(db, api_name);
+      const { rows, fallback, state } = getApiDeprecation(db, api_name);
       // TL-035: caller input reflected in rendered markdown must stay a
       // single inert line — strip newlines / bound length so a crafted
       // api_name can't forge headings or echo unboundedly.
@@ -2307,17 +2307,7 @@ export function registerAllTools(
           const found = rows.map((r: any) => `- **${r.title}** — ${r.url}`).join("\n");
           md = `# ${safeApi} — deprecation metadata not yet populated\n\nSchema migration may not have run. Re-run ingest with \`--source apple-docs\` to populate deprecation columns.\n\n## Matching docs\n${found}`;
         }
-      } else if (rows.length === 0) {
-        // W-C1 (TL-034): gate the verdict on non-empty backing data. An
-        // empty apple_docs index cannot support "not deprecated" — the
-        // verdict is only honest when the index actually holds entries.
-        const docsIndexed = corpusCounts(db).appleDocs;
-        if (docsIndexed === 0) {
-          md = `# ${safeApi} — deprecation unknown\n\nThe API index has no entries yet, so deprecation status can't be determined. Re-run ingest (\`npm run ingest:docs\`) to populate it, then try again.`;
-        } else {
-          md = `# ${safeApi} — not deprecated\n\nNo deprecated entries found in the index for **${safeApi}**. The symbol may not be deprecated, not yet indexed, or the name may differ.\n\nTip: try \`apple_doc_lookup\` for availability info.`;
-        }
-      } else {
+      } else if (state === "deprecated") {
         const items = rows.map((r: any) => {
           const dep = r.deprecated_at ? ` (deprecated ${r.deprecated_at})` : "";
           const intro = r.introduced_at ? `\n- **Introduced:** ${r.introduced_at}` : "";
@@ -2325,8 +2315,19 @@ export function registerAllTools(
           return `## ${r.title}${dep}\n- **ID:** ${r.id}\n- **URL:** ${r.url}${intro}${msg}`;
         }).join("\n\n");
         md = `# ${safeApi} — deprecated\n\n${items}`;
+      } else if (state === "not_deprecated") {
+        // The only state allowed to carry this verdict (TL-194, PR #25):
+        // the symbol is indexed AND its deprecation metadata was checked.
+        const found = rows.map((r: any) => `- **${r.title}** — ${r.url}`).join("\n");
+        md = `# ${safeApi} — not deprecated\n\n**${safeApi}** is in the index and its deprecation metadata has been checked: no deprecation is recorded for it.\n\n## Matching docs\n${found}`;
+      } else if (state === "unknown_unchecked") {
+        md = `# ${safeApi} — deprecation unknown\n\n**${safeApi}** is in the index, but its deprecation metadata has not been checked yet, so no verdict can be given. An unchecked entry is not evidence that an API is current. Run ingest (\`npm run ingest:all\` — deprecation enrichment is part of it) to populate the check.`;
+      } else {
+        // unknown_not_indexed — includes the TL-034 empty-index case: a
+        // symbol absent from the index supports no verdict either way.
+        md = `# ${safeApi} — deprecation unknown\n\n**${safeApi}** is not in the API index, so its deprecation status can't be determined. A missing entry is not evidence that an API is current.\n\nTip: try \`apple_doc_lookup\` for live availability info.`;
       }
-      return { content: [{ type: "text", text: formatResponse(format, md, { api_name, rows, fallback }) }] };
+      return { content: [{ type: "text", text: formatResponse(format, md, { api_name, rows, fallback, state }) }] };
     },
   );
 

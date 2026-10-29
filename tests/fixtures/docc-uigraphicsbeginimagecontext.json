@@ -1,0 +1,107 @@
+{
+ "_provenance": "Excerpted from live Apple DocC JSON, https://developer.apple.com/tutorials/data/documentation/uikit/uigraphicsbeginimagecontext(_:).json, fetched 2026-10-29. metadata and abstract verbatim; content sections trimmed. TL-194 fixture.",
+ "metadata": {
+  "availableLanguages": [
+   "de-DE",
+   "en-US",
+   "es-419",
+   "fr-FR",
+   "it-IT",
+   "ja-JP",
+   "ko-KR",
+   "pt-BR",
+   "zh-CN"
+  ],
+  "externalID": "c:@F@UIGraphicsBeginImageContext",
+  "fragments": [
+   {
+    "kind": "keyword",
+    "text": "func"
+   },
+   {
+    "kind": "text",
+    "text": " "
+   },
+   {
+    "kind": "identifier",
+    "text": "UIGraphicsBeginImageContext"
+   },
+   {
+    "kind": "text",
+    "text": "("
+   },
+   {
+    "kind": "typeIdentifier",
+    "preciseIdentifier": "c:@S@CGSize",
+    "text": "CGSize"
+   },
+   {
+    "kind": "text",
+    "text": ")"
+   }
+  ],
+  "modules": [
+   {
+    "name": "UIKit"
+   }
+  ],
+  "navigatorTitle": [
+   {
+    "kind": "identifier",
+    "text": "UIGraphicsBeginImageContext"
+   }
+  ],
+  "platforms": [
+   {
+    "deprecatedAt": "27.0",
+    "introducedAt": "2.0",
+    "message": "Replace usage of UIGraphicsBeginImageContext with UIGraphicsImageRenderer.",
+    "name": "iOS"
+   },
+   {
+    "deprecatedAt": "27.0",
+    "introducedAt": "2.0",
+    "message": "Replace usage of UIGraphicsBeginImageContext with UIGraphicsImageRenderer.",
+    "name": "iPadOS"
+   },
+   {
+    "deprecatedAt": "27.2",
+    "introducedAt": "13.1",
+    "message": "Replace usage of UIGraphicsBeginImageContext with UIGraphicsImageRenderer.",
+    "name": "Mac Catalyst"
+   },
+   {
+    "deprecatedAt": "27.2",
+    "message": "Replace usage of UIGraphicsBeginImageContext with UIGraphicsImageRenderer.",
+    "name": "tvOS"
+   },
+   {
+    "deprecatedAt": "27.2",
+    "introducedAt": "1.0",
+    "message": "Replace usage of UIGraphicsBeginImageContext with UIGraphicsImageRenderer.",
+    "name": "visionOS"
+   },
+   {
+    "deprecatedAt": "27.2",
+    "introducedAt": "2.0",
+    "message": "Replace usage of UIGraphicsBeginImageContext with UIGraphicsImageRenderer.",
+    "name": "watchOS"
+   }
+  ],
+  "role": "symbol",
+  "roleHeading": "Function",
+  "symbolKind": "func",
+  "title": "UIGraphicsBeginImageContext(_:)"
+ },
+ "abstract": [
+  {
+   "text": "Creates a bitmap-based graphics context and makes it the current context.",
+   "type": "text"
+  }
+ ],
+ "identifier": {
+  "interfaceLanguage": "swift",
+  "url": "doc://com.apple.uikit/documentation/UIKit/UIGraphicsBeginImageContext(_:)"
+ },
+ "kind": "symbol"
+}

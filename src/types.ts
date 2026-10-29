@@ -167,6 +167,14 @@ export interface AppleDocPage {
   references: string[];         // normalized documentation paths discovered on page
   rawJson: string;
   updatedAt: string;
+  // TL-194: structured availability, parsed from the same DocC node at
+  // ingest. Optional so non-ingest callers (tests, seeds) can omit them;
+  // the upsert then stores the unchecked defaults.
+  deprecated?: number;          // 0 | 1
+  introducedAt?: string | null;
+  deprecatedAt?: string | null;
+  deprecatedMessage?: string | null;
+  deprecatedCheckedAt?: string | null; // NULL = never deprecation-checked
 }
 
 // ---------- Swift Language Reference (docs.swift.org/swift-book) ----------

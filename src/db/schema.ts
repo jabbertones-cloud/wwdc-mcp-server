@@ -257,6 +257,11 @@ export function migrate(db: DatabaseType): void {
     ["deprecated_at",      "TEXT"],
     ["introduced_at",      "TEXT"],
     ["deprecated_message", "TEXT"],
+    // TL-194: the processed state is an explicit marker. `deprecated`
+    // alone cannot carry it — its schema default (0) is indistinguishable
+    // from "checked, not deprecated", which is why the old backfill queue
+    // (`deprecated IS NULL`) never selected a real row.
+    ["deprecated_checked_at", "TEXT"],
   ] as [string, string][]) {
     if (!appleDocsCols.has(col)) {
       db.exec(`ALTER TABLE apple_docs ADD COLUMN ${col} ${def}`);

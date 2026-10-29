@@ -4,8 +4,17 @@
  *   - introduced_at (e.g. "iOS 13.0")
  *   - deprecated_at (e.g. "iOS 14.0")
  *   - deprecated_message (prose summary of the deprecation reason)
+ *   - deprecated_checked_at (when the check ran — the processed marker)
  *
- * Fetches the DocC JSON for each doc and extracts platform availability metadata.
+ * Fetches the DocC JSON for each unchecked doc and extracts platform
+ * availability metadata with the shared parser (src/ingest/availability.ts),
+ * the same parser the base docs ingest applies at crawl time. This pass is
+ * the repair path for rows indexed before that parsing existed.
+ *
+ * TL-194: the processed state is the explicit `deprecated_checked_at`
+ * marker. The previous queue selected `deprecated IS NULL`, but the
+ * schema default is 0 and the base upsert never wrote NULL — so no real
+ * row was ever eligible and the enrichment silently never ran.
  */
 
 import type { Database as DatabaseType } from "better-sqlite3";
@@ -13,48 +22,12 @@ import pLimit from "p-limit";
 import { APPLE_DOCS_JSON, REQUEST_CONCURRENCY } from "../constants.js";
 import { httpGet, HttpError } from "../services/http.js";
 import { recordIngest } from "../db/queries.js";
+import {
+  parseAvailability,
+  type AvailabilitySource,
+} from "./availability.js";
 
 const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
-
-type PlatformAvailability = {
-  name?: string;
-  introducedAt?: string;
-  deprecatedAt?: string;
-  message?: string;
-  /** DocC top-level platforms use isDeprecated; metadata.platforms use deprecated */
-  isDeprecated?: boolean;
-  deprecated?: boolean;
-  unavailable?: boolean;
-  beta?: boolean;
-};
-
-type DeprecationSummaryNode = {
-  type?: string;
-  text?: string;
-  inlineContent?: DeprecationSummaryNode[];
-};
-
-type DoccDoc = {
-  deprecated?: boolean;
-  platforms?: PlatformAvailability[];
-  deprecationSummary?: { inlineContent?: DeprecationSummaryNode[] }[];
-  metadata?: {
-    title?: string;
-    platforms?: PlatformAvailability[];
-  };
-};
-
-function extractInlineText(nodes: DeprecationSummaryNode[] | undefined): string {
-  if (!nodes) return "";
-  return nodes
-    .map((n) => {
-      if (n.type === "text" && typeof n.text === "string") return n.text;
-      if (n.inlineContent) return extractInlineText(n.inlineContent);
-      return "";
-    })
-    .join("")
-    .trim();
-}
 
 function docUrlToDataUrl(url: string): string | null {
   // url like https://developer.apple.com/documentation/uikit/uiwebview
@@ -66,36 +39,53 @@ function docUrlToDataUrl(url: string): string | null {
 
 const BATCH_SIZE = 20;
 
+/**
+ * Rows whose deprecation state has never been checked. Falls back to the
+ * legacy `deprecated IS NULL` predicate only when the marker column does
+ * not exist yet (a database migrate() has not touched).
+ */
+export function selectUncheckedDocs(
+  db: DatabaseType,
+  limit: number,
+): { id: string; url: string }[] {
+  const hasMarker = (
+    db
+      .prepare(
+        `SELECT COUNT(*) AS c FROM pragma_table_info('apple_docs') WHERE name = 'deprecated_checked_at'`,
+      )
+      .get() as { c: number }
+  ).c > 0;
+  const predicate = hasMarker
+    ? "deprecated_checked_at IS NULL"
+    : "deprecated IS NULL";
+  return db
+    .prepare<[number], { id: string; url: string }>(
+      `SELECT id, url FROM apple_docs WHERE ${predicate} AND url IS NOT NULL LIMIT ?`,
+    )
+    .all(limit);
+}
+
 export async function backfillDeprecations(
   db: DatabaseType,
   batchLimit = 5000,
-): Promise<{ updated: number; deprecated: number; errors: number }> {
+): Promise<{ updated: number; deprecated: number; errors: number; examined: number }> {
   let updated = 0;
   let deprecated = 0;
   let errors = 0;
   const limit = pLimit(REQUEST_CONCURRENCY);
-
-  // Select docs that haven't been backfilled yet.
-  // deprecated IS NULL = never processed by this backfill.
-  // Once processed (even if not deprecated), deprecated is set to 0 or 1.
-  // introduced_at may legitimately be NULL for docs that don't specify a platform version.
-  const selectStmt = db.prepare<[number], { id: string; url: string }>(`
-    SELECT id, url FROM apple_docs
-    WHERE deprecated IS NULL
-      AND url IS NOT NULL
-    LIMIT ?
-  `);
 
   const updateStmt = db.prepare(`
     UPDATE apple_docs
     SET deprecated=@deprecated,
         introduced_at=@introducedAt,
         deprecated_at=@deprecatedAt,
-        deprecated_message=@deprecatedMessage
+        deprecated_message=@deprecatedMessage,
+        deprecated_checked_at=@checkedAt
     WHERE id=@id
   `);
 
-  const rows = selectStmt.all(batchLimit);
+  const rows = selectUncheckedDocs(db, batchLimit);
+  const examined = rows.length;
 
   for (let i = 0; i < rows.length; i += BATCH_SIZE) {
     const batch = rows.slice(i, i + BATCH_SIZE);
@@ -106,67 +96,40 @@ export async function backfillDeprecations(
           const dataUrl = docUrlToDataUrl(row.url);
           if (!dataUrl) return;
 
-          let doc: DoccDoc | null = null;
+          let doc: AvailabilitySource | null = null;
+          let gone = false;
           try {
-            const { data, status } = await httpGet<DoccDoc>(dataUrl);
-            if (status === 404) return;
-            doc = data && typeof data === "object" ? data : null;
+            const { data, status } = await httpGet<AvailabilitySource>(dataUrl);
+            if (status === 404) gone = true;
+            else doc = data && typeof data === "object" ? data : null;
           } catch (e) {
-            if (e instanceof HttpError && e.status === 404) return;
-            errors++;
-            return;
+            if (e instanceof HttpError && e.status === 404) gone = true;
+            else {
+              errors++;
+              return;
+            }
           }
 
-          if (!doc) return;
+          // A 404 means the page is gone: the check was performed and
+          // found nothing — record it as checked (not deprecated) so the
+          // row does not re-enter the queue forever.
+          if (!doc && !gone) return;
 
-          // DocC JSON stores platform availability under metadata.platforms, not top-level
-          const platforms = doc.metadata?.platforms ?? doc.platforms ?? [];
-          const isDeprecated =
-            doc.deprecated === true ||
-            platforms.some(
-              (p) =>
-                p.isDeprecated ||
-                p.deprecated === true ||
-                Boolean(p.deprecatedAt),
-            );
-
-          // Minimum introducedAt across platforms (lexicographic on version strings works
-          // for Apple's format like "iOS 13.0")
-          const introducedValues = platforms
-            .map((p) => p.introducedAt)
-            .filter((v): v is string => Boolean(v));
-          const introducedAt = introducedValues.length
-            ? introducedValues.sort()[0]!
-            : null;
-
-          const deprecatedValues = platforms
-            .map((p) => p.deprecatedAt)
-            .filter((v): v is string => Boolean(v));
-          const deprecatedAt = deprecatedValues.length
-            ? deprecatedValues.sort()[0]!
-            : null;
-
-          // Deprecation message: try deprecationSummary first, then platform message
-          let deprecatedMessage: string | null = null;
-          const summary = doc.deprecationSummary?.[0];
-          if (summary?.inlineContent) {
-            deprecatedMessage = extractInlineText(summary.inlineContent) || null;
-          }
-          if (!deprecatedMessage) {
-            const platformMsg = platforms.find((p) => p.message)?.message;
-            deprecatedMessage = platformMsg ?? null;
-          }
+          const parsed = doc
+            ? parseAvailability(doc)
+            : { deprecated: false, introducedAt: null, deprecatedAt: null, deprecatedMessage: null };
 
           try {
             updateStmt.run({
               id: row.id,
-              deprecated: isDeprecated ? 1 : 0,
-              introducedAt,
-              deprecatedAt,
-              deprecatedMessage,
+              deprecated: parsed.deprecated ? 1 : 0,
+              introducedAt: parsed.introducedAt,
+              deprecatedAt: parsed.deprecatedAt,
+              deprecatedMessage: parsed.deprecatedMessage,
+              checkedAt: new Date().toISOString(),
             });
             updated++;
-            if (isDeprecated) deprecated++;
+            if (parsed.deprecated) deprecated++;
           } catch {
             errors++;
           }
@@ -184,7 +147,7 @@ export async function backfillDeprecations(
     "deprecation-backfill",
     updated,
     errors,
-    `rows checked: ${rows.length}, deprecated: ${deprecated}`,
+    `rows checked: ${examined}, updated: ${updated}, deprecated: ${deprecated}`,
   );
-  return { updated, deprecated, errors };
+  return { updated, deprecated, errors, examined };
 }

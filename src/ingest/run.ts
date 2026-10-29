@@ -55,7 +55,7 @@ async function main(): Promise<void> {
   const years = args.years ?? [...WWDC_YEARS];
   console.log(`[ingest] db=${DB_PATH} source=${args.source} years=${years.join(",")}`);
 
-  const results: Record<string, { ingested: number; errors: number }> = {};
+  const results: Record<string, { ingested: number; errors: number; noop?: boolean }> = {};
 
   try {
     if (args.source === "wwdc" || args.source === "all") {
@@ -103,10 +103,20 @@ async function main(): Promise<void> {
       results["release-notes"] = await ingestReleaseNotes(db);
       console.log("  →", results["release-notes"]);
     }
-    if (args.source === "deprecation-backfill") {
+    if (args.source === "deprecation-backfill" || args.source === "all") {
+      // TL-194: enrichment is part of a complete refresh, not an optional
+      // extra — `--source all` previously never ran it, and a corpus could
+      // pass verification with deprecation fields never populated. Runs
+      // after docs so every freshly crawled row is eligible; on a corpus
+      // whose rows arrive pre-parsed from ingest it repairs only the rows
+      // that are still unchecked.
       console.log("[ingest] Deprecation backfill…");
       const r = await backfillDeprecations(db);
-      results["deprecation-backfill"] = { ingested: r.updated, errors: r.errors };
+      results["deprecation-backfill"] = {
+        ingested: r.updated,
+        errors: r.errors,
+        noop: r.examined === 0,
+      };
       console.log("  →", r);
     }
     if (args.source === "swift-forums") {
@@ -145,7 +155,7 @@ async function main(): Promise<void> {
     // source-level statuses for diagnosis but do NOT claim a complete stamp
     // when an upstream source failed or yielded no material.
     const failed = Object.entries(results).filter(([, result]) =>
-      result.errors > 0 || result.ingested < 1,
+      result.errors > 0 || (result.ingested < 1 && !result.noop),
     );
     if (failed.length) {
       throw new Error("incomplete ingest; refusing corpus stamp: " +
