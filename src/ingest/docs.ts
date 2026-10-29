@@ -12,15 +12,23 @@ import { httpGet, HttpError } from "../services/http.js";
 import type { AppleDocPage } from "../types.js";
 import { recordIngest, upsertAppleDoc } from "../db/queries.js";
 import { checkEmbeddings, embed, storeEmbedding } from "../services/embeddings.js";
+import {
+  parseAvailability,
+  type DeprecationSummaryNode,
+  type PlatformAvailability,
+} from "./availability.js";
 
 type DoccNode = {
+  deprecated?: boolean;
+  platforms?: PlatformAvailability[];
+  deprecationSummary?: { inlineContent?: DeprecationSummaryNode[] }[];
   metadata?: {
     title?: string;
     role?: string;
     roleHeading?: string;
     symbolKind?: string;
     modules?: Array<{ name?: string }>;
-    platforms?: Array<{ name?: string }>;
+    platforms?: PlatformAvailability[];
   };
   abstract?: Array<{ text?: string }>;
   primaryContentSections?: Array<{ kind?: string; content?: unknown[] }>;
@@ -107,6 +115,11 @@ export function appleDocToPage(path: string, node: DoccNode): AppleDocPage {
     }
   }
 
+  const updatedAt = new Date().toISOString();
+  // TL-194: the node already carries platform availability — parse it
+  // here, at crawl time, with the shared parser. Structured deprecation
+  // data must not depend on a separate optional pass ever running.
+  const availability = parseAvailability(node);
   return {
     id,
     title,
@@ -120,7 +133,12 @@ export function appleDocToPage(path: string, node: DoccNode): AppleDocPage {
     topicSections: (node.topicSections ?? []).map((s) => s.title ?? s.anchor).filter(Boolean) as string[],
     references: [...references],
     rawJson: JSON.stringify(node),
-    updatedAt: new Date().toISOString(),
+    updatedAt,
+    deprecated: availability.deprecated ? 1 : 0,
+    introducedAt: availability.introducedAt,
+    deprecatedAt: availability.deprecatedAt,
+    deprecatedMessage: availability.deprecatedMessage,
+    deprecatedCheckedAt: updatedAt,
   };
 }
 
@@ -138,10 +156,16 @@ export async function ingestAppleDocs(
   const visited = new Set<string>();
   const queued = new Set<string>();
   const queue = seeds.map(normalizeDocPath);
+  // TL-194: references emitted by a framework's "Deprecated symbols" page
+  // are deprecated symbols by construction — the deprecation product's
+  // core data. Under plain FIFO they queued behind thousands of general
+  // references and the page cap died first (the live corpus held the
+  // aggregate pages but none of their symbols). Drain them first.
+  const priorityQueue: string[] = [];
   for (const seed of queue) queued.add(seed);
 
-  while (queue.length > 0 && visited.size < maxPages) {
-    const path = queue.shift()!;
+  while ((queue.length > 0 || priorityQueue.length > 0) && visited.size < maxPages) {
+    const path = priorityQueue.length > 0 ? priorityQueue.shift()! : queue.shift()!;
     if (visited.has(path)) continue;
     visited.add(path);
     let node: DoccNode;
@@ -169,10 +193,15 @@ export async function ingestAppleDocs(
       if (vec) storeEmbedding(db, `doc:${page.id}`, "doc", vec);
     }
 
+    const fromDeprecatedSymbols = path.endsWith("/deprecated-symbols");
     for (const ref of page.references) {
-      if (visited.has(ref) || queued.has(ref) || visited.size + queue.length >= maxPages) continue;
+      if (
+        visited.has(ref) ||
+        queued.has(ref) ||
+        visited.size + queue.length + priorityQueue.length >= maxPages
+      ) continue;
       queued.add(ref);
-      queue.push(ref);
+      (fromDeprecatedSymbols ? priorityQueue : queue).push(ref);
     }
   }
 

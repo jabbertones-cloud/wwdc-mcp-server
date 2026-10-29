@@ -239,11 +239,15 @@ export function upsertAppleDoc(db: DatabaseType, d: AppleDocPage): void {
   db.prepare(`
     INSERT INTO apple_docs (
       id, title, role, symbol_kind, modules, platforms, url, abstract, body,
-      topic_sections, references_json, raw_json, updated_at
+      topic_sections, references_json, raw_json, updated_at,
+      deprecated, deprecated_at, introduced_at, deprecated_message,
+      deprecated_checked_at
     )
     VALUES (
       @id, @title, @role, @symbol_kind, @modules, @platforms, @url, @abstract, @body,
-      @topic_sections, @references_json, @raw_json, @updated_at
+      @topic_sections, @references_json, @raw_json, @updated_at,
+      @deprecated, @deprecated_at, @introduced_at, @deprecated_message,
+      @deprecated_checked_at
     )
     ON CONFLICT(id) DO UPDATE SET
       title=excluded.title,
@@ -257,7 +261,12 @@ export function upsertAppleDoc(db: DatabaseType, d: AppleDocPage): void {
       topic_sections=excluded.topic_sections,
       references_json=excluded.references_json,
       raw_json=excluded.raw_json,
-      updated_at=excluded.updated_at
+      updated_at=excluded.updated_at,
+      deprecated=excluded.deprecated,
+      deprecated_at=excluded.deprecated_at,
+      introduced_at=excluded.introduced_at,
+      deprecated_message=excluded.deprecated_message,
+      deprecated_checked_at=excluded.deprecated_checked_at
   `).run({
     id: d.id,
     title: d.title,
@@ -272,6 +281,11 @@ export function upsertAppleDoc(db: DatabaseType, d: AppleDocPage): void {
     references_json: JSON.stringify(d.references ?? []),
     raw_json: d.rawJson,
     updated_at: d.updatedAt ?? nowIso(),
+    deprecated: d.deprecated ?? 0,
+    deprecated_at: d.deprecatedAt ?? null,
+    introduced_at: d.introducedAt ?? null,
+    deprecated_message: d.deprecatedMessage ?? null,
+    deprecated_checked_at: d.deprecatedCheckedAt ?? null,
   });
 }
 
@@ -1349,34 +1363,84 @@ export function listDocsByFramework(
   return { rows, total };
 }
 
+// ---------- symbol matching (TL-194) ----------
+
+/**
+ * DocC symbol titles/paths carry signature suffixes —
+ * "UIGraphicsBeginImageContext(_:)", id "uikit/uigraphicsbeginimagecontext(_:)".
+ * A bare-name lookup must match the exact form AND the signature-bearing
+ * form. LIKE wildcards in the caller's input are escaped so a name is
+ * always matched literally.
+ */
+const SYMBOL_MATCH = `(
+  LOWER(title) = LOWER(?)
+  OR LOWER(id) LIKE '%/' || LOWER(?) ESCAPE '\\'
+  OR LOWER(title) LIKE LOWER(?) || '(%' ESCAPE '\\'
+  OR LOWER(id) LIKE '%/' || LOWER(?) || '(%' ESCAPE '\\'
+)`;
+
+function symbolParams(apiName: string): string[] {
+  const likeSafe = apiName.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+  return [apiName, likeSafe, likeSafe, likeSafe];
+}
+
+function hasColumn(db: DatabaseType, table: string, column: string): boolean {
+  const row = db.prepare(
+    `SELECT COUNT(*) AS c FROM pragma_table_info(?) WHERE name = ?`,
+  ).get(table, column) as { c: number };
+  return row.c > 0;
+}
+
 // ---------- apple_api_deprecation ----------
+
+export type DeprecationState =
+  | "deprecated"
+  | "not_deprecated"
+  | "unknown_unchecked"
+  | "unknown_not_indexed"
+  | "metadata_unpopulated";
 
 export function getApiDeprecation(
   db: DatabaseType,
   apiName: string,
-): { rows: any[]; fallback: boolean } {
+): { rows: any[]; fallback: boolean; state: DeprecationState } {
   // Check if deprecation columns exist (they may not if migration hasn't run)
-  const colCheck = db.prepare(
-    `SELECT COUNT(*) AS c FROM pragma_table_info('apple_docs') WHERE name = 'deprecated'`,
-  ).get() as { c: number };
-
-  if (colCheck.c === 0) {
+  if (!hasColumn(db, "apple_docs", "deprecated")) {
     // Fallback: columns not yet present
     const rows = db.prepare(
       `SELECT id, title, url FROM apple_docs WHERE LOWER(title) = LOWER(?) LIMIT 5`,
     ).all(apiName) as any[];
-    return { rows, fallback: true };
+    return { rows, fallback: true, state: "metadata_unpopulated" };
   }
 
-  const rows = db.prepare(
-    `SELECT id, title, deprecated, deprecated_at, introduced_at, deprecated_message, url
+  const checkedExpr = hasColumn(db, "apple_docs", "deprecated_checked_at")
+    ? "deprecated_checked_at"
+    : "NULL";
+  const matches = db.prepare(
+    `SELECT id, title, deprecated, deprecated_at, introduced_at, deprecated_message, url,
+            ${checkedExpr} AS deprecated_checked_at
      FROM apple_docs
-     WHERE (LOWER(title) = LOWER(?) OR LOWER(id) LIKE '%/' || LOWER(?))
-       AND deprecated = 1
-     ORDER BY deprecated_at DESC
+     WHERE ${SYMBOL_MATCH}
+     ORDER BY deprecated DESC, deprecated_at DESC
      LIMIT 10`,
-  ).all(apiName, apiName) as any[];
-  return { rows, fallback: false };
+  ).all(...symbolParams(apiName)) as any[];
+
+  // TL-194 / PR #25: a miss is never "not deprecated". The verdict must
+  // distinguish a checked-clean symbol from an unchecked row and from a
+  // symbol that is not in the index at all — the old query selected only
+  // deprecated = 1 rows and the wrapper rendered the empty set as
+  // "not deprecated" for all three states.
+  const deprecatedRows = matches.filter((r) => r.deprecated === 1);
+  if (deprecatedRows.length > 0) {
+    return { rows: deprecatedRows, fallback: false, state: "deprecated" };
+  }
+  if (matches.length === 0) {
+    return { rows: [], fallback: false, state: "unknown_not_indexed" };
+  }
+  if (matches.every((r) => !r.deprecated_checked_at)) {
+    return { rows: matches, fallback: false, state: "unknown_unchecked" };
+  }
+  return { rows: matches, fallback: false, state: "not_deprecated" };
 }
 
 // ---------- apple_api_availability ----------
@@ -1388,9 +1452,9 @@ export function getApiAvailability(
   return db.prepare(
     `SELECT id, title, introduced_at, deprecated_at, deprecated, url
      FROM apple_docs
-     WHERE LOWER(title) = LOWER(?) OR LOWER(id) LIKE '%/' || LOWER(?)
+     WHERE ${SYMBOL_MATCH}
      LIMIT 5`,
-  ).all(apiName, apiName) as any[];
+  ).all(...symbolParams(apiName)) as any[];
 }
 
 // ---------- apple_release_notes_search ----------
@@ -1443,6 +1507,28 @@ export function searchReleaseNotes(
 
 // ---------- apple_what_replaced ----------
 
+/**
+ * Extract the replacement symbol named in a deprecation message.
+ * Apple's phrasings include "Use Y instead.", "Use Y.", and
+ * "Replace usage of X with Y." — the last names X first, so a naive
+ * first-token read returns the deprecated symbol (or the word "Replace").
+ */
+export function extractReplacementCandidate(message: string): string | null {
+  const text = message.trim();
+  // A trailing '.' is sentence punctuation, not part of a (possibly
+  // dotted) symbol name — strip exactly one.
+  const clean = (s: string) => s.replace(/\.$/, "");
+  const replaceWith = text.match(
+    /^replace\s+usage\s+of\s+\S+\s+with\s+([A-Za-z_][A-Za-z0-9_.]*)/i,
+  );
+  if (replaceWith) return clean(replaceWith[1]!);
+  const leadingUse = text.match(/^[Uu]se\s+([A-Za-z_][A-Za-z0-9_.]*)/);
+  if (leadingUse) return clean(leadingUse[1]!);
+  const genericWith = text.match(/\bwith\s+([A-Za-z_][A-Za-z0-9_.]*)/);
+  if (genericWith) return clean(genericWith[1]!);
+  return null;
+}
+
 export function findApiReplacement(
   db: DatabaseType,
   apiName: string,
@@ -1450,17 +1536,17 @@ export function findApiReplacement(
   const deprecation = db.prepare(
     `SELECT id, title, deprecated_message, deprecated_at, url
      FROM apple_docs
-     WHERE (LOWER(title) = LOWER(?) OR LOWER(id) LIKE '%/' || LOWER(?))
+     WHERE ${SYMBOL_MATCH}
        AND (deprecated = 1 OR deprecated_message IS NOT NULL)
      LIMIT 3`,
-  ).all(apiName, apiName) as any[];
+  ).all(...symbolParams(apiName)) as any[];
 
   let sessions: any[] = [];
   if (deprecation.length > 0) {
     const msg = deprecation[0].deprecated_message;
     if (msg) {
       // Extract a candidate replacement name from the deprecated_message
-      const candidate = msg.replace(/^[Uu]se\s+/i, "").split(/[\s,.(]/)[0];
+      const candidate = extractReplacementCandidate(msg);
       if (candidate && candidate.length > 2) {
         sessions = db.prepare(
           `SELECT s.id, s.year, s.title, s.url

@@ -64,7 +64,7 @@ export function hashCorpusContent(db: DatabaseType): string {
       hash.update("ROW\n");
       for (const [field, value] of Object.entries(row)) {
         // Exclude ingest-local timestamps from deterministic content identity.
-        if (field === "updated_at" || field === "extracted_at") continue;
+        if (field === "updated_at" || field === "extracted_at" || field === "deprecated_checked_at") continue;
         hash.update(field + ":");
         if (Buffer.isBuffer(value)) hash.update(value);
         else hash.update(JSON.stringify(value ?? null));
