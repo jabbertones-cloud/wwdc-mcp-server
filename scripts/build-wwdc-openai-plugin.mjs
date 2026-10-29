@@ -25,9 +25,12 @@ try {
  for(const name of names){
   const source=path.join(dir,name), dest=path.join(tmp,name);
   fs.mkdirSync(path.dirname(dest),{recursive:true});fs.copyFileSync(source,dest);
+  // ZIP stores timestamps even with -X; fix them for byte-identical rebuilds.
+  const epoch=new Date('2000-01-01T00:00:00.000Z');
+  fs.utimesSync(dest,epoch,epoch);
  }
  fs.rmSync(target,{force:true});
- execFileSync('zip',['-q','-X',target,...names],{cwd:tmp,stdio:'pipe'});
+ execFileSync('zip',['-q','-X',target,...names],{cwd:tmp,stdio:'pipe',env:{...process.env,TZ:'UTC'}});
  const entries=execFileSync('unzip',['-Z','-1',target],{encoding:'utf8'}).trim().split('\n').sort();
  assert.deepEqual(entries,names,'only allowlisted public files may enter ZIP');
  execFileSync('unzip',['-t',target],{stdio:'pipe'});
