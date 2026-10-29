@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Support — WWDC MCP</title>
+</head>
+<body>
+<header>
+<p>WWDC MCP · HELP CENTER</p>
+<h1>Get an Apple-guidance question unstuck.</h1>
+</header>
+
+<!-- CLAIM: operator identity | EVIDENCE: chatgpt-direct-plugin/.codex-plugin/plugin.json — author {"name":"Scott Manthey","email":"jamonwidit@plushtrap.com","url":"https://smatdesigns.com"} -->
+<p>WWDC MCP is operated by SMAT Designs (Scott Manthey). It is a free, public, read-only service
+that searches current Apple developer material — WWDC sessions, Apple documentation, the Human
+Interface Guidelines, Swift Evolution, and the App Store Review Guidelines — and returns source
+evidence to your AI client.</p>
+
+<h2>Check the service first</h2>
+<!-- CLAIM: a public health endpoint exists and reports service status/version | EVIDENCE: src/mcp-http.ts:163-190 (GET /healthz returns ok, service, version, endpoints); live GET https://wwdc-mcp.smatdesigns.com/healthz → 200 on 2026-10-28 -->
+<p>The service status endpoint is https://wwdc-mcp.smatdesigns.com/healthz. If it reports
+<code>ok: true</code>, the service is up and the problem is most likely in the connection or the
+question — the steps below will help us find which.</p>
+
+<h2>Public problems and resolved cases</h2>
+<!-- CLAIM: public support route is the GitHub repo | EVIDENCE: SUPPORT.md ("use the Apple source drift issue template", "search existing issues"); repo jabbertones-cloud/wwdc-mcp-server -->
+<p>Public support runs on GitHub: https://github.com/jabbertones-cloud/wwdc-mcp-server/issues.
+Search existing issues first — wrong or missing Apple results are often already tracked there,
+including an "Apple source drift" template for when an Apple page has changed. Never post API
+keys, bearer tokens, signing credentials, private source code, customer data, or Apple account
+information in a public issue.</p>
+
+<h2>Need private help?</h2>
+<!-- CLAIM: contact email | EVIDENCE: chatgpt-direct-plugin/.codex-plugin/plugin.json author.email = jamonwidit@plushtrap.com -->
+<p>Email jamonwidit@plushtrap.com. Please include:</p>
+<!-- CLAIM: the diagnostic list mirrors the repo's own support guidance | EVIDENCE: SUPPORT.md ("include your MCP client, Node/npm version, WWDC MCP version, and whether you use stdio or HTTP"; "include the source URL when known, the tool/query, and wwdc_ingest_status") -->
+<ul>
+<li>Your MCP client (for example, ChatGPT) and whether you connect over HTTP or run the server locally (stdio).</li>
+<li>The WWDC MCP version you used, if you run it locally.</li>
+<li>What you asked: the tool name and query, and the source URL when you know it.</li>
+<li>What you expected, what you got instead, and the output of the <code>wwdc_ingest_status</code> tool if a result looks stale or missing.</li>
+</ul>
+<p>Do not send credentials, private signing keys, or Apple account details — support never needs them.</p>
+
+<h2>Common problems</h2>
+<!-- CLAIM: rate limiting returns 429 with Retry-After and a generic error | EVIDENCE: src/mcp-http.ts:258-274; defaults in src/rate-limit.ts:20-22 (burst 120 units, refill 120 units/minute, operator-tunable) -->
+<p><strong>"rate_limited" / HTTP 429.</strong> The public service limits how many tool calls one
+connection can make in a burst to keep it available for everyone. Wait for the time given in the
+response's Retry-After header and try again; discovery calls (listing tools) are not charged.</p>
+<!-- CLAIM: the index is refreshed by periodic ingest, and ingest status is user-visible via a tool | EVIDENCE: live tools/call wwdc_ingest_status 2026-10-28 returned real last-run dates and item counts; scripts/weekly-refresh-macos.sh + scripts/refresh-corpus.ts (corpus refresh tooling) -->
+<p><strong>A result looks out of date.</strong> The index is rebuilt from Apple's public sources
+on a refresh cycle, not continuously. Ask the service itself with the
+<code>wwdc_ingest_status</code> tool — it reports when each source was last ingested — and include
+that output in your report.</p>
+<!-- CLAIM: security reporting route | EVIDENCE: SUPPORT.md ("Security issue: use a private GitHub security advisory. Do not open a public issue.") -->
+<p><strong>Security issue.</strong> Use a private GitHub security advisory on the repository
+instead of a public issue.</p>
+
+<h2>What WWDC MCP cannot do</h2>
+<!-- CLAIM: scope boundary — read-only knowledge service, no App Store Connect actions; App Store Connect work belongs to the separate AiSCent product | EVIDENCE: SUPPORT.md ("App Store Connect account/release action: that is outside this read-only knowledge server; use the appropriate App Store Connect tooling/AiSCent workflow"); AGENTS.md ("WWDC MCP helps an agent know what Apple says and audit against it. AiSCent is the separate execution/release product"); all 45 live tools carry readOnlyHint=true (live tools/list, 2026-10-28) -->
+<p>WWDC MCP cannot submit apps, upload builds, change App Store Connect state, or act on your
+Apple account — it is read-only by design. For App Store Connect release work, use the separate
+AiSCent product. WWDC MCP can still give you the guideline and session evidence to prepare.</p>
+</body>
+</html>
