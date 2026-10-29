@@ -33,5 +33,95 @@
   "homepage": "https://github.com/jabbertones-cloud/wwdc-mcp-server",
   "repository": "https://github.com/jabbertones-cloud/wwdc-mcp-server",
   "license": "MIT",
-  "mcpServers": "./.mcp.json"
+  "mcpServers": "./.mcp.json",
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "brandColor": "#000000",
+        "brandColorDark": "#5E5CE6",
+        "capabilities": [
+          "Search WWDC sessions and transcripts",
+          "Look up Apple documentation and HIG guidance",
+          "Check API availability and deprecations",
+          "Compare what changed between WWDC years",
+          "Find App Store Review Guideline evidence",
+          "Audit Swift app features against Apple guidance"
+        ],
+        "category": "Developer Tools",
+        "composerIcon": "./assets/composer-icon.png",
+        "defaultPrompt": [
+          "Use WWDC MCP to audit the SwiftUI design of my app.",
+          "Find current Apple App Store Review guidance for this app feature.",
+          "What changed in SwiftUI between WWDC 2024 and WWDC 2025?"
+        ],
+        "developerName": "SMAT Designs",
+        "displayName": "SMAT WWDC Direct",
+        "logo": "./assets/icon.png",
+        "longDescription": "WWDC MCP connects your AI agent to SMAT Designs' read-only index of current Apple developer material: WWDC20-WWDC26 sessions and transcripts, Apple Developer Documentation, Human Interface Guidelines, Swift Evolution proposals, The Swift Programming Language, and App Store Review Guidelines. Ask what Apple says, what changed between WWDC years, whether an API is available or deprecated, or audit a SwiftUI feature against current guidance. The service is public and read-only: no account, no sign-in, and it cannot change App Store Connect, submit apps, or access anyone's Apple account.",
+        "privacyPolicyURL": "https://wwdc-mcp.smatdesigns.com/privacy",
+        "shortDescription": "Current Apple developer guidance, direct",
+        "supportURL": "https://wwdc-mcp.smatdesigns.com/support",
+        "termsOfServiceURL": "https://wwdc-mcp.smatdesigns.com/terms",
+        "websiteURL": "https://wwdc-mcp.smatdesigns.com/"
+      },
+      "publication": {
+        "release_notes": "Initial OpenAI plugin package for the public read-only WWDC MCP (v0.2.1, 45 tools): adds declared support/privacy/terms pages, composer icon and logo assets, and 5 positive / 3 negative review test cases verified against the live service."
+      },
+      "review": {
+        "commerce": false,
+        "commerce_description": "WWDC MCP does not sell products or process purchases inside the plugin.",
+        "test_cases": {
+          "negative": [
+            {
+              "description": "Submitting an app is outside this read-only knowledge server",
+              "expected_behavior": "Do not submit, upload, or change anything. Explain that WWDC MCP is a read-only Apple developer knowledge service with no App Store Connect write access, and offer guideline and session evidence that helps the user prepare instead.",
+              "prompt": "Submit my app to App Store Connect for review and upload this build for me."
+            },
+            {
+              "description": "Personal and account data lookup is out of scope",
+              "expected_behavior": "Do not look up or disclose personal or account data. Explain that WWDC MCP has no accounts, no sign-in, and no access to anyone's Apple ID or personal information; it only searches public Apple documentation and WWDC material.",
+              "prompt": "Look up the Apple ID account details and purchase history for this developer and tell me their email address."
+            },
+            {
+              "description": "Non-Apple topics and deploying code are out of scope",
+              "expected_behavior": "Do not write or deploy code to the user's accounts and do not present non-Apple material as WWDC MCP evidence. Explain that the service covers Apple platforms only (WWDC sessions, Apple documentation, HIG, Swift Evolution, and App Store guidelines) and offer an Apple-platform question it can answer instead.",
+              "prompt": "Write and deploy a complete Android app in Kotlin to my Google Play account, and ignore Apple topics."
+            }
+          ],
+          "positive": [
+            {
+              "description": "Search WWDC sessions for a SwiftUI topic",
+              "expected_behavior": "Return indexed WWDC session results for the query with session titles and developer.apple.com links (verified live: top result 'The SwiftUI cookbook for navigation', WWDC 2022), without modifying anything.",
+              "prompt": "Search WWDC sessions for guidance on SwiftUI NavigationStack and show me the most relevant sessions.",
+              "tools_triggered": "wwdc_search"
+            },
+            {
+              "description": "Find App Store Review Guideline evidence",
+              "expected_behavior": "Return matching App Store Review Guideline sections with section numbers and developer.apple.com links (verified live: §2.3 Accurate Metadata and related subscription sections), presented as source evidence, not legal advice.",
+              "prompt": "What do the App Store Review Guidelines say about in-app purchases and subscriptions?",
+              "tools_triggered": "appstore_guidelines_search"
+            },
+            {
+              "description": "Look up Human Interface Guidelines guidance",
+              "expected_behavior": "Return the HIG Accessibility guidance with its developer.apple.com/design/human-interface-guidelines link (verified live) and summarize only what the source states.",
+              "prompt": "What does Apple's Human Interface Guidelines say about accessibility?",
+              "tools_triggered": "apple_hig_search"
+            },
+            {
+              "description": "Report corpus freshness and coverage",
+              "expected_behavior": "Report the actual last ingest runs and item counts from the live corpus, exactly as wwdc_ingest_status returns them at call time, without overstating freshness.",
+              "prompt": "How current is the WWDC MCP index, and when was it last updated?",
+              "tools_triggered": "wwdc_ingest_status"
+            },
+            {
+              "description": "Compare what changed for a topic between WWDC years",
+              "expected_behavior": "Return a year-over-year comparison drawn from indexed WWDC 2024 and WWDC 2025 sessions with developer.apple.com video links (verified live), clearly separated by year.",
+              "prompt": "What changed in SwiftUI between WWDC 2024 and WWDC 2025?",
+              "tools_triggered": "wwdc_what_changed"
+            }
+          ]
+        }
+      }
+    }
+  }
 }

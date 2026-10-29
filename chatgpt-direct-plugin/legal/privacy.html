@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy — WWDC MCP</title>
+</head>
+<body>
+<header>
+<p>WWDC MCP · PRIVACY · UPDATED OCTOBER 29, 2026</p>
+<h1>Your questions stay questions. We keep no profile of you.</h1>
+</header>
+
+<!-- CLAIM: operator identity | EVIDENCE: chatgpt-direct-plugin/.codex-plugin/plugin.json — author {"name":"Scott Manthey","url":"https://smatdesigns.com"}; fleet pages (AiSCent terms) name the operator as SMAT Design -->
+<p>WWDC MCP is operated by SMAT Designs (Scott Manthey) ("WWDC MCP," "we," "us").
+This policy describes what the hosted WWDC MCP service at wwdc-mcp.smatdesigns.com does with
+information when you use it. WWDC MCP is a read-only search and reference service over public
+Apple developer material.</p>
+
+<h2>No accounts, no sign-in, no sale</h2>
+<!-- CLAIM: no accounts / no auth on the public service | EVIDENCE: live GET /healthz 2026-10-28 → authConfigured=false, publicReadOnly=true; src/mcp-http.ts:88-94 (authConfigured/publicReadOnlyEnabled), src/mcp-http.ts:215-236 (public read-only mode skips the bearer check); deploy/cloudflare/worker.js:24 (container started with WWDC_MCP_PUBLIC_READ_ONLY="1") -->
+<!-- CLAIM: nothing is sold and no payment is processed | EVIDENCE: no payment/checkout/stripe code exists in src/, deploy/, or package.json (grep 2026-10-28, zero hits); package.json dependencies are only @huggingface/transformers, @modelcontextprotocol/sdk, axios, better-sqlite3, cheerio, p-limit, zod -->
+<p>The public service has no accounts and no sign-up. You do not log in, and we do not ask for
+your name, email address, or Apple ID to use it. WWDC MCP is free to use: we do not sell anything
+through this service and we do not process payments or collect payment details.</p>
+
+<h2>Information processed</h2>
+<!-- CLAIM: requests (tool name + arguments such as search queries) are received and processed to answer | EVIDENCE: src/mcp-http.ts:113-134 (readJsonBody parses the JSON-RPC body), src/mcp-http.ts:276-300 (body is handed to the MCP transport for handling) -->
+<!-- CLAIM: request bodies are size-bounded (1 MiB default) | EVIDENCE: src/mcp-http.ts:18 (MAX_BODY_BYTES default 1024*1024), src/mcp-http.ts:118-122 (413 body_too_large) -->
+<p>When your AI client calls the service, we receive the MCP request: the tool name and the
+arguments you sent, such as a search query, a documentation path, or text you asked a tool to
+analyze. Requests are processed to produce the answer and are size-bounded. Do not send
+passwords, private keys, signing certificates, Apple account credentials, or other sensitive
+information in tool arguments — the service never needs them.</p>
+
+<!-- CLAIM: tool requests are answered from the local corpus and are not saved to a user database | EVIDENCE: every db.prepare call in src/tools/index.ts is a SELECT against the corpus tables (grep 2026-10-28); there is no user/account table and no code path that writes request content to disk or a database -->
+<p>Tool answers come from an on-device index of public Apple material. The service does not save
+your queries or the content you submit into a database, and it keeps no per-user history.</p>
+
+<h2>Rate limiting uses a connection address, in memory only</h2>
+<!-- CLAIM: per-client token-bucket rate limiting exists for tool calls | EVIDENCE: src/rate-limit.ts:1-23 (header: one bucket per client IP, only tools/call charged, defaults burst 120 units / refill 120 units per minute, operator-tunable via env); src/mcp-http.ts:258-274 (check runs before handling; 429 + Retry-After on limit) -->
+<!-- CLAIM: the bucket key and its state live only in server memory | EVIDENCE: src/rate-limit.ts:71 (buckets held in an in-memory Map), src/rate-limit.ts:86-95 (capped at 10,000 keys, oldest evicted), src/rate-limit.ts:140-167 (clientKeyForRequest: socket remote address by default; a proxy address header such as cf-connecting-ip is used only if the operator sets WWDC_MCP_TRUST_PROXY_HEADERS=1 — the deployed Worker container config does not set it: deploy/cloudflare/worker.js:22-31) -->
+<!-- HONESTY NOTE for the coordinator: the deployed config does NOT enable proxy-header trust, so the live bucket key is the connection address the container sees, not provably the end user's device IP. This page therefore says "a network address associated with your connection" and must not be strengthened to "we store your IP address" (nothing is stored) or weakened to "we never process any address" (the limiter and the hosting edge both process one). -->
+<p>To keep the public service fair and to discourage bulk extraction, tool calls are rate-limited
+by a token bucket keyed on a network address associated with your connection. That key and its
+token count exist only in the server's memory: they are never written to a database or disk,
+they are discarded when no longer needed or when the server restarts, and the number of keys held
+is capped. A rate-limited request receives only a generic "rate_limited" response and a
+Retry-After time.</p>
+
+<h2>Operational logs and analytics</h2>
+<!-- CLAIM: the server code logs only operational errors to stderr and contains no analytics/telemetry | EVIDENCE: src/mcp-http.ts:152, 281-283, 296-299, 319-320 are the only log writes in the HTTP path (corpus-restart notice, transport error, request failure, startup line); grep for analytics/telemetry/posthog/segment/sentry/amplitude/mixpanel/gtag across src/, deploy/, package.json → zero hits (2026-10-28) -->
+<!-- CLAIM: the server sets no cookies | EVIDENCE: src/mcp-http.ts:59-67 (responses set only content-type and cache-control: no-store); grep for "set-cookie" across src/, deploy/, package.json → zero hits -->
+<p>The server records brief operational error messages (for example, that a request failed or the
+service restarted to load a refreshed index) so we can keep it running. It does not log your
+search queries as an analytics feed, it contains no advertising or product-analytics trackers,
+and it sets no cookies.</p>
+
+<h2>Hosting provider</h2>
+<!-- CLAIM: the service runs on Cloudflare (Worker + container), which processes connection data to deliver it, and Worker observability is enabled | EVIDENCE: deploy/cloudflare/worker.js (Cloudflare Worker fronting a container Durable Object); wrangler.jsonc ("observability": {"enabled": true}); deploy/cloudflare/worker.js:59-68 (edge rejects requests whose Origin is neither this service's origin nor https://chatgpt.com) -->
+<p>The service is delivered through Cloudflare. Like any hosting provider, Cloudflare processes
+connection information (such as the IP address a request arrives from) in order to route,
+deliver, and protect the service, under Cloudflare's own privacy terms. We use Cloudflare's
+operational observability for the hosting layer itself — availability and error signals for the
+service, not profiles of individual users.</p>
+
+<h2>One tool fetches live from Apple</h2>
+<!-- CLAIM: apple_doc_lookup sends the requested documentation path to developer.apple.com and returns live data with no cache | EVIDENCE: src/tools/index.ts:1271-1287 (tool description "Returns live data (no cache)"; fetches https://developer.apple.com/tutorials/data/documentation/<path>.json) -->
+<p>Most tools answer from our local index. One tool, <code>apple_doc_lookup</code>, fetches the
+documentation page you asked for directly from developer.apple.com so the answer is current;
+when you use it, the documentation path you requested is sent to Apple's servers, and Apple's
+own privacy policy applies to that request. No account information is included.</p>
+
+<h2>Your AI client</h2>
+<!-- CLAIM: framed as a statement about the client's role, matching the fleet pattern (AiSCent privacy: "Your selected AI provider receives the prompt and tool results under its own privacy terms") — the WWDC server itself sends results only back to the connected client over the MCP transport (src/mcp-http.ts:285-300) -->
+<p>WWDC MCP answers the AI client you connected with (for example, ChatGPT). That client receives
+your prompts and the tool results, and handles them under its own privacy terms, which we do not
+control.</p>
+
+<h2>The corpus is public Apple material</h2>
+<!-- CLAIM: the index contains only public Apple/Swift sources | EVIDENCE: README.md:7 (WWDC20–WWDC26 sessions, Apple Developer Documentation, tutorials, Human Interface Guidelines, Swift Evolution, The Swift Programming Language, App Store Review Guidelines); README.md:573 ("Ingest fetches public Apple/Swift sources") -->
+<p>Our index is built from public sources: WWDC sessions, Apple Developer Documentation,
+tutorials, the Human Interface Guidelines, Swift Evolution proposals, The Swift Programming
+Language, and the App Store Review Guidelines. It contains no private user data.</p>
+
+<h2>Retention and your choices</h2>
+<!-- CLAIM: retention follows from the processing facts above — in-memory rate-limit state only (src/rate-limit.ts:71, 86-95); no user database exists to delete from (src/tools/index.ts SELECT-only). The contact route is the operator commitment part of this section. -->
+<p>Because we keep no accounts and no database of your requests, there is no user profile to
+export or delete. Rate-limit state clears itself from memory as described above. If you have a
+privacy question or concern, contact us below and we will respond.</p>
+
+<h2>Changes and contact</h2>
+<!-- CLAIM: contact identity | EVIDENCE: chatgpt-direct-plugin/.codex-plugin/plugin.json author email jamonwidit@plushtrap.com; SUPPORT.md routes public issues to the GitHub repo -->
+<p>We may update this policy when the service changes; the current version will always be at
+https://wwdc-mcp.smatdesigns.com/privacy. Contact: SMAT Designs — email
+jamonwidit@plushtrap.com, or open an issue at
+https://github.com/jabbertones-cloud/wwdc-mcp-server/issues (never post credentials or private
+data in a public issue).</p>
+</body>
+</html>
