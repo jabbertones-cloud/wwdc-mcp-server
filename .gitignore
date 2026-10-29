@@ -22,3 +22,5 @@ __pycache__/
 
 # Staged Cloudflare container corpus and release receipts (never commit SQLite data)
 .deploy-data/
+# Local OpenAI plugin ZIP candidate artifacts (not release assets)
+_artifacts/
