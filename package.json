@@ -27,7 +27,7 @@
     "ingest:all": "tsx src/ingest/run.ts --source all",
     "smoke": "tsx tests/smoke.ts",
     "health:native": "node -e \"require('better-sqlite3'); console.log('better-sqlite3 native addon OK')\"",
-    "test": "tsx tests/aiscent-handoff.ts && tsx tests/smoke.ts && tsx tests/ingest-parse.ts && tsx tests/security-eval.ts && tsx tests/mcp-e2e.ts && tsx tests/search-regression.ts && tsx tests/search-year-disclosure.ts && tsx tests/sample-code-grep-honesty.ts && tsx tests/search-query-disclosure.ts && tsx tests/search-did-you-mean.ts && tsx tests/search-fallback-notice.ts && tsx tests/eval.ts && tsx tests/package-smoke.ts && tsx tests/mcp-http.ts && tsx tests/optional-service.ts && tsx tests/corpus-version.ts && tsx tests/ingest-status-honesty.ts && tsx tests/verify-corpus-script.ts && tsx tests/anti-extraction.ts && tsx tests/rate-limit-unit.ts && tsx tests/rate-limit-http.ts",
+    "test": "npm run test:plugin-submission && tsx tests/aiscent-handoff.ts && tsx tests/smoke.ts && tsx tests/ingest-parse.ts && tsx tests/security-eval.ts && tsx tests/mcp-e2e.ts && tsx tests/search-regression.ts && tsx tests/search-year-disclosure.ts && tsx tests/sample-code-grep-honesty.ts && tsx tests/search-query-disclosure.ts && tsx tests/search-did-you-mean.ts && tsx tests/search-fallback-notice.ts && tsx tests/eval.ts && tsx tests/package-smoke.ts && tsx tests/mcp-http.ts && tsx tests/optional-service.ts && tsx tests/corpus-version.ts && tsx tests/ingest-status-honesty.ts && tsx tests/verify-corpus-script.ts && tsx tests/anti-extraction.ts && tsx tests/rate-limit-unit.ts && tsx tests/rate-limit-http.ts",
     "test:parse": "tsx tests/ingest-parse.ts",
     "test:e2e": "tsx tests/mcp-e2e.ts",
     "test:http": "tsx tests/mcp-http.ts",
@@ -40,7 +40,10 @@
     "test:inspector": "WWDC_SKIP_EMBEDDINGS=1 npx -y @modelcontextprotocol/inspector --cli node dist/index.js --method tools/list --format json > /tmp/wwdc-mcp-inspector.json && node -e \"const fs=require('fs');const x=JSON.parse(fs.readFileSync('/tmp/wwdc-mcp-inspector.json','utf8'));const tools=x.result?.tools||[];if(tools.length!==45)throw new Error('Expected 45 tools, got '+tools.length);console.log('[inspector] external MCP client sees 45 tools')\"",
     "verify:corpus": "tsx scripts/verify-corpus.ts",
     "observe:test": "node scripts/observe-command.mjs native-test npm test",
-    "test:handoff": "tsx tests/aiscent-handoff.ts"
+    "test:handoff": "tsx tests/aiscent-handoff.ts",
+    "test:plugin-submission": "node scripts/validate-wwdc-openai-plugin.mjs",
+    "test:plugin-submission:live": "node scripts/validate-wwdc-openai-plugin.mjs --live",
+    "plugin:zip": "node scripts/build-wwdc-openai-plugin.mjs"
   },
   "files": [
     "dist",
