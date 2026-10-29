@@ -195,13 +195,30 @@ export async function ingestAppleDocs(
 
     const fromDeprecatedSymbols = path.endsWith("/deprecated-symbols");
     for (const ref of page.references) {
-      if (
-        visited.has(ref) ||
-        queued.has(ref) ||
-        visited.size + queue.length + priorityQueue.length >= maxPages
-      ) continue;
+      if (visited.has(ref) || queued.has(ref)) continue;
+      // TL-194 (admission, not just drain order): the deprecation surface
+      // is references FROM a "Deprecated symbols" page, plus the aggregate
+      // pages themselves. Drain priority alone was not enough — when the
+      // uikit aggregate was crawled (position ~348 of 2,500 in the first
+      // fixed-pipeline run), the general queue already held ~2,100
+      // admitted refs and the shared budget guard admitted only ~50 of
+      // its ~600 symbol refs. Priority refs therefore DISPLACE unvisited
+      // general-queue tail entries: the cap's tradeoff is made explicitly
+      // in favor of the deprecation surface instead of by discovery order.
+      const isPriority = fromDeprecatedSymbols || ref.endsWith("/deprecated-symbols");
+      let budget = visited.size + queue.length + priorityQueue.length;
+      if (isPriority) {
+        while (budget >= maxPages && queue.length > 0) {
+          const evicted = queue.pop()!;
+          queued.delete(evicted);
+          budget--;
+        }
+        if (budget >= maxPages) continue;
+      } else if (budget >= maxPages) {
+        continue;
+      }
       queued.add(ref);
-      (fromDeprecatedSymbols ? priorityQueue : queue).push(ref);
+      (isPriority ? priorityQueue : queue).push(ref);
     }
   }
 

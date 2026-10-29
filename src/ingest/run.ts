@@ -83,15 +83,21 @@ async function main(): Promise<void> {
       results.evolution = await ingestEvolution(db, args.limit);
       console.log("  →", results.evolution);
     }
+    if (args.source === "swiftbook" || args.source === "all") {
+      // Runs BEFORE the docs crawl on purpose: the crawl fires ~2,500
+      // requests at Apple's edge from one client address, and the small
+      // sources behind it inherit the throttling that follows (observed
+      // 2026-10-29: swiftbook 15/43 fetched when sequenced after the
+      // crawl, 43/43 standalone). Small sources first keeps a bulk-crawl
+      // side effect from failing the whole refresh at the stamp gate.
+      console.log("[ingest] Swift Language Reference…");
+      results.swiftbook = await ingestSwiftBook(db);
+      console.log("  →", results.swiftbook);
+    }
     if (args.source === "docs" || args.source === "all") {
       console.log("[ingest] Apple documentation…");
       results.docs = await ingestAppleDocs(db);
       console.log("  →", results.docs);
-    }
-    if (args.source === "swiftbook" || args.source === "all") {
-      console.log("[ingest] Swift Language Reference…");
-      results.swiftbook = await ingestSwiftBook(db);
-      console.log("  →", results.swiftbook);
     }
     if (args.source === "appstore" || args.source === "all") {
       console.log("[ingest] App Store Review Guidelines…");
