@@ -67,6 +67,11 @@ check("parser: real deprecated C function parses to deprecated + version + repla
   // comparison — a lexicographic sort would also mishandle e.g. 9.0 vs 13.0.
   assert.equal(a.introducedAt, "1.0");
   assert.ok(a.deprecatedMessage?.includes("UIGraphicsImageRenderer"));
+  // The page's deprecationSummary names the replacement as a DocC
+  // *reference* node (identifier only, no text). Resolving it must yield
+  // the complete sentence — the first corpus rebuild shipped
+  // "Use  instead." for every such page.
+  assert.equal(a.deprecatedMessage, "Use UIGraphicsImageRenderer instead.");
 });
 
 check("parser: clean symbol parses to not deprecated", () => {
