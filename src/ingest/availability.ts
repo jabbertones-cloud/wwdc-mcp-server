@@ -23,6 +23,10 @@ export type PlatformAvailability = {
 export type DeprecationSummaryNode = {
   type?: string;
   text?: string;
+  /** reference nodes carry no text — the target lives in the identifier */
+  identifier?: string;
+  /** codeVoice nodes carry their text in `code` */
+  code?: string;
   inlineContent?: DeprecationSummaryNode[];
 };
 
@@ -48,6 +52,20 @@ function extractInlineText(nodes: DeprecationSummaryNode[] | undefined): string 
   return nodes
     .map((n) => {
       if (n.type === "text" && typeof n.text === "string") return n.text;
+      if (n.type === "codeVoice" && typeof n.code === "string") return n.code;
+      if (n.type === "reference" && typeof n.identifier === "string") {
+        // A DocC reference names its target only by identifier, e.g.
+        // "doc://com.apple.uikit/documentation/UIKit/UIGraphicsImageRenderer".
+        // The display name is the last path segment. Dropping these nodes
+        // produced messages like "Use  instead." — the replacement symbol
+        // silently vanished (found in the first TL-194 corpus rebuild).
+        const segment = n.identifier.split("/").filter(Boolean).pop() ?? "";
+        try {
+          return decodeURIComponent(segment);
+        } catch {
+          return segment;
+        }
+      }
       if (n.inlineContent) return extractInlineText(n.inlineContent);
       return "";
     })

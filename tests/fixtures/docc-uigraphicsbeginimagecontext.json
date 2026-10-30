@@ -103,5 +103,25 @@
   "interfaceLanguage": "swift",
   "url": "doc://com.apple.uikit/documentation/UIKit/UIGraphicsBeginImageContext(_:)"
  },
- "kind": "symbol"
+ "kind": "symbol",
+ "deprecationSummary": [
+  {
+   "inlineContent": [
+    {
+     "text": "Use ",
+     "type": "text"
+    },
+    {
+     "identifier": "doc://com.apple.uikit/documentation/UIKit/UIGraphicsImageRenderer",
+     "isActive": true,
+     "type": "reference"
+    },
+    {
+     "text": " instead.",
+     "type": "text"
+    }
+   ],
+   "type": "paragraph"
+  }
+ ]
 }
