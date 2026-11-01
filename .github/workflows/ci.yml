@@ -9,25 +9,26 @@ on:
 permissions:
   contents: read
 
-# Physical SMAT M1 only. Never fall back to GitHub-hosted Ubuntu, NAS or Intel.
+# Public PR CI must use an isolated free standard macOS ARM64 GitHub VM.
+# Native release/registry signing jobs remain on the protected physical M1.
 concurrency:
-  group: wwdc-m1-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: wwdc-public-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: false
 
 jobs:
   build-and-test:
-    # Never execute untrusted fork code on a physical self-hosted runner.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: [self-hosted, macOS, ARM64, smat-m1, wwdc-ci]
+    # New ephemeral GitHub VM for every public PR; fork code never reaches M1.
+    runs-on: macos-15
     timeout-minutes: 60
     steps:
-      - name: Verify M1 runner authority
+      - name: Verify isolated free macOS ARM64 runner
         shell: bash
         run: |
           set -euo pipefail
-          test "${RUNNER_NAME}" = "smat-m1-wwdc-ci"
-          test "${RUNNER_OS}" = "macOS"
-          test "$(hostname)" = "Tatsheens-Mini"
+          test "${RUNNER_ENVIRONMENT:-}" = "github-hosted"
+          test "${RUNNER_OS:-}" = "macOS"
+          test "${RUNNER_ARCH:-}" = "ARM64"
+          test "$(uname -s)" = "Darwin"
           test "$(uname -m)" = "arm64"
 
       - uses: actions/checkout@v4
@@ -35,6 +36,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22.x
+
+      - name: Verify public CI and protected release separation
+        run: node --test tests/ci-isolation-policy.test.mjs
 
       - name: Install dependencies
         run: npm ci
