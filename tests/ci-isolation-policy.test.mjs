@@ -91,3 +91,40 @@ test("public workflows cannot fall back to M1 or larger paid runners", () => {
   assertHostedRelease(release, 3);
   assertHostedRelease(registry, 1);
 });
+
+
+const releaseCanary = fs.readFileSync(path.join(root, ".github/workflows/release-runner-canary.yml"), "utf8");
+
+test("manual release canary is isolated, read-only, and cannot publish", () => {
+  assert.match(releaseCanary, /^name: Release runner read-only canary$/m);
+  assert.match(releaseCanary, /^  workflow_dispatch:$/m);
+  assert.doesNotMatch(releaseCanary, /^  (?:push|pull_request|release|schedule):/m);
+  assert.match(releaseCanary, /^    runs-on: macos-15$/m);
+  assert.doesNotMatch(releaseCanary, /self-hosted|smat-m1|Tatsheens-Mini|macos-15-(?:large|xlarge)/i);
+  assert.match(releaseCanary, /id-token: write/);
+  assert.match(releaseCanary, /contents: read/);
+  assert.match(releaseCanary, /persist-credentials: false/);
+  assert.match(releaseCanary, /test "\$RUNNER_ENVIRONMENT" = "github-hosted"/);
+  assert.match(releaseCanary, /test "\$RUNNER_ARCH" = "ARM64"/);
+  assert.match(releaseCanary, /test "\$GITHUB_REF" = "refs\/heads\/main"/);
+  assert.match(releaseCanary, /git rev-parse HEAD/);
+  assert.match(releaseCanary, /WWDC_RELEASE_CANARY_OIDC_ISSUER_AND_REPOSITORY_OK/);
+  assert.match(releaseCanary, /ACTIONS_ID_TOKEN_REQUEST_URL/);
+  assert.match(releaseCanary, /mcp-publisher_darwin_arm64\.tar\.gz/);
+  assert.match(releaseCanary, /shasum -a 256 -c -/);
+  assert.match(releaseCanary, /\/mcp-publisher" validate server\.json/);
+  assert.match(releaseCanary, /node --test tests\/ci-isolation-policy\.test\.mjs/);
+  assert.doesNotMatch(releaseCanary, /(?:mcp-publisher|npm)\s+publish(?:\s|$)/m);
+  assert.doesNotMatch(releaseCanary, /mcp-publisher login github-oidc/);
+});
+
+test("release canary cannot become an automatic event or real publishing job", () => {
+  assert.throws(() => {
+    const tampered = releaseCanary.replace("  workflow_dispatch:", "  push:");
+    assert.match(tampered, /^  workflow_dispatch:$/m);
+  });
+  assert.throws(() => {
+    const tampered = releaseCanary.replace('"$work/mcp-publisher" validate server.json', '"$work/mcp-publisher" publish server.json');
+    assert.match(tampered, /\/mcp-publisher" validate server\.json/);
+  });
+});
