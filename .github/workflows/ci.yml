@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 # Public PR CI must use an isolated free standard macOS ARM64 GitHub VM.
-# Native release/registry signing jobs remain on the protected physical M1.
+# Public release/registry jobs use isolated free hosted macOS ARM64, with OIDC retained.
 concurrency:
   group: wwdc-public-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: false
