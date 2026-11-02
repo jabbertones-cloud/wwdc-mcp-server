@@ -1,0 +1,87 @@
+# Read-only release-runner proof. Never publishes npm packages or MCP Registry entries.
+name: Release runner read-only canary
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  inspect-release-environment:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - name: Verify free hosted native macOS ARM64
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$RUNNER_ENVIRONMENT" = "github-hosted"
+          test "$RUNNER_OS" = "macOS"
+          test "$RUNNER_ARCH" = "ARM64"
+          test "$(uname -s)" = "Darwin"
+          test "$(uname -m)" = "arm64"
+          test "$GITHUB_REF" = "refs/heads/main"
+
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          clean: true
+          fetch-depth: 1
+
+      - name: Verify exact main revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain)"
+          echo "WWDC_RELEASE_CANARY_EXACT_SHA=$GITHUB_SHA"
+
+      - name: Verify GitHub OIDC can be issued to the expected repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64
+          import json
+          import os
+          from urllib.parse import urlencode
+          from urllib.request import Request, urlopen
+
+          base = os.environ["ACTIONS_ID_TOKEN_REQUEST_URL"]
+          capability = os.environ["ACTIONS_ID_TOKEN_REQUEST_TOKEN"]
+          audience = "smat-wwdc-readonly-canary"
+          url = base + ("&" if "?" in base else "?") + urlencode({"audience": audience})
+          request = Request(url, headers={"Authorization": "Bearer " + capability})
+          with urlopen(request, timeout=20) as response:
+              signed = json.load(response)["value"]
+          segments = signed.split(".")
+          assert len(segments) == 3
+          body = segments[1]
+          claims = json.loads(base64.urlsafe_b64decode(body + "=" * (-len(body) % 4)))
+          assert claims.get("iss") == "https://token.actions.githubusercontent.com"
+          assert claims.get("aud") == audience
+          assert claims.get("repository") == "jabbertones-cloud/wwdc-mcp-server"
+          assert claims.get("ref") == "refs/heads/main"
+          print("WWDC_RELEASE_CANARY_OIDC_ISSUER_AND_REPOSITORY_OK")
+          PY
+
+      - name: Validate Registry manifest with pinned publisher without publishing
+        shell: bash
+        run: |
+          set -euo pipefail
+          work="$(mktemp -d)"
+          trap 'rm -rf "$work"' EXIT
+          curl -fsSL --retry 2 --max-time 90 "https://github.com/modelcontextprotocol/registry/releases/download/v1.8.1/mcp-publisher_darwin_arm64.tar.gz" -o "$work/publisher.tgz"
+          echo "e45e520892460732a4bdf37255576415d4a53ec171f8b913faf15bb1aef7cb77  $work/publisher.tgz" | shasum -a 256 -c -
+          tar xzf "$work/publisher.tgz" -C "$work" mcp-publisher
+          "$work/mcp-publisher" validate server.json
+          echo "WWDC_RELEASE_CANARY_MANIFEST_VALID"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+
+      - name: Verify source-level release isolation contracts
+        run: node --test tests/ci-isolation-policy.test.mjs
