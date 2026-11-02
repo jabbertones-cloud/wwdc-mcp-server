@@ -112,7 +112,7 @@ test("manual release canary is isolated, read-only, and cannot publish", () => {
   assert.match(releaseCanary, /ACTIONS_ID_TOKEN_REQUEST_URL/);
   assert.match(releaseCanary, /mcp-publisher_darwin_arm64\.tar\.gz/);
   assert.match(releaseCanary, /shasum -a 256 -c -/);
-  assert.match(releaseCanary, /"mcp-publisher" validate server\.json/);
+  assert.match(releaseCanary, /\/mcp-publisher" validate server\.json/);
   assert.match(releaseCanary, /node --test tests\/ci-isolation-policy\.test\.mjs/);
   assert.doesNotMatch(releaseCanary, /(?:mcp-publisher|npm)\s+publish(?:\s|$)/m);
   assert.doesNotMatch(releaseCanary, /mcp-publisher login github-oidc/);
@@ -125,6 +125,6 @@ test("release canary cannot become an automatic event or real publishing job", (
   });
   assert.throws(() => {
     const tampered = releaseCanary.replace('"$work/mcp-publisher" validate server.json', '"$work/mcp-publisher" publish server.json');
-    assert.match(tampered, /"mcp-publisher" validate server\.json/);
+    assert.match(tampered, /\/mcp-publisher" validate server\.json/);
   });
 });
