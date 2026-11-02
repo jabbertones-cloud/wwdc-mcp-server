@@ -38,12 +38,56 @@ test("reject loss of early isolation authority proof", () => {
   assert.throws(() => assertIsolation(ci.replace("RUNNER_ENVIRONMENT:-}", "WRONG_ENVIRONMENT:-}")));
 });
 
-test("protected release/publish/registry still uses exact named physical M1", () => {
-  const expected = "runs-on: [self-hosted, macOS, ARM64, smat-m1, wwdc-ci]";
-  const count = (source) => source.split(expected).length - 1;
-  assert.equal(count(release), 3);
-  assert.equal(count(registry), 1);
-  assert.equal(count(ci), 0);
-  assert.match(release, /smat-m1-wwdc-ci/);
-  assert.match(registry, /smat-m1-wwdc-ci/);
+function assertHostedRelease(source, count) {
+  const label = "    runs-on: macos-15";
+  const proof = "- name: Verify isolated free macOS ARM64 runner";
+  assert.equal(source.split(label).length - 1, count, "every release job uses standard hosted macOS");
+  assert.equal(source.split(proof).length - 1, count, "every release job checks isolated runner");
+  assert.doesNotMatch(source, /smat-m1|Tatsheens-Mini|self-hosted|macos-15-(?:large|xlarge)/i);
+  assert.equal(source.split("RUNNER_ENVIRONMENT:-").length - 1, count);
+  assert.equal(source.split("RUNNER_OS:-").length - 1, count);
+  assert.equal(source.split("RUNNER_ARCH:-").length - 1, count);
+  assert.equal(source.split('test "$(uname -m)" = "arm64"').length - 1, count);
+  const sections = source.split(/(?=^  [a-z][a-z-]+:\n    (?:needs:|if:|runs-on:))/m);
+  const jobs = sections.filter((chunk) => chunk.includes(label));
+  assert.equal(jobs.length, count);
+  for (const section of jobs) {
+    assert.ok(section.indexOf(proof) >= 0);
+    assert.ok(section.indexOf(proof) < section.indexOf("- uses: actions/checkout@v5"),
+      "isolation check must precede untrusted release checkout");
+    assert.match(section, /permissions:\n      contents: read/);
+  }
+}
+
+test("release verify, registry, and optional npm publish use free isolated ARM64", () => {
+  assertHostedRelease(release, 3);
+  assert.match(release, /^  verify:$/m);
+  assert.match(release, /^  registry:$/m);
+  assert.match(release, /^  npm:$/m);
+  assert.match(release, /needs: verify/g);
+  assert.match(release, /vars\.ENABLE_NPM_PUBLISH == 'true'/);
+  assert.match(release, /npm audit --audit-level=high/);
+  assert.match(release, /test "\$TAG_VERSION" = "\$PACKAGE_VERSION"/);
+  assert.match(release, /mcp-publisher login github-oidc/);
+  assert.match(release, /mcp-publisher publish server\.json/);
+  assert.match(release, /npm publish --access public/);
+  assert.equal((release.match(/id-token: write/g) || []).length, 2);
+});
+
+test("manual MCP Registry publication retains pinned publisher and OIDC", () => {
+  assertHostedRelease(registry, 1);
+  assert.match(registry, /workflow_dispatch:/);
+  assert.match(registry, /id-token: write/);
+  assert.match(registry, /shasum -a 256 -c -/);
+  assert.match(registry, /mcp-publisher validate server\.json/);
+  assert.match(registry, /mcp-publisher login github-oidc/);
+  assert.match(registry, /mcp-publisher publish server\.json/);
+});
+
+test("public workflows cannot fall back to M1 or larger paid runners", () => {
+  for (const source of [ci, release, registry]) {
+    assert.doesNotMatch(source, /runs-on:.*(?:self-hosted|macos-15-large|macos-15-xlarge)/i);
+  }
+  assertHostedRelease(release, 3);
+  assertHostedRelease(registry, 1);
 });

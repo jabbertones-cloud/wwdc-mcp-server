@@ -5,18 +5,19 @@ on:
 
 jobs:
   publish:
-    runs-on: [self-hosted, macOS, ARM64, smat-m1, wwdc-ci]
+    runs-on: macos-15
     permissions:
       contents: read
       id-token: write
     steps:
-      - name: Verify physical M1 runner authority
+      - name: Verify isolated free macOS ARM64 runner
         shell: bash
         run: |
           set -euo pipefail
-          test "${RUNNER_NAME}" = "smat-m1-wwdc-ci"
-          test "${RUNNER_OS}" = "macOS"
-          test "$(hostname)" = "Tatsheens-Mini"
+          test "${RUNNER_ENVIRONMENT:-}" = "github-hosted"
+          test "${RUNNER_OS:-}" = "macOS"
+          test "${RUNNER_ARCH:-}" = "ARM64"
+          test "$(uname -s)" = "Darwin"
           test "$(uname -m)" = "arm64"
 
       - uses: actions/checkout@v5
