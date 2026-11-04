@@ -1,6 +1,6 @@
 # Compatibility
 
-WWDC MCP follows the Model Context Protocol and supports two transports.
+AppDev Atlas follows the Model Context Protocol and supports two transports.
 
 | Surface | Status | Proof |
 | --- | --- | --- |

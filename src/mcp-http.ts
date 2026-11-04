@@ -212,7 +212,7 @@ export function createHttpServer() {
         res,
         401,
         { error: "unauthorized" },
-        { "www-authenticate": 'Bearer realm="WWDC MCP"' },
+        { "www-authenticate": 'Bearer realm="AppDev Atlas"' },
       );
       return;
     }

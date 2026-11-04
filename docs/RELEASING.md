@@ -1,6 +1,6 @@
-# Releasing WWDC MCP
+# Releasing AppDev Atlas
 
-WWDC MCP has three public distribution layers:
+AppDev Atlas has three public distribution layers:
 
 1. **GitHub Release** — source tag plus immutable release assets.
 2. **Official MCP Registry** — primary discovery/install metadata, backed by a GitHub-hosted MCPB bundle.
@@ -83,7 +83,7 @@ Do not rebuild the MCPB after locking its SHA unless you also update `server.jso
 Tag the exact green release commit:
 
 ```bash
-git tag -a vX.Y.Z -m "WWDC MCP vX.Y.Z"
+git tag -a vX.Y.Z -m "AppDev Atlas vX.Y.Z"
 git push origin vX.Y.Z
 ```
 

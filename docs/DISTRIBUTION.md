@@ -22,7 +22,7 @@ Measure these separately:
 2. **Intent** — user chooses a path instead of bouncing.
 3. **Connection** — client can initialize and list 45 tools.
 4. **Activation** — user gets one useful, source-grounded Apple answer.
-5. **Habit** — repository instructions cause the agent to invoke WWDC MCP without repeated prompting.
+5. **Habit** — repository instructions cause the agent to invoke AppDev Atlas without repeated prompting.
 6. **Trust** — user can inspect sources, freshness, security manifest, and deployment identity.
 7. **Referral** — user shares a workflow/result/repo rather than merely starring it.
 
@@ -33,7 +33,7 @@ A star, install, or MCP connection is not activation.
 The canonical first-run prompt is:
 
 ```text
-Use WWDC MCP. First check ingest status, then find current Apple guidance
+Use AppDev Atlas. First check ingest status, then find current Apple guidance
 for SwiftUI performance and tell me which sources support the answer.
 ```
 
@@ -56,7 +56,7 @@ For each supported client, periodically test from a clean profile/machine:
 - whether the client clearly shows tool permissions;
 - whether the 60-second activation prompt succeeds;
 - whether source links are usable;
-- whether the agent reuses WWDC MCP on the next Apple task.
+- whether the agent reuses AppDev Atlas on the next Apple task.
 
 Record **tested date + client version**. Do not convert a one-time successful setup into a permanent compatibility claim.
 
@@ -104,4 +104,4 @@ Each example should show **question → tool route → evidence → recommendati
 
 ## Companion-product boundary
 
-Public WWDC MCP adoption should stand on its own. AiSCent can be the natural next step when a user moves from **knowing what Apple expects** to **executing App Store Connect work**, but do not gate knowledge retrieval behind AiSCent or turn every example into an upsell.
+Public AppDev Atlas adoption should stand on its own. AiSCent can be the natural next step when a user moves from **knowing what Apple expects** to **executing App Store Connect work**, but do not gate knowledge retrieval behind AiSCent or turn every example into an upsell.

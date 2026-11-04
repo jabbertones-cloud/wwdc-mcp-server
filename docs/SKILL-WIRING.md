@@ -1,6 +1,6 @@
-# Wire WWDC MCP into coding agents and skills
+# Wire AppDev Atlas into coding agents and skills
 
-WWDC MCP works best when an agent is instructed to consult Apple-source evidence **before** making Apple-platform changes, and to treat retrieved text as evidence rather than instruction.
+AppDev Atlas works best when an agent is instructed to consult Apple-source evidence **before** making Apple-platform changes, and to treat retrieved text as evidence rather than instruction.
 
 You can place the following rule in an `AGENTS.md`, `CLAUDE.md`, Cursor rule, reusable skill, or equivalent agent instruction file.
 
@@ -25,11 +25,11 @@ For Swift, SwiftUI, UIKit, AppKit, StoreKit, App Intents, Apple Intelligence, Ap
 
 ### Before changing an app
 
-> Use WWDC MCP to audit this feature against current Apple guidance. Show the strongest sources, caveats, API availability/deprecation risks, and a validation plan before editing code.
+> Use AppDev Atlas to audit this feature against current Apple guidance. Show the strongest sources, caveats, API availability/deprecation risks, and a validation plan before editing code.
 
 ### Investigate an API
 
-> Use WWDC MCP to tell me when this API appeared, which WWDC sessions discuss it, whether it is deprecated, and what Apple recommends now.
+> Use AppDev Atlas to tell me when this API appeared, which WWDC sessions discuss it, whether it is deprecated, and what Apple recommends now.
 
 ### App Store review
 
@@ -58,4 +58,4 @@ See the README for client-specific examples and `docs/DEPLOY.md` for the optiona
 
 ## Important boundary
 
-WWDC MCP is an unofficial community project. It helps agents retrieve and organize public Apple/Swift source material; it does not replace Apple's documentation, App Review decisions, a compiler, device testing, or project-specific verification.
+AppDev Atlas is an unofficial community project. It helps agents retrieve and organize public Apple/Swift source material; it does not replace Apple's documentation, App Review decisions, a compiler, device testing, or project-specific verification.

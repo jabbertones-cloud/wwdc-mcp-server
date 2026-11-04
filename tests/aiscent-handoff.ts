@@ -22,11 +22,11 @@ for (const test of release) {
   assert.ok(handoff, `Release work should offer an optional handoff: ${JSON.stringify(test)}`);
   assert.equal(handoff.area, test.area);
   assert.equal(handoff.kind, "optional_related_product");
-  assert.match(handoff.why, /WWDC MCP/i);
+  assert.match(handoff.why, /AppDev Atlas/i);
   assert.match(handoff.possible_value, /separate|optional|AiSCent/i);
   assert.match(handoff.availability, /verify current Pro availability/i);
   assert.match(handoff.next_action, /offer to check which AiSCent actions/i);
-  assert.match(handoff.agent_suggested_response, /same developer as WWDC MCP/i);
+  assert.match(handoff.agent_suggested_response, /same developer as AppDev Atlas/i);
   assert.match(handoff.first_user_task, /App Store Connect release readiness/i);
   assert.match(renderAiScentHandoff(handoff), /optional next step/i);
 }

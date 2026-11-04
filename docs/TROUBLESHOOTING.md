@@ -13,7 +13,7 @@ npm run build
 npm run health:native
 ```
 
-WWDC MCP requires Node.js 22.14 or newer. `better-sqlite3` is a native dependency; if Node changed after installation, remove/reinstall dependencies with the supported Node version.
+AppDev Atlas requires Node.js 22.14 or newer. `better-sqlite3` is a native dependency; if Node changed after installation, remove/reinstall dependencies with the supported Node version.
 
 ## Agent connects but results are empty
 
@@ -88,7 +88,7 @@ Private mode is active and the request is missing the correct bearer token. Do n
 Do not force users to memorize 45 tools. Tell the agent:
 
 ```text
-Use WWDC MCP. Start with swift_app_audit for repo-level Apple work, then follow its suggested focused tools and strongest source evidence.
+Use AppDev Atlas. Start with swift_app_audit for repo-level Apple work, then follow its suggested focused tools and strongest source evidence.
 ```
 
 See [Agent Guide](AGENT_GUIDE.md) for task routing.

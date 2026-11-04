@@ -58,6 +58,7 @@ const registry = JSON.parse(fs.readFileSync(path.join(ROOT, "server.json"), "utf
   }>;
 };
 assert.equal(registry.name, pkg.mcpName, "Registry name must match package mcpName");
+assert.equal((registry as {title?: string}).title, "AppDev Atlas", "Registry title must match the public product name");
 assert.equal(registry.version, pkg.version, "Registry version must match package version");
 assert.ok(registry.description.length <= 100, "Registry description must be <= 100 characters");
 assert.match(registry.description, /Apple developer intelligence/i, "Registry description should lead with the product value");

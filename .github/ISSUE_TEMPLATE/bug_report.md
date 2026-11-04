@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report a reproducible WWDC MCP problem
+about: Report a reproducible AppDev Atlas problem
 title: "[bug] "
 labels: bug
 ---
@@ -21,7 +21,7 @@ Include the smallest prompt/tool call, command, source URL, or ingest step that 
 
 - OS:
 - Node version:
-- WWDC MCP commit/version:
+- AppDev Atlas commit/version:
 - Transport: stdio / Streamable HTTP
 - Semantic embeddings: enabled / `WWDC_SKIP_EMBEDDINGS=1`
 - Relevant source/year:
