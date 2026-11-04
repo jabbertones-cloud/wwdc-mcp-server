@@ -34,7 +34,7 @@
       "Audit apps against Apple sources"
     ],
     "websiteURL": "https://wwdcmcp.smatdesigns.com/",
-    "supportURL": "https://wwdcmcp.smatdesigns.com/support",
+    "supportURL": "https://github.com/jabbertones-cloud/wwdc-support/issues",
     "privacyPolicyURL": "https://wwdcmcp.smatdesigns.com/privacy",
     "termsOfServiceURL": "https://wwdcmcp.smatdesigns.com/terms",
     "defaultPrompt": [
@@ -62,7 +62,7 @@
           "Audit apps against Apple sources"
         ],
         "websiteURL": "https://wwdcmcp.smatdesigns.com/",
-        "supportURL": "https://wwdcmcp.smatdesigns.com/support",
+        "supportURL": "https://github.com/jabbertones-cloud/wwdc-support/issues",
         "privacyPolicyURL": "https://wwdcmcp.smatdesigns.com/privacy",
         "termsOfServiceURL": "https://wwdcmcp.smatdesigns.com/terms",
         "defaultPrompt": [
