@@ -1,8 +1,8 @@
-# WWDC MCP — current Apple developer knowledge for coding agents
+# AppDev Atlas — independent Apple-platform research for coding agents
 
 <!-- mcp-name: wwdc -->
 
-Ground **Codex, Claude, Cursor, VS Code, Windsurf, Zed, and other MCP clients** in Apple source material before they change your Swift code.
+**AppDev Atlas**, by SMAT Designs, grounds Codex, Claude, Cursor, VS Code, Windsurf, Zed, and other MCP clients in published Apple-platform material before they change your Swift code. The existing technical package, MCP tools, and hosted endpoint retain their backward-compatible WWDC identifiers. This independent service is not affiliated with or endorsed by Apple or OpenAI.
 
 WWDC MCP indexes **WWDC20–WWDC26 sessions**, Apple Developer Documentation, tutorials, Human Interface Guidelines, Swift Evolution, The Swift Programming Language, and App Store Review Guidelines into a local SQLite search layer. It exposes **45 read-only MCP tools** for search, API history, deprecations, transcripts, source-grounded app audits, and trust metadata.
 

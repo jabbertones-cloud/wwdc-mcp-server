@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AppDev Atlas — Current Apple knowledge for coding agents</title>
+<meta name="description" content="AppDev Atlas is a local-first MCP server that gives coding agents current Apple evidence: WWDC 2020–2026 sessions, Apple docs, HIG, Swift Evolution, and App Review guidance. 45 read-only tools. MIT open source.">
+<style>
+:root{
+  --bg:#0d1117; --panel:#161b22; --line:#2d333b; --text:#e6edf3; --dim:#9aa4b2;
+  --accent:#58a6ff; --green:#3fb950;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;line-height:1.6;font-size:17px}
+.wrap{max-width:960px;margin:0 auto;padding:0 24px}
+header.top{padding:20px 0;border-bottom:1px solid var(--line)}
+header.top .wrap{display:flex;align-items:center;justify-content:space-between}
+.logo{font-weight:700;font-size:18px;letter-spacing:.5px}
+.logo span{color:var(--accent)}
+nav a{color:var(--dim);text-decoration:none;margin-left:22px;font-size:15px}
+nav a:hover{color:var(--text)}
+.hero{padding:96px 0 72px;text-align:left}
+.hero .kicker{color:var(--accent);font-size:14px;font-weight:600;letter-spacing:2px;text-transform:uppercase;margin-bottom:20px}
+.hero h1{font-size:clamp(34px,6vw,58px);line-height:1.12;font-weight:800;letter-spacing:-1px;margin-bottom:24px}
+.hero p.sub{font-size:20px;color:var(--dim);max-width:640px;margin-bottom:36px}
+.btns{display:flex;gap:14px;flex-wrap:wrap}
+.btn{display:inline-block;padding:13px 26px;border-radius:8px;font-weight:600;font-size:16px;text-decoration:none}
+.btn.primary{background:var(--accent);color:#04121f}
+.btn.ghost{border:1px solid var(--line);color:var(--text)}
+.btn.ghost:hover{border-color:var(--accent)}
+section{padding:64px 0;border-top:1px solid var(--line)}
+section h2{font-size:30px;font-weight:750;letter-spacing:-.5px;margin-bottom:14px}
+section p.lead{color:var(--dim);font-size:18px;max-width:680px;margin-bottom:32px}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.fact{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px}
+.fact .n{font-size:30px;font-weight:800;color:var(--accent)}
+.fact .t{color:var(--dim);font-size:15px;margin-top:6px}
+.tools{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.tool{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px}
+.tool code{color:var(--green);font-size:15px;font-weight:600}
+.tool p{color:var(--dim);font-size:15px;margin-top:8px}
+.prompt{background:#0a0f14;border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:24px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:16px;margin:28px 0;max-width:680px}
+.prompt .label{color:var(--dim);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;font-size:13px;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:10px}
+pre{background:#0a0f14;border:1px solid var(--line);border-radius:10px;padding:20px;overflow-x:auto;font-size:14.5px;line-height:1.55;margin:16px 0;color:#c9d4e0}
+h3.step{font-size:19px;margin:30px 0 6px}
+h3.step:first-of-type{margin-top:10px}
+p.dim{color:var(--dim)}
+.knowship{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:640px){.knowship{grid-template-columns:1fr}}
+.ks{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:28px}
+.ks .tag{font-size:13px;letter-spacing:2px;font-weight:700;color:var(--accent);text-transform:uppercase}
+.ks h3{font-size:22px;margin:10px 0}
+.ks p{color:var(--dim);font-size:16px}
+footer{border-top:1px solid var(--line);padding:40px 0;color:var(--dim);font-size:15px}
+footer a{color:var(--accent);text-decoration:none}
+footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+</style>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="logo">AppDev<span>&nbsp;Atlas</span></div>
+    <nav>
+      <a href="#tools">Tools</a>
+      <a href="#install">Install</a>
+      <a href="/support">Support</a>
+      <a href="https://github.com/jabbertones-cloud/wwdc-mcp-server">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="hero">
+    <div class="kicker">Local-first MCP server · MIT open source</div>
+    <h1>Your coding agent doesn't know Apple as well as it thinks.</h1>
+    <p class="sub">AppDev Atlas gives coding agents source-backed research from published WWDC 2020–2026 sessions, Apple developer documentation, HIG, Swift Evolution, and App Review guidance before they change your code.</p>
+    <p class="dim" style="margin-bottom:26px">Independent research tool by SMAT Designs. Not affiliated with or endorsed by Apple or OpenAI.</p>
+    <div class="btns">
+      <a class="btn primary" href="#install">Install it</a>
+      <a class="btn ghost" href="https://github.com/jabbertones-cloud/wwdc-mcp-server">View on GitHub</a>
+    </div>
+  </div>
+</div>
+
+<section>
+  <div class="wrap">
+    <h2>What it is</h2>
+    <p class="lead">A local-first MCP server that runs on your Mac over stdio. It indexes Apple's developer material so your agent checks the source instead of guessing.</p>
+    <div class="facts">
+      <div class="fact"><div class="n">45</div><div class="t">read-only tools — nothing mutates your Apple account or your code</div></div>
+      <div class="fact"><div class="n">2020–26</div><div class="t">WWDC session years in the index, with full transcripts</div></div>
+      <div class="fact"><div class="n">Local</div><div class="t">SQLite FTS5 keyword search plus optional Ollama semantic reranking; no paid APIs</div></div>
+      <div class="fact"><div class="n">MIT</div><div class="t">open source; works with Codex, Claude, Cursor, Windsurf, and Zed</div></div>
+    </div>
+    <div class="prompt">
+      <span class="label">The prompt that matters most</span>
+      Audit this app against current Apple guidance before changing code.
+    </div>
+    <p class="dim">Give that to your agent and it has to pull evidence — WWDC sessions, HIG entries, Swift Evolution proposals, review guidelines — before it recommends the work.</p>
+  </div>
+</section>
+
+<section id="tools">
+  <div class="wrap">
+    <h2>Key tools</h2>
+    <p class="lead">Every tool is read-only. Retrieved content is tagged as evidence, not instructions.</p>
+    <div class="tools">
+      <div class="tool"><code>swift_app_audit</code><p>Audit a Swift/SwiftUI/macOS/iOS app against WWDC sessions, HIG, tutorials, and Swift Evolution.</p></div>
+      <div class="tool"><code>wwdc_search</code><p>Hybrid keyword + semantic search across sessions, docs, tutorials, HIG, and evolution proposals.</p></div>
+      <div class="tool"><code>wwdc_transcript_search</code><p>Search inside session transcripts, not just titles and descriptions.</p></div>
+      <div class="tool"><code>wwdc_session_deep_link</code><p>Generate a URL with <code>?time=SECONDS</code> that jumps straight to the chapter in a session.</p></div>
+      <div class="tool"><code>apple_api_deprecation</code><p>Check the deprecation status of an Apple API before your agent uses it.</p></div>
+      <div class="tool"><code>apple_what_replaced</code><p>Find the current replacement for a deprecated Apple API.</p></div>
+      <div class="tool"><code>apple_hig_search</code><p>Search the Human Interface Guidelines for platform behavior rules.</p></div>
+      <div class="tool"><code>apple_swift_evolution_get</code><p>Pull a Swift Evolution proposal by id (e.g. SE-0428) with status and rationale.</p></div>
+      <div class="tool"><code>appstore_guidelines_search</code><p>Search the App Store Review Guidelines before you archive a build.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap">
+    <h2>Install</h2>
+    <p class="lead">Requires Node.js 22.14 or newer. Takes about a minute.</p>
+
+    <h3 class="step">1. Clone and build</h3>
+<pre>git clone https://github.com/jabbertones-cloud/wwdc-mcp-server.git
+cd wwdc-mcp-server
+npm install
+npm run build</pre>
+
+    <h3 class="step">2. Build the local index</h3>
+<pre>npm run ingest:wwdc</pre>
+    <p class="dim">Optional: <code>npm run ingest:all</code> adds tutorials, docs, HIG, and Swift Evolution. Optional: <code>ollama pull nomic-embed-text</code> enables semantic reranking; without Ollama it falls back to keyword search.</p>
+
+    <h3 class="step">3. Connect your client</h3>
+    <p class="dim">Cursor — <code>~/.cursor/mcp.json</code>:</p>
+<pre>{
+  "mcpServers": {
+    "wwdc": {
+      "command": "node",
+      "args": ["/absolute/path/to/wwdc-mcp-server/dist/index.js"]
+    }
+  }
+}</pre>
+    <p class="dim">Claude Desktop — <code>~/Library/Application Support/Claude/claude_desktop_config.json</code>:</p>
+<pre>{
+  "mcpServers": {
+    "wwdc": {
+      "command": "node",
+      "args": ["/absolute/path/to/wwdc-mcp-server/dist/index.js"],
+      "env": {
+        "OLLAMA_BASE": "http://127.0.0.1:11434",
+        "OLLAMA_EMBED_MODEL": "nomic-embed-text"
+      }
+    }
+  }
+}</pre>
+    <p class="dim">The README also covers VS Code, Windsurf, and Zed. For hosted use, connect directly to <code>https://wwdc-mcp.smatdesigns.com/mcp</code>.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Know, then ship</h2>
+    <p class="lead">Code that compiles is not the finish line. There are two problems, and they are different problems.</p>
+    <div class="knowship">
+      <div class="ks">
+        <div class="tag">Know</div>
+        <h3>AppDev Atlas</h3>
+        <p>Checks what Apple expects — current sessions, docs, HIG, and review guidelines, checked before the code changes.</p>
+      </div>
+      <div class="ks">
+        <div class="tag">Ship</div>
+        <h3>AiSCent</h3>
+        <p>Gets the release through App Store Connect — screenshots, metadata, localization, TestFlight, and release state. Know what to build; then ship it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div>AppDev Atlas — Independent by SMAT Designs · MIT open source · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/support">Support</a></div>
+    <div><a href="https://github.com/jabbertones-cloud/wwdc-mcp-server">GitHub</a></div>
+  </div>
+</footer>
+</body>
+</html>
