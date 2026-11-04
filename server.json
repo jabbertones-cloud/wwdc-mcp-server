@@ -7,13 +7,13 @@
     "url": "https://github.com/jabbertones-cloud/wwdc-mcp-server",
     "source": "github"
   },
-  "version": "0.2.1",
+  "version": "0.2.2",
   "packages": [
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/jabbertones-cloud/wwdc-mcp-server/releases/download/v0.2.1/WWDC-MCP-v0.2.1.mcpb",
-      "version": "0.2.1",
-      "fileSha256": "0ad362082b60cec8a14c745665cad9fb151b0340beef76ea2b9cc6fc9938654a",
+      "identifier": "https://github.com/jabbertones-cloud/wwdc-mcp-server/releases/download/v0.2.2/AppDev-Atlas-v0.2.2.mcpb",
+      "version": "0.2.2",
+      "fileSha256": "4ed89edd422866881bb29c0e79b5587adb86af4714a67a619fc4e337c5f98ff9",
       "transport": {
         "type": "stdio"
       }

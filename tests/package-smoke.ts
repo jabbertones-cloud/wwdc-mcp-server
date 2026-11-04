@@ -68,14 +68,15 @@ assert.equal(registryPackage?.version, pkg.version, "Registry package version mu
 assert.equal(registryPackage?.transport?.type, "stdio");
 assert.match(
   registryPackage?.identifier ?? "",
-  /\/releases\/download\/v0\.2\.1\/WWDC-MCP-v0\.2\.1\.mcpb$/,
-  "Registry MCPB identifier must point at the immutable v0.2.1 GitHub release asset",
+  /\/releases\/download\/v0\.2\.2\/AppDev-Atlas-v0\.2\.2\.mcpb$/,
+  "Registry MCPB identifier must point at the immutable v0.2.2 GitHub release asset",
 );
 assert.match(
   registryPackage?.fileSha256 ?? "",
   /^[a-f0-9]{64}$/,
   "Registry MCPB package must include a SHA-256 integrity hash",
 );
+assert.notEqual(registryPackage?.fileSha256, "0".repeat(64), "Registry hash cannot be a placeholder");
 assert.ok(pkg.bin?.["wwdc-mcp-server"], "package bin must expose wwdc-mcp-server");
 assert.ok(pkg.bin?.["wwdc-mcp-ingest"], "package bin must expose wwdc-mcp-ingest");
 

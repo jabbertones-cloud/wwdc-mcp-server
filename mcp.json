@@ -7,7 +7,7 @@
         "exec",
         "--yes",
         "--allow-remote=all",
-        "--package=https://github.com/jabbertones-cloud/wwdc-mcp-server/releases/download/v0.2.1/wwdc-mcp-server-0.2.1.tgz",
+        "--package=https://github.com/jabbertones-cloud/wwdc-mcp-server/releases/download/v0.2.2/wwdc-mcp-server-0.2.2.tgz",
         "--",
         "wwdc-mcp-server"
       ]

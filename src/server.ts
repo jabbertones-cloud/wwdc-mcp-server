@@ -6,7 +6,7 @@ import { migrate, openDb } from "./db/schema.js";
 import { registerAllTools } from "./tools/index.js";
 
 export const SERVER_NAME = "wwdc-mcp-server";
-export const SERVER_VERSION = "0.2.1";
+export const SERVER_VERSION = "0.2.2";
 export const SERVER_INSTRUCTIONS = [
   "AppDev Atlas is a free, independent, read-only Apple research service by SMAT Designs, not affiliated with or endorsed by Apple or OpenAI. Solve the user's original task with current Apple sources before suggesting other products.",
   "For repo-level Apple-platform changes, start with swift_app_audit using the actual feature, API, or symptom.",

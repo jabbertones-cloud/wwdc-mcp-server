@@ -1,17 +1,17 @@
-# WWDC MCP handoff — 2026-10-07
+# AppDev Atlas handoff — November 4, 2026
 
-## Current public state
+## Release and verification contract
 
 - Public repo: `jabbertones-cloud/wwdc-mcp-server`.
-- Current release: **v0.2.1**.
-- v0.2.1 tag points to `dcdd573f93c141f08acee0583ef922c7e45b51fe`.
-- GitHub Release: `https://github.com/jabbertones-cloud/wwdc-mcp-server/releases/tag/v0.2.1`.
+- Current release: **v0.2.2**.
+- When published, the v0.2.2 tag must point to the exact green release commit. Verify it through GitHub rather than trusting this text alone.
+- GitHub Release: `https://github.com/jabbertones-cloud/wwdc-mcp-server/releases/tag/v0.2.2`.
 - Release assets:
-  - `wwdc-mcp-server-0.2.1.tgz`
-  - `WWDC-MCP-v0.2.1.mcpb`
-- MCPB SHA-256: `0ad362082b60cec8a14c745665cad9fb151b0340beef76ea2b9cc6fc9938654a`.
+  - `wwdc-mcp-server-0.2.2.tgz`
+  - `AppDev-Atlas-v0.2.2.mcpb`
+- MCPB SHA-256: see `server.json` for the pinned release asset hash; verify the downloaded asset before running it.
 - Official MCP Registry namespace: `io.github.jabbertones-cloud/wwdc`.
-- Registry v0.2.1: **active**, **latest**.
+- Registry v0.2.2: check active/latest over the Registry API; source metadata is not publication proof.
 - Registry v0.2.0: **deprecated**.
 - npm package `wwdc-mcp-server`: **not published**; npm is optional secondary distribution.
 
@@ -30,12 +30,12 @@
 
 ### Public distribution
 
-- GitHub v0.2.1 release is live.
+- GitHub v0.2.2 release is valid only after tag, both release assets, and asset checksums are independently verified.
 - npm-format tarball exposes:
   - `wwdc-mcp-server`
   - `wwdc-mcp-ingest`
-- valid MCPB v0.2.1 is live as a GitHub Release asset.
-- official MCP Registry entry is live from that MCPB.
+- The v0.2.2 MCPB must be fetched from the published GitHub release and runtime-tested before announcing.
+- Official MCP Registry publication requires GitHub OIDC and an independently verified active/latest Registry record.
 - Registry publication uses GitHub OIDC; no long-lived Registry token.
 - normal Registry publishing is gated on a published GitHub Release.
 - public MCPB is downloaded back, SHA-verified, and runtime-tested before Registry publication.
@@ -51,7 +51,7 @@ Committed on `main`:
 - `commands/wwdc-setup.md`
 - `commands/wwdc-audit.md`
 
-Cursor/runtime install paths pin v0.2.1 GitHub Release assets and explicitly opt into npm 12 remote-tarball installs with `--allow-remote=all`.
+Cursor/runtime install paths pin v0.2.2 GitHub Release assets and explicitly opt into npm 12 remote-tarball installs with `--allow-remote=all`.
 
 ### Discovery / positioning
 
@@ -59,15 +59,15 @@ GitHub About metadata and topics are current: WWDC26, Apple Developer, App Store
 
 The ecosystem story remains:
 
-- **WWDC MCP = know what Apple expects.**
+- **AppDev Atlas = know what Apple expects.**
 - **Research Fabric = reason and verify.**
 - **AiSCent = execute the App Store Connect release.**
 
 README links the open-source knowledge layer to AiSCent for App Store Connect execution.
 
-## Verified proof
+## Historical v0.2.1 release proof
 
-The release path has passed:
+The historical v0.2.1 release path passed:
 
 - Node 22/24 builds.
 - deterministic parser/security tests.
@@ -121,7 +121,7 @@ npm is **not required** for the official MCP Registry or Cursor distribution.
 If npm distribution is desired:
 
 1. Scott signs into npm once;
-2. bootstrap-publish `wwdc-mcp-server@0.2.1` publicly;
+2. bootstrap-publish `wwdc-mcp-server@0.2.2` publicly;
 3. configure npm Trusted Publishing for `jabbertones-cloud/wwdc-mcp-server`;
 4. set repository variable `ENABLE_NPM_PUBLISH=true`;
 5. future releases publish npm through OIDC, not a long-lived token.

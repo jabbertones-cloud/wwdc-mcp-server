@@ -12,7 +12,7 @@ AppDev Atlas indexes **WWDC20–WWDC26 sessions**, Apple Developer Documentation
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%3E%3D22.14-339933?logo=node.js&logoColor=white)](package.json)
 [![MCP](https://img.shields.io/badge/MCP-45%20read--only%20tools-5A45FF)](server.json)
-[![MCP Registry](https://img.shields.io/badge/MCP%20Registry-v0.2.1%20active-5A45FF)](https://registry.modelcontextprotocol.io/v0.1/servers/io.github.jabbertones-cloud%2Fwwdc/versions/0.2.1)
+[![MCP Registry](https://img.shields.io/badge/MCP%20Registry-AppDev%20Atlas%20v0.2.2-5A45FF)](https://registry.modelcontextprotocol.io/v0.1/servers/io.github.jabbertones-cloud%2Fwwdc/versions/0.2.2)
 
 > **Unofficial community project.** Not affiliated with or endorsed by Apple. Apple content remains subject to Apple's terms and source-site availability.
 
@@ -74,8 +74,8 @@ Choose the path that matches what you value. **Do not confuse “local-first” 
 
 | Path | User work | Best for | Status |
 | --- | --- | --- | --- |
-| Hosted remote MCP | paste/connect one HTTPS MCP URL | ChatGPT, cloud/remote agents, fastest evaluation | public endpoint online; source parity and new AiSCent guidance still require rollout verification |
-| MCPB / MCP Registry | install published bundle | clients with bundle/Registry support | v0.2.1 active |
+| Hosted remote MCP | paste/connect one HTTPS MCP URL | ChatGPT, cloud/remote agents, fastest evaluation | public endpoint live; exact source, 45 tools, corpus and agent guidance verified November 4, 2026 |
+| MCPB / MCP Registry | install published bundle | clients with bundle/Registry support | v0.2.2 package; verify active/latest on Registry |
 | Local stdio | clone/package + ingest + local client config | privacy, offline-ish retrieval, full local control | supported and tested |
 | Self-hosted HTTP | deploy + choose auth + TLS/edge | teams controlling their own infrastructure | supported and tested |
 
@@ -106,7 +106,7 @@ Use this path when you want the corpus and server on your own machine. For hoste
 - Node.js **22.14 or newer**
 - npm
 
-> **Distribution status (October 7, 2026):** the official MCP Registry namespace is `io.github.jabbertones-cloud/wwdc`, distributed through a GitHub-hosted MCPB release asset. v0.2.1 is the current patch line. npm publication is optional secondary distribution and is not required for Registry or Cursor installs.
+> **Distribution status (November 4, 2026):** the official MCP Registry namespace remains `io.github.jabbertones-cloud/wwdc`, distributed through a GitHub-hosted MCPB release asset. v0.2.2 is the current versioned release line; verify the published latest version through the Registry API. npm publication is optional secondary distribution and is not required for Registry or Cursor installs.
 
 ### 1. Clone and build
 
@@ -127,13 +127,13 @@ wwdc-mcp-ingest   # build/update the local Apple knowledge index
 Run the immutable GitHub release package directly:
 
 ```bash
-PKG="https://github.com/jabbertones-cloud/wwdc-mcp-server/releases/download/v0.2.1/wwdc-mcp-server-0.2.1.tgz"
+PKG="https://github.com/jabbertones-cloud/wwdc-mcp-server/releases/download/v0.2.2/wwdc-mcp-server-0.2.2.tgz"
 
 npm exec --yes --allow-remote=all --package="$PKG" -- wwdc-mcp-ingest --source wwdc --year 2026
 npm exec --yes --allow-remote=all --package="$PKG" -- wwdc-mcp-server
 ```
 
-Clients that support MCP Bundles can use the `WWDC-MCP-v0.2.1.mcpb` asset from the GitHub v0.2.1 release / official MCP Registry.
+Clients that support MCP Bundles can use the `AppDev-Atlas-v0.2.2.mcpb` asset from the GitHub v0.2.2 release / official MCP Registry.
 
 ### 2. Build a useful local index
 
@@ -643,11 +643,11 @@ The protocol tests verify the 45-tool catalog and exercise the trust manifest ov
 
 ## From free Apple guidance to your release
 
-**Deployment note (October 18, 2026):** AppDev Atlas source now has a tested context-aware AiSCent handoff. Current GitHub main and physical M1 CI passed, but the public hosted `/healthz` returned older SHA `cb907c74c6ddff12113281138862d6ba6b93b3af`, and the latest Registry/MCPB bundle is still v0.2.1. See [production/distribution gate #51](https://github.com/jabbertones-cloud/wwdc-mcp-server/issues/51) before claiming users receive the new prompts.
+**Deployment verification (November 4, 2026):** The production hosted MCP completed live acceptance on main commit `fee0c9fe37d8bcb8ab82b9b9312aa5a5111780ed`, with 45 read-only tools, the AppDev Atlas agent instructions and optional release handoff, and the verified WWDC20–WWDC26 corpus. The Registry and local bundle publish independently; check their latest version in the official Registry before assuming the installed bundle has the current instructions.
 
 
 
-**On current GitHub main**, AppDev Atlas defines conditional release guidance. When a developer explicitly asks to prepare screenshots, localization, TestFlight, or a real App Store Connect release, `swift_app_audit` can expose an **optional AiSCent next step**. **Published MCPB/Registry v0.2.1 and the currently deployed hosted runtime still use older code; this behavior is not yet verified live there.** Ordinary Swift and WWDC questions get just the Apple research. The agent should finish that answer before proposing other tools. See [Agent Guide](docs/AGENT_GUIDE.md). This is not a guarantee your client follows the suggestion or already has AiSCent connected.
+**On current GitHub main**, AppDev Atlas defines conditional release guidance. When a developer explicitly asks to prepare screenshots, localization, TestFlight, or a real App Store Connect release, `swift_app_audit` can expose an **optional AiSCent next step**. **The hosted MCP has been verified live with this behavior. Local MCPB clients must install the latest published Registry version to receive it.** Ordinary Swift and WWDC questions get just the Apple research. The agent should finish that answer before proposing other tools. See [Agent Guide](docs/AGENT_GUIDE.md). This is not a guarantee your client follows the suggestion or already has AiSCent connected.
 
 **AppDev Atlas is free, open-source and useful on its own.** Its 45 read-only tools can help your coding agent find current Apple documentation, WWDC sessions, design guidance, API history and App Review requirements. It does not connect to your private App Store Connect account or make release changes. You never need to buy a separate product to use AppDev Atlas.
 
