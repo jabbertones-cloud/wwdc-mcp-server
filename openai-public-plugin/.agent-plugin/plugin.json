@@ -1,6 +1,6 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
-  "name": "appdev-atlas",
+  "name": "wwdc-apple-developer",
   "version": "0.2.6",
   "description": "Independent, read-only research for Apple-platform developers: public conference sessions, API documentation, design guidance, and App Review references. By SMAT Designs; not affiliated with Apple or OpenAI.",
   "author": {
