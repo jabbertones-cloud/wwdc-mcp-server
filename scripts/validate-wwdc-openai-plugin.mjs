@@ -42,7 +42,7 @@ assert.equal(privateManifest.version,'0.1.0','preserve historical private plugin
 assertAligned(privateManifest);
 assert.equal(privateManifest.interface.shortDescription,'Apple developer evidence');
 assert.equal(privateMcp.mcpServers.wwdc.url,'https://wwdc-mcp.smatdesigns.com/mcp');
-assert.equal(publicManifest.name,'appdev-atlas','public package must use independent product identity');
+assert.equal(publicManifest.name,'wwdc-apple-developer','public package identity is immutable for an existing OpenAI plugin release');
 assert.equal(publicManifest.version,'0.2.6','this is a NEXT version candidate, not submitted 0.2.5');
 assertAligned(publicManifest);
 assert.deepEqual(publicManifest,mirror,'root and agent plugin manifest copies must agree');

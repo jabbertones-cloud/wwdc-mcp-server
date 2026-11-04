@@ -6,7 +6,7 @@ This directory mirrors the existing public WWDC plugin, rather than the historic
 - Original archive SHA-256: `b723b89af3a6bfbb536a8fcf6c8b5e7735b618eecf0134ba7416b5aaf45252c6`.
 - Current OpenAI plugin ID: `plugin_asdk_app_6ad90350c9fc8191abcbd6ccd10052c9`.
 - Previous dashboard release: **0.2.5, Changes required, not published** as verified November 4, 2026.
-- Candidate source version in this directory: **0.2.6, not uploaded, not submitted**. Public-facing name and package name are AppDev Atlas; existing URL and tools remain backward-compatible.
+- Candidate source version in this directory: **0.2.6, not uploaded, not submitted**. Public-facing name is AppDev Atlas; immutable existing package name remains wwdc-apple-developer. Existing URL and tools remain backward-compatible.
 - Create or revise the same rejected public plugin from the updated ZIP. Do not create a duplicate plugin if the dashboard can revise the rejected submission.
 - The previous 0.2.5 ZIP had a reviewer case asking `apple_api_availability` for `NavigationStack`, but direct lookup returned no rows on October 29. The 0.2.6 candidate uses a tested App Store Review guideline lookup instead.
 - No changes to the WWDC MCP runtime, auth, endpoint, tool descriptions, annotations, or corpus.
@@ -23,3 +23,7 @@ Run `node scripts/validate-wwdc-openai-plugin.mjs` and `node scripts/build-wwdc-
 - New icon has no third-party words or logo. New demo uses AppDev Atlas, not WWDC for ChatGPT.
 - Existing MCP endpoint, 45 read-only tools and identifiers are preserved; website, privacy, terms and support pages use AppDev Atlas and explicit third-party independence disclaimer.
 - New ZIP must be rebuilt after any artwork changes; verify by SHA-256 and live check before dashboard upload.
+
+### Immutable package name / dashboard correction
+
+The November 4, 2026 OpenAI dashboard reupload check rejected a changed internal package name and required name: wwdc-apple-developer to match the existing plugin. The visible displayName: AppDev Atlas, descriptions, metadata, icon, video, and website are brand-neutral. Preserve the stable package key; do not create a duplicate plugin.
