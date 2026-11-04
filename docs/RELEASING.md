@@ -10,13 +10,13 @@ The Registry does **not** depend on npm.
 
 ## Current status
 
-As of 2026-10-07:
+As of 2026-11-04:
 
 - Registry namespace: `io.github.jabbertones-cloud/wwdc`
 - Registry package type: `mcpb`
 - GitHub release assets include:
   - `wwdc-mcp-server-X.Y.Z.tgz`
-  - `WWDC-MCP-vX.Y.Z.mcpb`
+  - `AppDev-Atlas-vX.Y.Z.mcpb`
 - `.github/workflows/registry.yml` validates and publishes `server.json` with GitHub OIDC.
 - `.github/workflows/publish.yml` verifies tag releases and publishes the Registry entry; npm publishing runs only when repository variable `ENABLE_NPM_PUBLISH=true`.
 - npm is not required for Registry or Cursor distribution.
@@ -69,9 +69,9 @@ npm exec --yes --package=@anthropic-ai/mcpb -- \
   mcpb validate packaging/mcpb/manifest.json
 
 npm exec --yes --package=@anthropic-ai/mcpb -- \
-  mcpb pack packaging/mcpb WWDC-MCP-vX.Y.Z.mcpb
+  mcpb pack packaging/mcpb AppDev-Atlas-vX.Y.Z.mcpb
 
-shasum -a 256 WWDC-MCP-vX.Y.Z.mcpb
+shasum -a 256 AppDev-Atlas-vX.Y.Z.mcpb
 ```
 
 Put the exact SHA-256 into `server.json`.

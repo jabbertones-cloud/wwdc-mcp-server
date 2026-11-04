@@ -1,6 +1,6 @@
 # wwdc-mcp-server source of truth
 
-Updated: 2026-10-07
+Updated: 2026-11-04
 
 For **public behavior and release claims, the repository is the source of truth**. External research systems can suggest improvements, but they do not override the code, tests, package metadata, or published release artifacts.
 
@@ -9,7 +9,7 @@ For **public behavior and release claims, the repository is the source of truth*
 - Repository: `https://github.com/jabbertones-cloud/wwdc-mcp-server`
 - Package name reserved in source: `wwdc-mcp-server`
 - MCP Registry namespace: `io.github.jabbertones-cloud/wwdc`
-- Current source version: `0.2.1`
+- Current source version: `0.2.2`
 - Runtime: Node.js `>=22.14.0`, TypeScript
 - Default transport: MCP stdio
 - Optional transport: authenticated stateless Streamable HTTP
@@ -18,11 +18,11 @@ For **public behavior and release claims, the repository is the source of truth*
 
 ## Distribution status
 
-As of 2026-10-07, the official MCP Registry entry `io.github.jabbertones-cloud/wwdc` is published through a GitHub-hosted MCPB bundle. GitHub source checkout and the signed release assets are public distribution paths.
+As of 2026-11-04, the official MCP Registry entry `io.github.jabbertones-cloud/wwdc` is published through a GitHub-hosted MCPB bundle. GitHub source checkout and the signed release assets are public distribution paths.
 
 The npm package `wwdc-mcp-server` is still **not published**. npm is optional secondary distribution and must not be described as live until an authenticated first publish succeeds.
 
-Registry versions are immutable. v0.2.1 is active/latest. v0.2.0 is deprecated because its initial MCPB launcher did not opt into npm 12 remote-tarball fetching.
+Registry versions are immutable. v0.2.1 was previously active/latest; v0.2.2 carries the AppDev Atlas title. Verify active/latest status directly using the Registry REST API; source metadata alone cannot prove publication. v0.2.0 was deprecated because its initial MCPB launcher did not opt into npm 12 remote-tarball fetching.
 
 ## Public capability claims
 
@@ -57,7 +57,7 @@ The built server exposes exactly 45 read-only tools. The executable contract is 
 
 If a tool is added, removed, or renamed, update the manifest, both protocol tests, README, and changelog in the same change.
 
-## Latest verified evidence
+## Historical v0.2.1 release evidence
 
 On 2026-10-07:
 
