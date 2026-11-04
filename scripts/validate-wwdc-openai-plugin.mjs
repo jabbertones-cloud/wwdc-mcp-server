@@ -84,6 +84,10 @@ for(const f of ['assets/icon.png','assets/composer-icon.png','icon.png','compose
  const width=data.readUInt32BE(16),height=data.readUInt32BE(20);
  assert.ok(width>=128&&height>=128&&width===height,`square artwork required ${f}`);
 }
+const privacyPage=fs.readFileSync(path.join(ROOT,'website/privacy.html'),'utf8');
+assert.match(privacyPage,/7 days/,'privacy page must disclose operational log retention');
+assert.match(privacyPage,/31 days/,'privacy page must disclose aggregate HTTP analytics retention');
+assert.match(privacyPage,/does not store your MCP search queries/i,'privacy page must disclose application data retention');
 assert.ok(!JSON.stringify(publicManifest).includes('test_credentials'),'do not include credentials in submission metadata');
 assert.ok(!JSON.stringify(publicManifest).includes('reviewer_instructions'),'reviewer instructions must use dashboard');
 // Assert the validator actually detects the originally reported regressions.
