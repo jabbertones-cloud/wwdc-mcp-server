@@ -303,11 +303,17 @@ async function main(): Promise<void> {
       "apple_forum_search",
       "wwdc_session_summary",
       "apple_cross_references",
-      "wwdc_export_status",
+      "wwdc_index_counts",
       "wwdc_security_manifest",
     ];
     for (const name of expected) assert.ok(names.has(name), `missing tool: ${name}`);
     assert.equal(names.size, expected.length, `unexpected tool count: ${names.size}`);
+
+    const indexTool = listed.tools.find(t => t.name === "wwdc_index_counts");
+    assert.ok(indexTool, "index-count tool should be discoverable");
+    assert.match(indexTool.title ?? "", /indexed corpus row counts/i);
+    assert.match(indexTool.description ?? "", /does not export or transfer data/i);
+    assert.ok(!names.has("wwdc_export_status"), "misleading legacy name must not be publicly advertised");
 
     // Helper
     const call = async (name: string, args: Record<string, unknown>): Promise<CallResult> =>

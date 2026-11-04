@@ -452,7 +452,7 @@ Most query tools read from the local SQLite index. `apple_doc_lookup` is intenti
 
 - `swift_app_audit`
 - `apple_swift_pattern_find`, `apple_cross_references`
-- `wwdc_ingest_status`, `wwdc_export_status`
+- `wwdc_ingest_status`, `wwdc_index_counts`
 - `wwdc_security_manifest`
 
 The test suite asserts that both stdio and Streamable HTTP expose exactly 45 tools.

@@ -44,7 +44,7 @@ export const CANONICAL_TOOL_NAMES = [
   "apple_forum_search",
   "wwdc_session_summary",
   "apple_cross_references",
-  "wwdc_export_status",
+  "wwdc_index_counts",
   "wwdc_security_manifest",
 ] as const;
 
