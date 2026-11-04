@@ -42,13 +42,15 @@ assert.equal(privateManifest.version,'0.1.0','preserve historical private plugin
 assertAligned(privateManifest);
 assert.equal(privateManifest.interface.shortDescription,'Apple developer evidence');
 assert.equal(privateMcp.mcpServers.wwdc.url,'https://wwdc-mcp.smatdesigns.com/mcp');
-assert.equal(publicManifest.name,'wwdc-apple-developer','preserve existing public plugin identity');
+assert.equal(publicManifest.name,'appdev-atlas','public package must use independent product identity');
 assert.equal(publicManifest.version,'0.2.6','this is a NEXT version candidate, not submitted 0.2.5');
 assertAligned(publicManifest);
 assert.deepEqual(publicManifest,mirror,'root and agent plugin manifest copies must agree');
 assert.deepEqual(publicManifest.interface,publicManifest.extensions['com.openai'].interface,'public interfaces must not diverge');
-assert.equal(publicManifest.interface.displayName,'WWDC');
-assert.equal(publicManifest.interface.shortDescription,'Apple developer evidence');
+assert.equal(publicManifest.interface.displayName,'AppDev Atlas');
+assert.ok(!/\b(WWDC|Apple|OpenAI|ChatGPT)\b/i.test(publicManifest.interface.displayName),'no third-party marks in public display name');
+assert.equal(publicManifest.interface.shortDescription,'Source-backed app research');
+assert.match(publicManifest.interface.longDescription,/not affiliated with or endorsed by Apple or OpenAI/i,'public listing must disclose independence');
 assert.equal(publicMcp.mcpServers.wwdc.url,'https://wwdc-mcp.smatdesigns.com/mcp');
 assert.equal(publicMcp.mcpServers.wwdc.extensions['com.openai'].auth.type,'none');
 const ext=publicManifest.extensions['com.openai'];
@@ -70,6 +72,8 @@ for(const [lang,item] of Object.entries(translations)){
  assert.ok(typeof item.subtitle==='string'&&item.subtitle.trim()&&!/[\r\n\t]/.test(item.subtitle));
  assert.ok([...item.subtitle].length<=30,`overlong locale subtitle ${lang}: ${[...item.subtitle].length}`);
  assert.ok(typeof item.description==='string'&&item.description.trim());
+ assert.ok(item.description.includes('AppDev Atlas'),`locale ${lang} must identify AppDev Atlas`);
+ assert.ok(!/^WWDC\b/i.test(item.description.trim()),`locale ${lang} must not present WWDC as product name`);
  assert.ok([...item.description].length<=4000,`overlong locale description ${lang}`);
 }
 const needed=['plugin.json','.agent-plugin/plugin.json','mcp.json','assets/icon.png','assets/composer-icon.png','icon.png','composer-icon.png','README.txt'];
