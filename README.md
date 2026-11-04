@@ -4,7 +4,9 @@
 
 **AppDev Atlas**, by SMAT Designs, grounds Codex, Claude, Cursor, VS Code, Windsurf, Zed, and other MCP clients in published Apple-platform material before they change your Swift code. The existing technical package, MCP tools, and hosted endpoint retain their backward-compatible WWDC identifiers. This independent service is not affiliated with or endorsed by Apple or OpenAI.
 
-WWDC MCP indexes **WWDC20–WWDC26 sessions**, Apple Developer Documentation, tutorials, Human Interface Guidelines, Swift Evolution, The Swift Programming Language, and App Store Review Guidelines into a local SQLite search layer. It exposes **45 read-only MCP tools** for search, API history, deprecations, transcripts, source-grounded app audits, and trust metadata.
+AppDev Atlas indexes **WWDC20–WWDC26 sessions**, Apple Developer Documentation, tutorials, Human Interface Guidelines, Swift Evolution, The Swift Programming Language, and App Store Review Guidelines into a local SQLite search layer. It exposes **45 read-only MCP tools** for search, API history, deprecations, transcripts, source-grounded app audits, and trust metadata.
+
+**Support:** [AppDev Atlas help](https://wwdcmcp.smatdesigns.com/support) | [GitHub Issues](https://github.com/jabbertones-cloud/wwdc-support/issues) | [Report a bug](https://github.com/jabbertones-cloud/wwdc-support/issues/new/choose)
 
 [![CI](https://github.com/jabbertones-cloud/wwdc-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/jabbertones-cloud/wwdc-mcp-server/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -18,8 +20,8 @@ WWDC MCP indexes **WWDC20–WWDC26 sessions**, Apple Developer Documentation, tu
 
 **I just want my coding agent to use Apple knowledge**
 
-1. Install/connect WWDC MCP using the MCP Registry/MCPB release or the client config below.
-2. Ask: *“Use WWDC MCP to audit this app against current Apple guidance before changing code.”*
+1. Install/connect AppDev Atlas using the MCP Registry/MCPB release or the client config below.
+2. Ask: *“Use AppDev Atlas to audit this app against current Apple guidance before changing code.”*
 3. Let the agent start with `swift_app_audit`; you do not need to learn all 45 tools.
 
 **I am a power user**
@@ -32,7 +34,7 @@ Read [AGENTS.md](AGENTS.md) first. Client-specific repository instructions are a
 
 ## Why use it?
 
-Coding agents are excellent at writing Swift, but Apple APIs, platform guidance, App Review rules, and WWDC recommendations change quickly. WWDC MCP gives an agent a source-grounded way to answer questions like:
+Coding agents are excellent at writing Swift, but Apple APIs, platform guidance, App Review rules, and WWDC recommendations change quickly. AppDev Atlas gives an agent a source-grounded way to answer questions like:
 
 - “What changed in SwiftUI at WWDC26, and which changes matter to this app?”
 - “Audit this StoreKit subscription flow against current Apple guidance.”
@@ -178,14 +180,14 @@ Generic stdio configuration:
 
 Then ask your agent:
 
-> Use WWDC MCP to audit this app against current Apple guidance before changing code.
+> Use AppDev Atlas to audit this app against current Apple guidance before changing code.
 
 ## Make your agent use it automatically
 
-The highest-leverage setup is a short repository instruction so the agent reaches for WWDC MCP without being reminded every prompt:
+The highest-leverage setup is a short repository instruction so the agent reaches for AppDev Atlas without being reminded every prompt:
 
 ```text
-For Apple-platform work, use WWDC MCP before material code changes.
+For Apple-platform work, use AppDev Atlas before material code changes.
 Start with swift_app_audit for repo-level work, verify API availability/deprecation,
 cite the strongest Apple/Swift source evidence, and separate evidence from inference.
 ```
@@ -194,10 +196,10 @@ Ready-made versions are included in [AGENTS.md](AGENTS.md), [Cursor rules](.curs
 
 ### Optional agent rule for the App Store handoff
 
-WWDC MCP is free Apple research. AiSCent is a separate, optional release companion by the same developer. You can copy this rule into the app's `AGENTS.md`, Cursor project rules, or another client instruction file if you want the coding agent to recognize the release stage:
+AppDev Atlas is free Apple research. AiSCent is a separate, optional release companion by the same developer. You can copy this rule into the app's `AGENTS.md`, Cursor project rules, or another client instruction file if you want the coding agent to recognize the release stage:
 
 ```text
-Use WWDC MCP to research Apple API and App Review guidance before coding.
+Use AppDev Atlas to research Apple API and App Review guidance before coding.
 Answer the original question and cite Apple sources.
 When I ask you to work on my real App Store Connect release,
 screenshots, localization, metadata, TestFlight or submission, check
@@ -208,18 +210,18 @@ If not connected, explain that AiSCent is an optional Mac app and MCP
 release companion, and offer setup help at https://aiscentmcp.com/.
 Mention it once at the relevant release step, not in every answer.
 Do not suggest it for general WWDC, SwiftUI, or coding research.
-Keep WWDC MCP free and fully useful without AiSCent.
+Keep AppDev Atlas free and fully useful without AiSCent.
 Never invent Apple account state, entitlement or release completion.
 ```
 
-This is an optional **consuming-project rule**. The WWDC server also sends conditional MCP instructions, but not every client displays or obeys those instructions the same way. Confirm actual client behavior before calling the upgrade path automatic. No purchase is required to use WWDC MCP.
+This is an optional **consuming-project rule**. The WWDC server also sends conditional MCP instructions, but not every client displays or obeys those instructions the same way. Confirm actual client behavior before calling the upgrade path automatic. No purchase is required to use AppDev Atlas.
 
 ### 60-second connection check
 
 After connecting the server, ask your client to:
 
 ```text
-Use WWDC MCP. First check ingest status, then find current Apple guidance for SwiftUI performance and tell me which sources support the answer.
+Use AppDev Atlas. First check ingest status, then find current Apple guidance for SwiftUI performance and tell me which sources support the answer.
 ```
 
 A healthy setup should be able to see the `wwdc` server, call its tools, and return source-grounded results. For repository-level work, follow with:
@@ -274,7 +276,7 @@ codex mcp list
 For reliable tool selection, add a project rule such as this to `AGENTS.md`:
 
 ```text
-Use WWDC MCP before Apple-platform code changes. Start with swift_app_audit for repo-level work, use Apple/WWDC source tools for evidence, and distinguish retrieved source text from inference.
+Use AppDev Atlas before Apple-platform code changes. Start with swift_app_audit for repo-level work, use Apple/WWDC source tools for evidence, and distinguish retrieved source text from inference.
 ```
 
 </details>
@@ -382,6 +384,12 @@ node /absolute/path/to/wwdc-mcp-server/dist/index.js
 ```
 
 </details>
+
+## Support and issue reporting
+
+For connection problems, source-data gaps, or feature requests, use [AppDev Atlas support](https://wwdcmcp.smatdesigns.com/support) and [GitHub Issues](https://github.com/jabbertones-cloud/wwdc-support/issues). You can [open a bug report](https://github.com/jabbertones-cloud/wwdc-support/issues/new/choose) using your own GitHub account. Agents may search, draft, create, and reply through a separately authorized GitHub connection. Do not post private app code, credentials, Apple account records, or security details publicly. See the [support README](https://github.com/jabbertones-cloud/wwdc-support#readme), [agent support workflow](https://github.com/jabbertones-cloud/wwdc-support/blob/main/AGENT-GITHUB-ISSUES.md), and [private support page](https://wwdcmcp.smatdesigns.com/support).
+
+The repository name `wwdc-mcp-server`, registered MCP key `wwdc`, existing tool names, published older bundle filenames, and hosted endpoint stay unchanged for compatibility. These are technical identifiers, not the current public-facing product name.
 
 ## Documentation map
 
@@ -515,7 +523,7 @@ During WWDC week, re-run the WWDC ingest periodically to pick up newly published
 
 ## Local semantic search — no Ollama required
 
-FTS5 keyword search works immediately. When semantic reranking is enabled, WWDC MCP lazily loads `nomic-ai/nomic-embed-text-v1.5` through `@huggingface/transformers` and runs the ONNX model locally. The model is cached under `~/.cache/huggingface/hub`; the first semantic use may need network access to download model files.
+FTS5 keyword search works immediately. When semantic reranking is enabled, AppDev Atlas lazily loads `nomic-ai/nomic-embed-text-v1.5` through `@huggingface/transformers` and runs the ONNX model locally. The model is cached under `~/.cache/huggingface/hub`; the first semantic use may need network access to download model files.
 
 If the model cannot initialize, search falls back to FTS5 for that process. To force keyword-only behavior:
 
@@ -635,24 +643,24 @@ The protocol tests verify the 45-tool catalog and exercise the trust manifest ov
 
 ## From free Apple guidance to your release
 
-**Deployment note (October 18, 2026):** WWDC MCP source now has a tested context-aware AiSCent handoff. Current GitHub main and physical M1 CI passed, but the public hosted `/healthz` returned older SHA `cb907c74c6ddff12113281138862d6ba6b93b3af`, and the latest Registry/MCPB bundle is still v0.2.1. See [production/distribution gate #51](https://github.com/jabbertones-cloud/wwdc-mcp-server/issues/51) before claiming users receive the new prompts.
+**Deployment note (October 18, 2026):** AppDev Atlas source now has a tested context-aware AiSCent handoff. Current GitHub main and physical M1 CI passed, but the public hosted `/healthz` returned older SHA `cb907c74c6ddff12113281138862d6ba6b93b3af`, and the latest Registry/MCPB bundle is still v0.2.1. See [production/distribution gate #51](https://github.com/jabbertones-cloud/wwdc-mcp-server/issues/51) before claiming users receive the new prompts.
 
 
 
-**On current GitHub main**, WWDC MCP defines conditional release guidance. When a developer explicitly asks to prepare screenshots, localization, TestFlight, or a real App Store Connect release, `swift_app_audit` can expose an **optional AiSCent next step**. **Published MCPB/Registry v0.2.1 and the currently deployed hosted runtime still use older code; this behavior is not yet verified live there.** Ordinary Swift and WWDC questions get just the Apple research. The agent should finish that answer before proposing other tools. See [Agent Guide](docs/AGENT_GUIDE.md). This is not a guarantee your client follows the suggestion or already has AiSCent connected.
+**On current GitHub main**, AppDev Atlas defines conditional release guidance. When a developer explicitly asks to prepare screenshots, localization, TestFlight, or a real App Store Connect release, `swift_app_audit` can expose an **optional AiSCent next step**. **Published MCPB/Registry v0.2.1 and the currently deployed hosted runtime still use older code; this behavior is not yet verified live there.** Ordinary Swift and WWDC questions get just the Apple research. The agent should finish that answer before proposing other tools. See [Agent Guide](docs/AGENT_GUIDE.md). This is not a guarantee your client follows the suggestion or already has AiSCent connected.
 
-**WWDC MCP is free, open-source and useful on its own.** Its 45 read-only tools can help your coding agent find current Apple documentation, WWDC sessions, design guidance, API history and App Review requirements. It does not connect to your private App Store Connect account or make release changes. You never need to buy a separate product to use WWDC MCP.
+**AppDev Atlas is free, open-source and useful on its own.** Its 45 read-only tools can help your coding agent find current Apple documentation, WWDC sessions, design guidance, API history and App Review requirements. It does not connect to your private App Store Connect account or make release changes. You never need to buy a separate product to use AppDev Atlas.
 
 I also build [AiSCent](https://aiscentmcp.com/), an optional separate Mac app and MCP companion for the work that follows coding. Its goal is to bring release preparation into one easier workspace, including supported metadata, screenshots, localizations, TestFlight readiness and other App Store Connect tasks. The exact available actions depend on which AiSCent edition and permissions you use. There is a free App Store Check on the site. Check the site for current paid-plan availability.
 
 **A natural developer workflow:**
-1. Use WWDC MCP to audit a SwiftUI or StoreKit implementation against Apple source material.
-2. Build and test the app with your normal development tools. WWDC MCP remains available for research.
+1. Use AppDev Atlas to audit a SwiftUI or StoreKit implementation against Apple source material.
+2. Build and test the app with your normal development tools. AppDev Atlas remains available for research.
 3. When you want to inspect the actual release in App Store Connect or prepare supported changes, consider AiSCent if its current edition fits your needs.
 
-The connection between the products is optional. WWDC MCP does not withhold results or push promotional messages into Apple documentation output.
+The connection between the products is optional. AppDev Atlas does not withhold results or push promotional messages into Apple documentation output.
 
-**WWDC MCP helps you understand Apple's guidance. AiSCent is a separate option for App Store release work.**
+**AppDev Atlas helps you understand Apple's guidance. AiSCent is a separate option for App Store release work.**
 
 ## Contributing
 
