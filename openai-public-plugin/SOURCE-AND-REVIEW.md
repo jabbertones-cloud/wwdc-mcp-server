@@ -9,7 +9,7 @@ This directory mirrors the existing public WWDC plugin, rather than the historic
 - Candidate source version in this directory: **0.2.6, not uploaded, not submitted**. Public-facing name is AppDev Atlas; immutable existing package name remains wwdc-apple-developer. Existing URL and tools remain backward-compatible.
 - Create or revise the same rejected public plugin from the updated ZIP. Do not create a duplicate plugin if the dashboard can revise the rejected submission.
 - The previous 0.2.5 ZIP had a reviewer case asking `apple_api_availability` for `NavigationStack`, but direct lookup returned no rows on October 29. The 0.2.6 candidate uses a tested App Store Review guideline lookup instead.
-- No changes to the WWDC MCP runtime, auth, endpoint, tool descriptions, annotations, or corpus.
+- The public plugin ZIP is unchanged by the runtime branding pass. Internal IDs, authentication, endpoint, tool count and corpus remain compatible; agent instructions, user-facing tool titles, and Registry/MCPB source display metadata are aligned separately.
 - `plugin.json` and `.agent-plugin/plugin.json` deliberately match exactly.
 - `README.txt` and `SUBMISSION.json` in the previously uploaded archive were not fully synchronized; new canonical source omits stale submission-state metadata from the upload ZIP.
 

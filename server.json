@@ -1,8 +1,8 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.jabbertones-cloud/wwdc",
-  "title": "WWDC MCP",
-  "description": "Apple developer intelligence for agents: WWDC26, docs, HIG, Swift, App Review, and app audits.",
+  "title": "AppDev Atlas",
+  "description": "AppDev Atlas: independent Apple developer intelligence, WWDC sessions, Swift, HIG and App Review.",
   "repository": {
     "url": "https://github.com/jabbertones-cloud/wwdc-mcp-server",
     "source": "github"

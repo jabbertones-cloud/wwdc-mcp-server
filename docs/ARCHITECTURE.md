@@ -1,6 +1,6 @@
 # Architecture and trust model
 
-WWDC MCP is intentionally a **knowledge server**, not an Apple-account automation server.
+AppDev Atlas is intentionally a **knowledge server**, not an Apple-account automation server.
 
 ```text
 Apple / Swift public sources
@@ -69,8 +69,8 @@ The server prefers:
 
 ## Product boundary
 
-WWDC MCP answers **“What does current Apple/Swift evidence say?”**
+AppDev Atlas answers **“What does current Apple/Swift evidence say?”**
 
 A coding agent can use that evidence to propose code. Separate tools control whether code is edited.
 
-AiSCent is a separate product for App Store Connect execution and release workflows. WWDC MCP should not absorb account mutation merely to become a larger MCP.
+AiSCent is a separate product for App Store Connect execution and release workflows. AppDev Atlas should not absorb account mutation merely to become a larger MCP.

@@ -1,12 +1,12 @@
 name: Bug report
-description: Report a reproducible WWDC MCP defect
+description: Report a reproducible AppDev Atlas defect
 title: "[Bug]: "
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for helping improve WWDC MCP. Do not include credentials, private repository content, or Apple account data.
+        Thanks for helping improve AppDev Atlas. Do not include credentials, private repository content, or Apple account data.
   - type: input
     id: version
     attributes:
