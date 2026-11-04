@@ -60,7 +60,7 @@ import {
   searchAppleDevForums,
   getSessionSummary,
   getCrossReferences,
-  getExportStatus,
+  getIndexCounts,
 } from "../db/queries.js";
 import { httpGet, HttpError } from "../services/http.js";
 import { APPLE_DOCS_BASE } from "../constants.js";
@@ -2654,23 +2654,23 @@ export function registerAllTools(
     },
   );
 
-  // ---------- wwdc_export_status ----------
+  // ---------- wwdc_index_counts ----------
   server.registerTool(
-    "wwdc_export_status",
+    "wwdc_index_counts",
     {
-      title: "Database table counts (health check)",
+      title: "Get indexed corpus row counts",
       description:
-        "Returns row counts for all indexed tables. Use to quickly verify the state of the index — how many sessions, docs, summaries, cross-reference edges, etc. are available.",
+        "Get row counts for indexed developer-research corpus tables. Use this read-only health check to see how many sessions, documents, summaries, and cross-reference records are available. It does not export or transfer data.",
       inputSchema: {
         format: formatArg,
       },
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     async ({ format }) => {
-      const rows = getExportStatus(db);
+      const rows = getIndexCounts(db);
       const total = rows.reduce((sum, r) => sum + r.count, 0);
       const md = [
-        `# Database export status`,
+        `# Indexed corpus row counts`,
         ``,
         ...rows.map((r) => `- **${r.table_name}**: ${r.count.toLocaleString("en-US")} rows`),
         ``,

@@ -1829,9 +1829,9 @@ export function getCrossReferences(
   return { outgoing, incoming };
 }
 
-// ---------- export_status ----------
+// ---------- index_counts ----------
 
-export function getExportStatus(db: DatabaseType): Array<{ table_name: string; count: number }> {
+export function getIndexCounts(db: DatabaseType): Array<{ table_name: string; count: number }> {
   const tables = [
     "sessions",
     "sessions_with_transcript",
