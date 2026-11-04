@@ -18,7 +18,7 @@ Run `node scripts/validate-wwdc-openai-plugin.mjs` and `node scripts/build-wwdc-
 ## Trademark review repair, November 4, 2026
 
 - Rejection text: plugin name and/or description may imply affiliation with OpenAI, ChatGPT, or a third party or use potentially trademarked terms.
-- Public display name and package name: AppDev Atlas, independently published by SMAT Designs.
+- Public display name: **AppDev Atlas**, independently published by SMAT Designs. The immutable internal package name stays `wwdc-apple-developer` for revising the existing plugin.
 - Subtitle and all 38 localized descriptions reworked; WWDC remains only as a factual name of the sourced conference sessions.
 - New icon has no third-party words or logo. New demo uses AppDev Atlas, not WWDC for ChatGPT.
 - Existing MCP endpoint, 45 read-only tools and identifiers are preserved; website, privacy, terms and support pages use AppDev Atlas and explicit third-party independence disclaimer.
