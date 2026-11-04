@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<defs>
+ <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#08192f"/><stop offset=".55" stop-color="#101941"/><stop offset="1" stop-color="#311554"/></linearGradient>
+ <linearGradient id="edge" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#12cafa"/><stop offset=".56" stop-color="#3e7eff"/><stop offset="1" stop-color="#b775fc"/></linearGradient>
+ <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a6edff"/><stop offset=".48" stop-color="#4c9cfd"/><stop offset="1" stop-color="#ad67ff"/></linearGradient>
+ <radialGradient id="glow"><stop stop-color="#3a8afc" stop-opacity=".30"/><stop offset="1" stop-color="#3a8afc" stop-opacity="0"/></radialGradient>
+ <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="8"/></filter>
+</defs>
+<rect width="512" height="512" rx="113" fill="url(#bg)"/>
+<circle cx="250" cy="225" r="208" fill="url(#glow)"/>
+<g fill="none" stroke="url(#edge)" opacity=".63" stroke-width="3.5">
+ <path d="M124 259c-35-116 41-194 133-194s166 78 131 194"/>
+ <path d="M159 259c-13-115 32-194 98-194 66 0 111 79 98 194"/>
+ <path d="M257 66v175"/><path d="M106 185c102-37 202-37 301 0"/>
+ <path d="M130 130c83-24 173-24 255 0"/>
+</g>
+<g fill="#a8efff"><circle cx="257" cy="66" r="8"/><circle cx="108" cy="183" r="7"/><circle cx="402" cy="185" r="7"/></g>
+<path d="M70 351l187-80 185 80-186 81z" fill="#0a0c30" opacity=".7" filter="url(#shadow)"/>
+<path d="M86 333l171-72 172 72-173 72z" fill="#122a58" stroke="#1ce1fe" stroke-width="4"/>
+<path d="M97 324l160-66 162 66-163 69z" fill="url(#paper)" opacity=".87"/>
+<path d="M107 291l150-67 154 67-155 66z" fill="#0a1e50" stroke="#8d6efa" stroke-width="4"/>
+<path d="M114 281l143-61 145 61-146 64z" fill="url(#paper)" opacity=".75"/>
+<g transform="translate(256 205)">
+ <circle r="77" fill="#111a48" opacity=".88"/>
+ <circle r="70" fill="none" stroke="#8adcff" stroke-width="6" opacity=".85"/>
+ <path d="M0-93L22-18 89 0 21 19 0 93 -22 18 -89 0 -20-21z" fill="url(#paper)" stroke="#d5f8ff" stroke-width="3"/>
+ <path d="M0-93L22-18 0 2z" fill="#f5ffff"/><path d="M89 0L21 19 0 2z" fill="#a977ff"/><path d="M0 93L-22 18 0 2z" fill="#7446e3"/><circle r="7" fill="#fff"/>
+</g>
+</svg>

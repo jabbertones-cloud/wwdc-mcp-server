@@ -125,10 +125,11 @@ if(process.argv.includes('--live')){
   const text=(result.content||[]).filter(x=>x.type==='text').map(x=>x.text).join('\n');
   assert.ok(text.length>10,`empty reviewer response: ${name}`);
   const json=JSON.parse(text);
-  if(name==='wwdc_search'||name==='appstore_guidelines_search')assert.ok(json.hits.length>0,`${name} no indexed evidence`);
-  if(name==='wwdc_list_years')assert.ok(json.years.some(x=>x.year===2026));
-  if(name==='wwdc_security_manifest')assert.equal(json.tool_count,45);
-  if(name==='wwdc_ingest_status')assert.ok(json.status?.length>0);
+  const data=json.data ?? json; // large live answers may be safely compacted inside a data envelope
+  if(name==='wwdc_search'||name==='appstore_guidelines_search')assert.ok(data.hits?.length>0,`${name} no indexed evidence`);
+  if(name==='wwdc_list_years')assert.ok(data.years?.some(x=>x.year===2026));
+  if(name==='wwdc_security_manifest')assert.equal(data.tool_count,45);
+  if(name==='wwdc_ingest_status')assert.ok(data.status?.length>0,`${name} no corpus source status`);
   console.log(`[plugin:live] ${name} passed`);
  }
  for(const url of [publicManifest.interface.websiteURL,publicManifest.interface.supportURL,publicManifest.interface.privacyPolicyURL,publicManifest.interface.termsOfServiceURL,ext.review.demo_recording_url]){
