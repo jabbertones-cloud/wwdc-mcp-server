@@ -11,3 +11,11 @@
 Before opening an issue, try the 60-second connection check in the README and search existing issues.
 
 Never post API keys, bearer tokens, signing credentials, private source code, customer data, or Apple account information.
+
+## Public GitHub Issues and agent support
+
+- **Public bug reports and feature requests:** https://github.com/jabbertones-cloud/wwdc-support/issues
+- **Start a sanitized report:** https://github.com/jabbertones-cloud/wwdc-support/issues/new/choose
+- **Agent protocol:** https://github.com/jabbertones-cloud/wwdc-support/blob/main/AGENT-GITHUB-ISSUES.md
+
+Agents may use GitHub's **official MCP server** with the user's own GitHub authorization to search/read public issues, create requested bug reports, and comment on existing tickets. These operations are separate from this product's MCP login. No owner GitHub credential is embedded or delegated through the product. Before any public write, search for duplicates, remove secrets and customer data, and obtain the user's requested authorization. If the user's GitHub connection is unavailable, offer a redacted draft and the issue form link. Never claim that an issue or response was posted without a successful GitHub result.
