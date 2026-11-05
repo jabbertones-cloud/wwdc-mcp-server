@@ -9,7 +9,7 @@ For **public behavior and release claims, the repository is the source of truth*
 - Repository: `https://github.com/jabbertones-cloud/wwdc-mcp-server`
 - Package name reserved in source: `wwdc-mcp-server`
 - MCP Registry namespace: `io.github.jabbertones-cloud/wwdc`
-- Current source version: `0.2.2`
+- Current source version: `0.2.3`
 - Runtime: Node.js `>=22.14.0`, TypeScript
 - Default transport: MCP stdio
 - Optional transport: authenticated stateless Streamable HTTP
@@ -22,7 +22,7 @@ As of 2026-11-04, the official MCP Registry entry `io.github.jabbertones-cloud/w
 
 The npm package `wwdc-mcp-server` is still **not published**. npm is optional secondary distribution and must not be described as live until an authenticated first publish succeeds.
 
-Registry versions are immutable. v0.2.1 was previously active/latest; v0.2.2 carries the AppDev Atlas title. Verify active/latest status directly using the Registry REST API; source metadata alone cannot prove publication. v0.2.0 was deprecated because its initial MCPB launcher did not opt into npm 12 remote-tarball fetching.
+Registry versions are immutable. v0.2.1 was previously active/latest; v0.2.3 carries the AppDev Atlas title. Verify active/latest status directly using the Registry REST API; source metadata alone cannot prove publication. v0.2.0 was deprecated because its initial MCPB launcher did not opt into npm 12 remote-tarball fetching.
 
 ## Public capability claims
 

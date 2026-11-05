@@ -9,7 +9,7 @@ description: Initialize or refresh the local WWDC MCP Apple-source index.
 2. If the index is empty, initialize the high-value release corpus with the commands below. Run them one at a time and report failures instead of hiding them.
 
 ```bash
-PKG="https://github.com/jabbertones-cloud/wwdc-mcp-server/releases/download/v0.2.2/wwdc-mcp-server-0.2.2.tgz"
+PKG="https://github.com/jabbertones-cloud/wwdc-mcp-server/releases/download/v0.2.3/wwdc-mcp-server-0.2.3.tgz"
 
 npm exec --yes --allow-remote=all --package="$PKG" -- wwdc-mcp-ingest --source wwdc --year 2026
 npm exec --yes --allow-remote=all --package="$PKG" -- wwdc-mcp-ingest --source docs

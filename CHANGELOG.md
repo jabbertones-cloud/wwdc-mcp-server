@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## v0.2.3 — 2026-11-04
+
+- Reject misleading `swift_app_audit` code-review readiness when relevant Apple API/documentation evidence does not substantiate the reported failure. The 1,426-session, eight-task paired evaluation reduced unsupported high-readiness verdicts from 2 to 0.
+- Preserve exact CamelCase API symbols (including `NavigationStack`) in FTS5 search; use visible indexed excerpts, conservative ranking, and explicit no-exact-hit disclosures rather than unrelated WWDC sessions.
+- Make the hosted read-only MCP the first-time setup path. Align website/support and README, add accessible keyboard navigation and source URL copy with fallback, and verify candidate pages at 320/375/768/1024px.
+- Include repeatable product acceptance tests, real-MCP-client holdout receipts, an honest donor/research-gap record, and independent security/compatibility gates. Existing MCP namespace and 45 read-only tools remain unchanged.
+
+
 ## v0.2.2 — 2026-11-04
 
 - Publish the independent **AppDev Atlas** name to the official MCP Registry and GitHub MCPB release, preserving the existing technical namespace, 45 read-only research tools, and local install path.
