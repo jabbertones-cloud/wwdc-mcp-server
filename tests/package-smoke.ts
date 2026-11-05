@@ -66,10 +66,10 @@ const registryPackage = registry.packages?.[0];
 assert.equal(registryPackage?.registryType, "mcpb", "official Registry distribution must use MCPB");
 assert.equal(registryPackage?.version, pkg.version, "Registry package version must match package version");
 assert.equal(registryPackage?.transport?.type, "stdio");
-assert.match(
-  registryPackage?.identifier ?? "",
-  /\/releases\/download\/v0\.2\.2\/AppDev-Atlas-v0\.2\.2\.mcpb$/,
-  "Registry MCPB identifier must point at the immutable v0.2.3 GitHub release asset",
+assert.equal(
+  registryPackage?.identifier,
+  `https://github.com/jabbertones-cloud/wwdc-mcp-server/releases/download/v${pkg.version}/AppDev-Atlas-v${pkg.version}.mcpb`,
+  "Registry MCPB identifier must use the immutable GitHub release asset for the current package version",
 );
 assert.match(
   registryPackage?.fileSha256 ?? "",
