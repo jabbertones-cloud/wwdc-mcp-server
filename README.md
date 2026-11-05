@@ -12,7 +12,7 @@ AppDev Atlas indexes **WWDC20–WWDC26 sessions**, Apple Developer Documentation
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%3E%3D22.14-339933?logo=node.js&logoColor=white)](package.json)
 [![MCP](https://img.shields.io/badge/MCP-45%20read--only%20tools-5A45FF)](server.json)
-[![MCP Registry](https://img.shields.io/badge/MCP%20Registry-AppDev%20Atlas%20v0.2.2-5A45FF)](https://registry.modelcontextprotocol.io/v0.1/servers/io.github.jabbertones-cloud%2Fwwdc/versions/0.2.2)
+[![MCP Registry](https://img.shields.io/badge/MCP%20Registry-AppDev%20Atlas%20v0.2.3-5A45FF)](https://registry.modelcontextprotocol.io/v0.1/servers/io.github.jabbertones-cloud%2Fwwdc/versions/0.2.3)
 
 > **Unofficial community project.** Not affiliated with or endorsed by Apple. Apple content remains subject to Apple's terms and source-site availability.
 
@@ -75,7 +75,7 @@ Choose the path that matches what you value. **Do not confuse “local-first” 
 | Path | User work | Best for | Status |
 | --- | --- | --- | --- |
 | Hosted remote MCP | paste/connect one HTTPS MCP URL | ChatGPT, cloud/remote agents, fastest evaluation | public endpoint live; exact source, 45 tools, corpus and agent guidance verified November 4, 2026 |
-| MCPB / MCP Registry | install published bundle | clients with bundle/Registry support | v0.2.2 package; verify active/latest on Registry |
+| MCPB / MCP Registry | install published bundle | clients with bundle/Registry support | v0.2.3 package; verify active/latest on Registry |
 | Local stdio | clone/package + ingest + local client config | privacy, offline-ish retrieval, full local control | supported and tested |
 | Self-hosted HTTP | deploy + choose auth + TLS/edge | teams controlling their own infrastructure | supported and tested |
 
@@ -106,7 +106,7 @@ Use this path when you want the corpus and server on your own machine. For hoste
 - Node.js **22.14 or newer**
 - npm
 
-> **Distribution status (November 4, 2026):** the official MCP Registry namespace remains `io.github.jabbertones-cloud/wwdc`, distributed through a GitHub-hosted MCPB release asset. v0.2.2 is the current versioned release line; verify the published latest version through the Registry API. npm publication is optional secondary distribution and is not required for Registry or Cursor installs.
+> **Distribution status (November 4, 2026):** the official MCP Registry namespace remains `io.github.jabbertones-cloud/wwdc`, distributed through a GitHub-hosted MCPB release asset. v0.2.3 is the current versioned release line; verify the published latest version through the Registry API. npm publication is optional secondary distribution and is not required for Registry or Cursor installs.
 
 ### 1. Clone and build
 
@@ -127,13 +127,13 @@ wwdc-mcp-ingest   # build/update the local Apple knowledge index
 Run the immutable GitHub release package directly:
 
 ```bash
-PKG="https://github.com/jabbertones-cloud/wwdc-mcp-server/releases/download/v0.2.2/wwdc-mcp-server-0.2.2.tgz"
+PKG="https://github.com/jabbertones-cloud/wwdc-mcp-server/releases/download/v0.2.3/wwdc-mcp-server-0.2.3.tgz"
 
 npm exec --yes --allow-remote=all --package="$PKG" -- wwdc-mcp-ingest --source wwdc --year 2026
 npm exec --yes --allow-remote=all --package="$PKG" -- wwdc-mcp-server
 ```
 
-Clients that support MCP Bundles can use the `AppDev-Atlas-v0.2.2.mcpb` asset from the GitHub v0.2.2 release / official MCP Registry.
+Clients that support MCP Bundles can use the `AppDev-Atlas-v0.2.3.mcpb` asset from the GitHub v0.2.3 release / official MCP Registry.
 
 ### 2. Build a useful local index
 

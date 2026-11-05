@@ -58,7 +58,7 @@ See `docs/AGENT_GUIDE.md` for task routing and examples.
 
 ## Repository contract
 
-- Current public version: **0.2.2**
+- Current public version: **0.2.3**
 - Current indexed conference range: **WWDC20–WWDC26**
 - MCP surface: **exactly 45 read-only tools**
 - Default transport: stdio

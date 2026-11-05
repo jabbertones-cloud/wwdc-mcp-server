@@ -69,7 +69,7 @@ assert.equal(registryPackage?.transport?.type, "stdio");
 assert.match(
   registryPackage?.identifier ?? "",
   /\/releases\/download\/v0\.2\.2\/AppDev-Atlas-v0\.2\.2\.mcpb$/,
-  "Registry MCPB identifier must point at the immutable v0.2.2 GitHub release asset",
+  "Registry MCPB identifier must point at the immutable v0.2.3 GitHub release asset",
 );
 assert.match(
   registryPackage?.fileSha256 ?? "",
