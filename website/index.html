@@ -17,7 +17,7 @@ header.top{padding:20px 0;border-bottom:1px solid var(--line)}
 header.top .wrap{display:flex;align-items:center;justify-content:space-between}
 .logo{font-weight:700;font-size:18px;letter-spacing:.5px}
 .logo span{color:var(--accent)}
-nav a{color:var(--dim);text-decoration:none;margin-left:22px;font-size:15px}
+nav a{display:inline-flex;align-items:center;min-height:44px;color:var(--dim);text-decoration:none;margin-left:22px;font-size:15px}
 nav a:hover{color:var(--text)}
 a:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:3px}
 .skip-link{position:absolute;left:-10000px;top:8px;padding:8px 12px;background:var(--panel);color:var(--text);z-index:2}
@@ -25,8 +25,8 @@ a:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius
 .hero{padding:96px 0 72px;text-align:left}
 .hero .kicker{color:var(--accent);font-size:14px;font-weight:600;letter-spacing:2px;text-transform:uppercase;margin-bottom:20px}
 .hero h1{font-size:clamp(34px,6vw,58px);line-height:1.12;font-weight:800;letter-spacing:-1px;margin-bottom:24px}
-.hero p.sub{font-size:20px;color:var(--dim);max-width:640px;margin-bottom:36px}
-.btns{display:flex;gap:14px;flex-wrap:wrap}
+.hero p.sub{font-size:20px;color:var(--dim);max-width:640px;margin-bottom:18px}
+.btns{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:28px}
 .btn{display:inline-block;padding:13px 26px;border-radius:8px;font-weight:600;font-size:16px;text-decoration:none}
 .btn.primary{background:var(--accent);color:#04121f}
 .btn.ghost{border:1px solid var(--line);color:var(--text)}
@@ -48,6 +48,11 @@ pre{background:#0a0f14;border:1px solid var(--line);border-radius:10px;padding:2
 h3.step{font-size:19px;margin:30px 0 6px}
 h3.step:first-of-type{margin-top:10px}
 p.dim{color:var(--dim)}
+p.dim a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+p.dim a:hover{color:var(--text)}
+.copy-endpoint{display:inline-flex;align-items:center;min-height:44px;padding:10px 16px;border:1px solid var(--accent);border-radius:8px;color:var(--text);background:var(--panel);font:inherit;cursor:pointer}
+.copy-endpoint:hover{background:var(--bg)}
+.copy-feedback{display:inline-block;margin-left:12px;color:var(--dim);font-size:15px}
 .knowship{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:680px){
   header.top .wrap{flex-wrap:wrap;gap:12px}
@@ -83,14 +88,14 @@ footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
 <main id="main-content">
 <div class="wrap">
   <div class="hero">
-    <div class="kicker">Free hosted MCP · Optional local install · MIT open source</div>
-    <h1>Give your coding agent the Apple sources behind its answers.</h1>
-    <p class="sub">AppDev Atlas gives coding agents source-backed research from published WWDC 2020–2026 sessions, Apple developer documentation, HIG, Swift Evolution, and App Review guidance before they change your code.</p>
-    <p class="dim" style="margin-bottom:26px">Independent research tool by SMAT Designs. Not affiliated with or endorsed by Apple or OpenAI.</p>
+    <div class="kicker">Independent Apple developer research · Free</div>
+    <h1>Apple answers, backed by Apple sources.</h1>
     <div class="btns">
-      <a class="btn primary" href="#connect">Connect the free MCP</a>
+      <a class="btn primary" href="#connect">Connect AppDev Atlas</a>
       <a class="btn ghost" href="#local">Run it locally</a>
     </div>
+    <p class="sub">Connect your coding agent to WWDC 2020–2026 sessions, Apple documentation, HIG, Swift Evolution, and App Review guidance. Check real sources before changing your code.</p>
+    <p class="dim">By SMAT Designs. Not affiliated with or endorsed by Apple or OpenAI.</p>
   </div>
 </div>
 
@@ -136,11 +141,12 @@ footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
     <p class="lead">Start with the free hosted service in an MCP client that supports remote Streamable HTTP. No Node.js installation, local index, or Apple account is required for public read-only research.</p>
     <h3 class="step">1. Add the remote MCP URL</h3>
     <p class="dim">In your client's MCP settings, choose a remote HTTP MCP server and paste this endpoint. Connection steps differ by client.</p>
-<pre>https://wwdc-mcp.smatdesigns.com/mcp</pre>
+<pre id="mcp-endpoint" tabindex="0">https://wwdc-mcp.smatdesigns.com/mcp</pre>
+    <button class="copy-endpoint" type="button" id="copy-endpoint">Copy MCP URL</button><span class="copy-feedback" id="copy-feedback" role="status" aria-live="polite"></span>
     <p class="dim">If your client doesn't support remote Streamable HTTP, use the local installation below. The <a href="https://github.com/jabbertones-cloud/wwdc-mcp-server/releases/latest">latest MCPB bundle</a> is another option for compatible clients.</p>
 
     <h3 class="step">2. Ask a specific Apple development question</h3>
-<pre>Use AppDev Atlas to check current Apple guidance for SwiftUI navigation.
+<pre tabindex="0">Use AppDev Atlas to check current Apple guidance for SwiftUI navigation.
 Show the source links and say what still needs verification.</pre>
     <h3 class="step">3. Verify that it actually used the tools</h3>
     <p class="dim">Look for the MCP tool call, a real Apple source URL, and any corpus-freshness caveats. If the agent answers without invoking AppDev Atlas, check the connection and client permissions rather than assuming the research was performed.</p>
@@ -153,17 +159,17 @@ Show the source links and say what still needs verification.</pre>
     <p class="lead">Use the stdio server if you want to manage your own index and source updates. This path requires Node.js 22.14+, npm, network access for ingestion, and sufficient time and disk space for the selected corpus. It is not required for hosted use.</p>
 
     <h3 class="step">1. Clone and build</h3>
-<pre>git clone https://github.com/jabbertones-cloud/wwdc-mcp-server.git
+<pre tabindex="0">git clone https://github.com/jabbertones-cloud/wwdc-mcp-server.git
 cd wwdc-mcp-server
 npm ci
 npm run build</pre>
     <h3 class="step">2. Ingest the Apple sources you need</h3>
-<pre>npm run ingest:wwdc -- --year 2026</pre>
+<pre tabindex="0">npm run ingest:wwdc -- --year 2026</pre>
     <p class="dim">For all supported core sources, run <code>npm run ingest:all</code>. Ingestion can take longer depending on connectivity and corpus size. Keyword search uses local SQLite FTS5; optional semantic reranking uses Hugging Face Transformers/ONNX and may download model files on first use. Ollama is not required.</p>
 
     <h3 class="step">3. Connect a local MCP client</h3>
     <p class="dim">For example, in Cursor's <code>~/.cursor/mcp.json</code>:</p>
-<pre>{
+<pre tabindex="0">{
   "mcpServers": {
     "wwdc": {
       "command": "node",
@@ -201,5 +207,18 @@ npm run build</pre>
     <div><a href="https://github.com/jabbertones-cloud/wwdc-mcp-server">GitHub</a></div>
   </div>
 </footer>
+<script>
+const copyButton = document.getElementById("copy-endpoint");
+copyButton.addEventListener("click", async () => {
+  const message = document.getElementById("copy-feedback");
+  try {
+    await navigator.clipboard.writeText(document.getElementById("mcp-endpoint").textContent.trim());
+    message.textContent = "MCP URL copied";
+  } catch {
+    message.textContent = "Copy unavailable. Select the URL above.";
+    document.getElementById("mcp-endpoint").focus();
+  }
+});
+</script>
 </body>
 </html>

@@ -20,9 +20,9 @@ AppDev Atlas indexes **WWDC20–WWDC26 sessions**, Apple Developer Documentation
 
 **I just want my coding agent to use Apple knowledge**
 
-1. Install/connect AppDev Atlas using the MCP Registry/MCPB release or the client config below.
-2. Ask: *“Use AppDev Atlas to audit this app against current Apple guidance before changing code.”*
-3. Let the agent start with `swift_app_audit`; you do not need to learn all 45 tools.
+1. In a client that supports **remote Streamable HTTP MCP**, add `https://wwdc-mcp.smatdesigns.com/mcp`. No local install, account, or index is needed for public read-only research. If your client is local-only, choose the MCP Registry/MCPB bundle or stdio setup below.
+2. Ask: *“Use AppDev Atlas to audit this app against current Apple guidance before changing code. Include primary source links and uncertainty.”*
+3. **Check the tool really ran** and inspect its cited Apple evidence. A prompt alone does not guarantee MCP invocation, and an audit's `seed_context_only` result is not approval to edit code.
 
 **I am a power user**
 
@@ -91,9 +91,9 @@ For ChatGPT/custom remote MCP clients, that removes the local Node/index/config-
 
 A newcomer should be able to reach the **first source-grounded answer** with as few decisions as possible:
 
-- hosted: connect URL → ask the 60-second check;
-- Registry/MCPB: install → ask the 60-second check;
-- local: install → ingest → configure → ask the 60-second check.
+- hosted: connect URL → ask for a first source-grounded check;
+- Registry/MCPB: install → ask for a first source-grounded check;
+- local: install → ingest → configure → ask for a first source-grounded check.
 
 If a new distribution method adds steps before the first useful answer, treat that as an adoption regression unless it buys a clear privacy/security capability.
 

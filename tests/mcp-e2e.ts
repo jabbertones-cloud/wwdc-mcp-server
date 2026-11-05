@@ -369,7 +369,7 @@ async function main(): Promise<void> {
       const data = JSON.parse(textOf(r));
       const hit = data.hits.find((row: any) => row.id === "wwdc2024-99999");
       assert.ok(hit, "transcript-only fixture should still be discoverable");
-      assert.equal(hit.judgment.relevance_band, "medium", "recent transcript-only mentions are provisional, not highly relevant");
+      assert.equal(hit.judgment.relevance_band, "low", "a transcript-only mention cannot be scored as session-level relevance");
       assert.ok(hit.judgment.caveats.some((c: string) => c.includes("source excerpt")),
         "user must be told why a transcript-only hit requires context verification");
     }

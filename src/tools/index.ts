@@ -547,6 +547,15 @@ function judgeHit(query: string, hit: SearchHitWithJudgment): NonNullable<Search
   if ((hit.topics ?? []).some((topic) => topic.toLowerCase().includes(q))) reasons.push("query appears in topics/status");
   if ((hit.platforms ?? []).some((platform) => signals.platformTerms.includes(platform.toLowerCase()))) reasons.push("query appears in platform metadata");
   if (signals.frameworkTerms.some((term) => `${hit.title} ${(hit.topics ?? []).join(" ")} ${hit.snippet ?? ""}`.toLowerCase().includes(term))) reasons.push("Apple framework term matches indexed metadata");
+  // A multiword query can be present in a visible transcript excerpt even if
+  // the words are separated by natural language. This is one provisional
+  // relevance signal, never two independent votes for high confidence.
+  if (reasons.length === 0 && signals.normalized.includes(" ")) {
+    const terms = signals.normalized.split(" ").filter((term) => term.length >= 4);
+    const shown = `${hit.title} ${hit.snippet ?? ""} ${(hit.topics ?? []).join(" ")}`.toLowerCase();
+    if (terms.length >= 2 && terms.every((term) => shown.includes(term)))
+      reasons.push("all query terms appear in visible source excerpt");
+  }
   if (hit.kind === "session" && hit.year && hit.year >= 2024 && reasons.length === 0) {
     caveats.push("visible title and snippet do not show the match; inspect the full session/transcript before citing");
   }
@@ -561,7 +570,10 @@ function judgeHit(query: string, hit: SearchHitWithJudgment): NonNullable<Search
   // coarse relevance band — a field named `confidence` invites
   // boundary-walking of the judgment layer (same rule as W1's audit fix).
   const rawBand = reasons.length >= 2 ? "high" : reasons.length === 1 ? "medium" : "low";
-  const relevance_band = signals.isPlatformOnly && rawBand === "high" ? "medium" : rawBand;
+  // A single match in a source excerpt proves a mention, not that the
+  // surrounding session answers the user's question. Do not promote it.
+  const excerptOnly = hit.kind === "session" && reasons.length === 1 && reasons[0] === "query appears in indexed snippet";
+  const relevance_band = excerptOnly ? "low" : signals.isPlatformOnly && rawBand === "high" ? "medium" : rawBand;
   return { relevance_band, reasons, caveats, suggested_next_tools: next };
 }
 
@@ -903,7 +915,7 @@ function pickRankedAuditHits(
   return rows.slice(0, limit).map(({ priority, ...hit }) => hit);
 }
 
-function buildSwiftAuditSummary(args: {
+export function buildSwiftAuditSummary(args: {
   focus: z.infer<typeof swiftAuditFocusArg>;
   platforms: Array<z.infer<typeof platformArg>>;
   frameworks: string[];
@@ -932,10 +944,10 @@ function buildSwiftAuditSummary(args: {
   const symbolsVerified = requestedSymbols.every((symbol) =>
     evidenceText.some((source) => source.includes(symbol.toLowerCase())));
   const sourceFamilies = new Set(args.evidence.map((source) => source.kind));
-  const corroborated = sourceFamilies.size >= 2;
+  const corroborated = sourceFamilies.size >= 2 && (sourceFamilies.has("doc") || sourceFamilies.has("hig"));
   const directEvidence = substantiates(args.feature) && substantiates(args.symptom) && symbolsVerified && corroborated;
   if (!symbolsVerified) caveats.push("No direct indexed evidence for Apple API symbol(s): " + requestedSymbols.join(", ") + "; confirm the official API documentation before code changes");
-  if (!corroborated && (args.feature || args.symptom)) caveats.push("Sources do not corroborate the requested change across independent Apple source families");
+  if (!corroborated && (args.feature || args.symptom)) caveats.push("No indexed Apple API documentation or HIG excerpt corroborates the requested change across source families");
   if (!directEvidence) caveats.push("top source matches do not directly substantiate the requested feature or symptom; verify a focused Apple reference before code changes");
   if (args.indexedItems === 0) caveats.push("local index appears empty; run `npm run ingest:all` before relying on this audit");
   if (args.sourceCoverage?.hig === 0) caveats.push("HIG index is empty; run `npm run ingest:hig`");

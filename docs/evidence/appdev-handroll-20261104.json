@@ -1,0 +1,265 @@
+{
+  "tool": "unloopr_rehab_audit",
+  "source_mode": "owner_local_stdio_read_only",
+  "installed_source_sha": "eb2c1bd601f0577ae7ce5af77b40ebd789e4e7f4",
+  "runner_version": "ast-grep 0.40.0",
+  "repo_base_sha": "294ba6499ce147da50bf24f05c9da6b83c9d7207",
+  "scanner": {
+    "tool": "ast-grep",
+    "implementation": "ast-grep/ast-grep",
+    "rule_config": "handroll_rehab_rules.yml"
+  },
+  "coverage": {
+    "reported": 24,
+    "returned": 24,
+    "truncated": false,
+    "full_repo_exhaustive": false
+  },
+  "decision": "NO_AUTOMATIC_REPLACEMENT",
+  "classification": "CANDIDATES_REQUIRE_VERIFICATION",
+  "findings": [
+    {
+      "rule": "rehab-typescript-sql-count",
+      "category": "sql_count_guard",
+      "language": "TypeScript",
+      "path": "src/db/corpus.ts",
+      "line": 94,
+      "classification": "REVIEW_CANDIDATE",
+      "source_excerpts_returned": false
+    },
+    {
+      "rule": "rehab-typescript-sql-count",
+      "category": "sql_count_guard",
+      "language": "TypeScript",
+      "path": "src/db/queries.ts",
+      "line": 368,
+      "classification": "REVIEW_CANDIDATE",
+      "source_excerpts_returned": false
+    },
+    {
+      "rule": "rehab-typescript-sql-count",
+      "category": "sql_count_guard",
+      "language": "TypeScript",
+      "path": "src/db/queries.ts",
+      "line": 409,
+      "classification": "REVIEW_CANDIDATE",
+      "source_excerpts_returned": false
+    },
+    {
+      "rule": "rehab-typescript-sql-count",
+      "category": "sql_count_guard",
+      "language": "TypeScript",
+      "path": "src/db/queries.ts",
+      "line": 527,
+      "classification": "REVIEW_CANDIDATE",
+      "source_excerpts_returned": false
+    },
+    {
+      "rule": "rehab-typescript-sql-count",
+      "category": "sql_count_guard",
+      "language": "TypeScript",
+      "path": "src/db/queries.ts",
+      "line": 557,
+      "classification": "REVIEW_CANDIDATE",
+      "source_excerpts_returned": false
+    },
+    {
+      "rule": "rehab-typescript-sql-count",
+      "category": "sql_count_guard",
+      "language": "TypeScript",
+      "path": "src/db/queries.ts",
+      "line": 593,
+      "classification": "REVIEW_CANDIDATE",
+      "source_excerpts_returned": false
+    },
+    {
+      "rule": "rehab-typescript-sql-count",
+      "category": "sql_count_guard",
+      "language": "TypeScript",
+      "path": "src/db/queries.ts",
+      "line": 623,
+      "classification": "REVIEW_CANDIDATE",
+      "source_excerpts_returned": false
+    },
+    {
+      "rule": "rehab-typescript-sql-count",
+      "category": "sql_count_guard",
+      "language": "TypeScript",
+      "path": "src/db/queries.ts",
+      "line": 653,
+      "classification": "REVIEW_CANDIDATE",
+      "source_excerpts_returned": false
+    },
+    {
+      "rule": "rehab-typescript-sql-count",
+      "category": "sql_count_guard",
+      "language": "TypeScript",
+      "path": "src/db/queries.ts",
+      "line": 706,
+      "classification": "REVIEW_CANDIDATE",
+      "source_excerpts_returned": false
+    },
+    {
+      "rule": "rehab-typescript-sql-count",
+      "category": "sql_count_guard",
+      "language": "TypeScript",
+      "path": "src/db/queries.ts",
+      "line": 1023,
+      "classification": "REVIEW_CANDIDATE",
+      "source_excerpts_returned": false
+    },
+    {
+      "rule": "rehab-typescript-sql-count",
+      "category": "sql_count_guard",
+      "language": "TypeScript",
+      "path": "src/db/queries.ts",
+      "line": 1048,
+      "classification": "REVIEW_CANDIDATE",
+      "source_excerpts_returned": false
+    },
+    {
+      "rule": "rehab-typescript-sql-count",
+      "category": "sql_count_guard",
+      "language": "TypeScript",
+      "path": "src/db/queries.ts",
+      "line": 1072,
+      "classification": "REVIEW_CANDIDATE",
+      "source_excerpts_returned": false
+    },
+    {
+      "rule": "rehab-typescript-sql-count",
+      "category": "sql_count_guard",
+      "language": "TypeScript",
+      "path": "src/db/queries.ts",
+      "line": 1142,
+      "classification": "REVIEW_CANDIDATE",
+      "source_excerpts_returned": false
+    },
+    {
+      "rule": "rehab-typescript-sql-count",
+      "category": "sql_count_guard",
+      "language": "TypeScript",
+      "path": "src/db/queries.ts",
+      "line": 1220,
+      "classification": "REVIEW_CANDIDATE",
+      "source_excerpts_returned": false
+    },
+    {
+      "rule": "rehab-typescript-sql-count",
+      "category": "sql_count_guard",
+      "language": "TypeScript",
+      "path": "src/db/queries.ts",
+      "line": 1306,
+      "classification": "REVIEW_CANDIDATE",
+      "source_excerpts_returned": false
+    },
+    {
+      "rule": "rehab-typescript-sql-count",
+      "category": "sql_count_guard",
+      "language": "TypeScript",
+      "path": "src/db/queries.ts",
+      "line": 1359,
+      "classification": "REVIEW_CANDIDATE",
+      "source_excerpts_returned": false
+    },
+    {
+      "rule": "rehab-typescript-sql-count",
+      "category": "sql_count_guard",
+      "language": "TypeScript",
+      "path": "src/db/queries.ts",
+      "line": 1389,
+      "classification": "REVIEW_CANDIDATE",
+      "source_excerpts_returned": false
+    },
+    {
+      "rule": "rehab-typescript-sql-count",
+      "category": "sql_count_guard",
+      "language": "TypeScript",
+      "path": "src/db/queries.ts",
+      "line": 1864,
+      "classification": "REVIEW_CANDIDATE",
+      "source_excerpts_returned": false
+    },
+    {
+      "rule": "rehab-typescript-sql-count",
+      "category": "sql_count_guard",
+      "language": "TypeScript",
+      "path": "src/db/queries.ts",
+      "line": 1869,
+      "classification": "REVIEW_CANDIDATE",
+      "source_excerpts_returned": false
+    },
+    {
+      "rule": "rehab-typescript-sql-count",
+      "category": "sql_count_guard",
+      "language": "TypeScript",
+      "path": "src/export/deprecation-qa.ts",
+      "line": 59,
+      "classification": "REVIEW_CANDIDATE",
+      "source_excerpts_returned": false
+    },
+    {
+      "rule": "rehab-typescript-sql-count",
+      "category": "sql_count_guard",
+      "language": "TypeScript",
+      "path": "src/ingest/cross-reference-graph.ts",
+      "line": 42,
+      "classification": "REVIEW_CANDIDATE",
+      "source_excerpts_returned": false
+    },
+    {
+      "rule": "rehab-typescript-sql-count",
+      "category": "sql_count_guard",
+      "language": "TypeScript",
+      "path": "src/ingest/cross-reference-graph.ts",
+      "line": 138,
+      "classification": "REVIEW_CANDIDATE",
+      "source_excerpts_returned": false
+    },
+    {
+      "rule": "rehab-typescript-sql-count",
+      "category": "sql_count_guard",
+      "language": "TypeScript",
+      "path": "src/ingest/deprecation-backfill.ts",
+      "line": 54,
+      "classification": "REVIEW_CANDIDATE",
+      "source_excerpts_returned": false
+    },
+    {
+      "rule": "rehab-typescript-sql-count",
+      "category": "sql_count_guard",
+      "language": "TypeScript",
+      "path": "src/tools/index.ts",
+      "line": 839,
+      "classification": "REVIEW_CANDIDATE",
+      "source_excerpts_returned": false
+    }
+  ],
+  "research": {
+    "sql_count_guard": {
+      "research_status": "CONTEXT_REQUIRED",
+      "detected_languages": [
+        "TypeScript"
+      ],
+      "research_error": "A SQL COUNT alone is not evidence of a quota race. Confirm a read-then-write path, check existing DB transaction/lock, and verify Neon Workers compatibility before recommending or adapting the PostgreSQL donor.",
+      "donors": [],
+      "benchmark_contract": "Determine whether SELECT COUNT is actually an issuance limit and whether a transaction already holds the relevant lock. For quotas, compare 50+ simultaneous requests across two DB clients, per-IP/email caps, rollback on failed insert, TTL boundary and fail-closed errors. Test the actual Neon/Cloudflare driver and database, not an in-memory mock.",
+      "next_tool": "githubresearchmcp.fleet_tournament_plan",
+      "needs_context": true,
+      "note": "No dependency, source-SHA, license-compliance or benchmark win is inferred."
+    }
+  },
+  "proof_requirements": [
+    "Check existing dependencies through the package inventory; unknown is not absent",
+    "Bind donor source SHA, source path, pinned version and exact license text",
+    "Assess maintenance/security with OpenSSF Scorecard, OSV and GuardDog",
+    "Run original and donor on identical regression, adversarial and holdout fixtures",
+    "Use GitHubResearchMCP fleet_tournament_record only for sourced measured evidence",
+    "Require exact-head CI, merge readback and independent deployed/live acceptance"
+  ],
+  "notes": [
+    "Scan candidates, not proven defects",
+    "Source HEAD is last commit; uncommitted changes were also scanned by ast-grep",
+    "No automatic donor port or replacement was authorized"
+  ]
+}

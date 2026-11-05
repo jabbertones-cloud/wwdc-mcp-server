@@ -1,0 +1,35 @@
+{
+  "tool": "Unloopr canonical loop (history, scan, fix, verify, learn)",
+  "run_date": "2026-11-04",
+  "base_head_sha": "294ba6499ce147da50bf24f05c9da6b83c9d7207",
+  "scope": "Candidate production source changes, onboarding docs, and executable tests; not exhaustive full repository",
+  "configuration": "Current unified diff with package.json dependency names and first-party imports; language js",
+  "scan_result": {
+    "status": "CLEAN_DIFF_ONLY",
+    "findings": 0
+  },
+  "history_result": {
+    "status": "INCOMPLETE_EVIDENCE",
+    "reviewed_commits": 80,
+    "caveat": "History returned from GitHub but the canonical loop did not certify complete historical evidence"
+  },
+  "prior_detected_issue": {
+    "rule": "R-AI5",
+    "path": "scripts/quality-holdout.mjs",
+    "issue": "Fixed literal /tmp output path may collide under parallel runs",
+    "repair": "Use node:os tmpdir plus process pid as default filename, allow explicit WWDC_HOLDOUT_REPORT",
+    "post_fix_scan_findings": 0
+  },
+  "false_positive_triage": {
+    "scope": "Additional full-diff pass included JSON evidence snapshots",
+    "patterns": [
+      "p0063",
+      "p0001"
+    ],
+    "classification": "NON_EXECUTABLE_EVIDENCE_DATA_REVIEW",
+    "action": "Retain evidence with explicit source/freshness checks; no automatic code replacement",
+    "limitation": "Similarity warning on data files is not proof of source defect"
+  },
+  "verification": "MCP SDK 8-task holdout passed, all 45-tools E2E passed, new onboarding checks passed; full-repo and independent human review remain separate gates",
+  "claim_limit": "No claim of clean full repository, closed historical research, independent human approval, merged PR, or deployed fix"
+}
