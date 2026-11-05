@@ -561,7 +561,7 @@ export function searchSessionsFts(
   `).get(...params) as any).c;
   const rows = db.prepare(`
     SELECT s.id, s.title, s.url, s.year, s.topics, s.platforms,
-           snippet(sessions_fts, 2, '[', ']', '…', 16) AS snip,
+           snippet(sessions_fts, -1, '[', ']', '…', 16) AS snip,
            bm25(sessions_fts, 0, 10.0, 5.0, 1.0, 1.0) AS score
     FROM sessions_fts JOIN sessions s ON s.rowid = sessions_fts.rowid
     WHERE sessions_fts MATCH ? ${filterSql}
@@ -706,7 +706,7 @@ export function searchAppleDocsFts(
   const total = (db.prepare(`SELECT COUNT(*) AS c FROM apple_docs_fts WHERE apple_docs_fts MATCH ?`).get(query) as any).c;
   const rows = db.prepare(`
     SELECT d.id, d.title, d.url, d.modules, d.platforms,
-           snippet(apple_docs_fts, 2, '[', ']', '…', 16) AS snip,
+           snippet(apple_docs_fts, -1, '[', ']', '…', 16) AS snip,
            bm25(apple_docs_fts, 0, 10.0, 5.0, 1.0, 1.0, 1.0) AS score
     FROM apple_docs_fts JOIN apple_docs d ON d.rowid = apple_docs_fts.rowid
     WHERE apple_docs_fts MATCH ?

@@ -40,7 +40,7 @@ function seedDb(dbPath: string): void {
     id: "wwdc2024-10150",
     year: 2024, sessionNumber: "10150",
     title: "SwiftUI essentials",
-    description: "Learn the fundamentals of SwiftUI for building great apps across Apple platforms.",
+    description: "Learn the fundamentals of SwiftUI buttons and navigation for building great apps across Apple platforms.",
     url: "https://developer.apple.com/videos/play/wwdc2024/10150/",
     duration: 1700,
     topics: ["SwiftUI", "Swift"],
@@ -70,7 +70,7 @@ function seedDb(dbPath: string): void {
     title: "Query string deep links",
     description: "Regression fixture for sessions whose URLs already have query parameters.",
     url: "https://developer.apple.com/videos/play/wwdc2024/99999/?foo=bar",
-    transcript: "Deep links should preserve existing query parameters.",
+    transcript: "Deep links should preserve existing query parameters. A navigation stack can refer to a list of routes.",
     sampleCodeUrls: [],
     deepLinks: [],
   };
@@ -360,8 +360,30 @@ async function main(): Promise<void> {
       assert.equal(data.filters.require_transcript, true);
       assert.ok(data.hits.find((h: any) => h.id === "wwdc2024-10150"), "filtered SwiftUI session present");
       assert.ok(data.hits.every((h: any) => h.year === 2024), "year range applied");
-      assert.ok(data.hits[0].judgment.reasons.length >= 1, "per-hit judgment reasons");
+      assert.ok(data.hits[0].judgment.reasons.length >= 1 || data.hits[0].judgment.caveats.some((c: string) => c.includes("visible title and snippet")), "search must explain the visible evidence or disclose a transcript-only match");
       assert.ok(data.judgment.suggested_next_tools.includes("wwdc_get_session"), "overall judgment next tool");
+    }
+    // 1c-negative) Transcript-only matches must not be promoted merely for recency.
+    {
+      const r = await call("wwdc_search", { query: "existing", kinds: ["session"], format: "json" });
+      const data = JSON.parse(textOf(r));
+      const hit = data.hits.find((row: any) => row.id === "wwdc2024-99999");
+      assert.ok(hit, "transcript-only fixture should still be discoverable");
+      assert.equal(hit.judgment.relevance_band, "low", "a transcript-only mention cannot be scored as session-level relevance");
+      assert.ok(hit.judgment.caveats.some((c: string) => c.includes("source excerpt")),
+        "user must be told why a transcript-only hit requires context verification");
+    }
+    // 1c-symbol) CamelCase Apple API symbols are exact; "navigation stack"
+    // in a transcript cannot make an unrelated session look like proof.
+    {
+      const r = await call("wwdc_search", {
+        query: "NavigationStack", kinds: ["session"], year: 2024, format: "json",
+      });
+      const data = JSON.parse(textOf(r));
+      assert.equal(data.total, 0, "split English words are not the API symbol");
+      assert.equal(data.fallback, undefined, "do not silently broaden API symbols");
+      assert.ok(data.judgment.caveats.some((x: string) => x.includes("No exact indexed matches")),
+        "empty symbol result must explain how to broaden the search");
     }
     // 1d) wwdc_search — no-hit judgment is explicit
     {
@@ -685,6 +707,67 @@ async function main(): Promise<void> {
       assert.ok(Array.isArray(data.pathway_hints), "audit includes archetype pathway hints");
       assert.ok(Array.isArray(data.diagnostics.weak_hig_hits), "audit includes weak-hit diagnostics");
       assert.ok(["ready_for_code_review", "seed_context_only"].includes(data.summary.readiness));
+    }
+
+    // 15-user) An iPhone keyboard issue must not become a macOS menu-bar audit
+    // or a high-readiness recommendation based only on generic corpus matches.
+    {
+      const result = await call("swift_app_audit", {
+        focus: "navigation",
+        platforms: ["iOS"],
+        frameworks: ["SwiftUI"],
+        feature: "NavigationStack with a search TextField and menu",
+        symptom: "The keyboard blocks the menu on iPhone and will not dismiss",
+        year_min: 2024,
+        format: "json",
+      });
+      const data = JSON.parse(textOf(result));
+      assert.equal(result.isError, undefined);
+      assert.ok(data.doc_hints.every((h: any) => !h.path?.startsWith("appkit/")),
+        "iOS audit must not recommend AppKit-only documentation");
+      assert.ok(data.pathway_hints.every((h: any) => !h.id?.startsWith("macos-")),
+        "iOS audit must not recommend macOS-only archetypes");
+      assert.ok(data.queries.sessions.every((q: string) => !["with", "and", "the", "main"].includes(q.toLowerCase())),
+        "stopwords must not dominate Apple-source searches");
+      assert.notEqual(data.summary.readiness, "ready_for_code_review",
+        "generic navigation references are not proof of the keyboard-dismissal symptom");
+      assert.equal(data.doc_hints_status, "lookup_suggestions_not_verified",
+        "curated doc links must not masquerade as fetched evidence");
+      assert.ok(data.validation.some((step: string) => step.includes("FocusState")),
+        "iPhone user needs a concrete focus test, not generic navigation advice");
+      assert.ok(data.validation.some((step: string) => step.includes("scrollDismissesKeyboard")),
+        "scrollable keyboard dismissal must be contextual and conditional");
+      for (const id of ["navigationstack", "textfield", "focusstate"]) {
+        assert.ok(data.doc_hints.some((h: any) => h.id === id &&
+          h.url.startsWith("https://developer.apple.com/documentation/swiftui/")),
+          "keyboard user should receive first-party SwiftUI lookup: " + id);
+      }
+      assert.ok(data.results.sessions.every((h: any) =>
+        !/\\b(mac app|appkit|macos)\\b/i.test(h.title) &&
+        /\\b(navigationstack|textfield|keyboard|dismiss|navigation)\\b/i.test(
+          [h.title, h.snippet ?? "", ...(h.topics ?? [])].join(" "))),
+        "audit may not pad iPhone guidance with irrelevant or Mac-only WWDC sessions");
+    }
+
+    // 15-platform) A precise AppKit request cannot be padded with generic
+    // other-platform sessions or status-bar HIG pages.
+    {
+      const result = await call("swift_app_audit", {
+        focus: "macos", platforms: ["macOS"], frameworks: ["AppKit"],
+        feature: "NSStatusItem menu bar control",
+        symptom: "The status item menu does not open",
+        format: "json",
+      });
+      const data = JSON.parse(textOf(result));
+      assert.ok(data.results.sessions.every((h: any) =>
+        /nsstatusitem/i.test([h.title, h.snippet ?? ""].join(" "))),
+        "macOS audit sessions must show direct status-item evidence");
+      assert.ok(data.doc_hints.some((h: any) => h.id === "nsstatusitem"),
+        "direct official NSStatusItem documentation should remain discoverable");
+      assert.ok(data.doc_hints.every((h: any) => !["focusstate", "scrolldismisseskeyboard", "nswindow", "commands"].includes(h.id)),
+        "menu bar audit must not be padded with irrelevant keyboard or window APIs");
+      assert.notEqual(data.summary.readiness, "ready_for_code_review",
+        "unrelated recent sessions are not code-review readiness");
     }
 
     // 15a) Optional paid companion appears only for a real release-management job.

@@ -14,8 +14,12 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 header.top{padding:20px 0;border-bottom:1px solid var(--line);margin-bottom:40px}
 header.top .wrap{display:flex;align-items:center;justify-content:space-between;max-width:960px}
 .logo{font-weight:700;font-size:18px}.logo a{color:var(--text);text-decoration:none}.logo span{color:var(--accent)}
-nav a{color:var(--dim);text-decoration:none;margin-left:18px;font-size:15px}
+nav a{display:inline-flex;align-items:center;min-height:44px;color:var(--dim);text-decoration:none;margin-left:18px;font-size:15px}
 nav a:hover{color:var(--text)}
+a:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:3px}
+.skip-link{position:absolute;left:-10000px;top:8px;padding:8px 12px;background:var(--panel);color:var(--text);z-index:2}
+.skip-link:focus{left:12px}
+@media(max-width:680px){header.top .wrap{flex-wrap:wrap;gap:12px}nav{display:flex;flex-wrap:wrap;gap:14px}nav a{margin-left:0}}
 .eyebrow{color:var(--accent);font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
 h1{font-size:34px;letter-spacing:-.5px;margin-bottom:18px;line-height:1.2}
 h2{font-size:20px;margin:28px 0 10px}
@@ -27,6 +31,7 @@ footer .wrap{max-width:960px;display:flex;gap:16px;flex-wrap:wrap;justify-conten
 </style>
 </head>
 <body>
+<a class="skip-link" href="#support-content">Skip to support</a>
 <header class="top"><div class="wrap">
   <div class="logo"><a href="/">AppDev<span>&nbsp;Atlas</span></a></div>
   <nav>
@@ -35,18 +40,23 @@ footer .wrap{max-width:960px;display:flex;gap:16px;flex-wrap:wrap;justify-conten
     <a href="/support">Support</a>
   </nav>
 </div></header>
-<main class="wrap">
+<main class="wrap" id="support-content">
   <div class="eyebrow">SUPPORT · APPDEV ATLAS</div>
   <h1>How to get help</h1>
 
   <p>AppDev Atlas is a read-only Apple developer intelligence service for coding agents and ChatGPT.</p>
   <p>Developed independently by SMAT Designs; not affiliated with or endorsed by Apple or OpenAI.</p>
+  <h2>Connect the hosted MCP</h2>
+  <p>In a compatible client, add the <strong>remote Streamable HTTP MCP endpoint</strong>: <code>https://wwdc-mcp.smatdesigns.com/mcp</code>. No local Node.js installation or source index is required for public read-only research.</p>
+  <p>Ask a question naming the Apple feature or failure, then verify a real MCP tool call, the primary source URLs, and any low-readiness or freshness caveats. The prompt alone cannot force an agent to use a tool.</p>
   <h2>Common tasks</h2>
   <ul>
-    <li>Connect ChatGPT to <code style="color:#3fb950">https://wwdc-mcp.smatdesigns.com/mcp</code> (public read-only, no auth)</li>
+    <li>Check your client supports remote Streamable HTTP. For local-only clients, install the <a href="https://github.com/jabbertones-cloud/wwdc-mcp-server/releases/latest">latest MCPB bundle</a> or follow the stdio instructions in the repository README.</li>
     <li>Ask: check ingest status, then cite current Apple guidance for a SwiftUI topic</li>
     <li>Local install and docs: <a href="https://github.com/jabbertones-cloud/wwdc-mcp-server">github.com/jabbertones-cloud/wwdc-mcp-server</a></li>
   </ul>
+  <h2>When research looks wrong</h2>
+  <p>Do not make a code change solely because a result says <code>ready_for_code_review</code>. Check whether the cited Apple documentation directly covers your API and device. If a source is missing, dated, or unrelated, include the tool name and cited source in your report so the issue can be reproduced.</p>
   <h2>Public issues and agent support</h2>
   <p>Search <a href="https://github.com/jabbertones-cloud/wwdc-support/issues">AppDev Atlas support issues</a>, or <a href="https://github.com/jabbertones-cloud/wwdc-support/issues/new/choose">report a bug or request a feature</a>. The public <a href="https://github.com/jabbertones-cloud/wwdc-support#readme">support README</a> includes troubleshooting guidance and privacy rules.</p>
   <p>Agents can search, read, draft and reply to issues through a separate GitHub connection authorized by the user. AppDev Atlas does not grant GitHub write permissions. Do not post private source code, credentials, or sensitive account information in public issues.</p>

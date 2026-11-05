@@ -1,0 +1,398 @@
+{
+  "captured_at": "2026-11-05T00:53:42.978Z",
+  "corpus_size_bytes": 230162432,
+  "results": {
+    "baseline": {
+      "iPhone keyboard bug": {
+        "latency_ms": 843,
+        "error": false,
+        "readiness": "ready_for_code_review",
+        "band": "high",
+        "caveats": [],
+        "total": 6,
+        "sources": [
+          {
+            "id": "wwdc2026-358",
+            "title": "Make your game great with touch"
+          },
+          {
+            "id": "wwdc2024-10205",
+            "title": "What’s new in watchOS 11"
+          },
+          {
+            "id": "wwdc2025-282",
+            "title": "Make your UIKit app more flexible"
+          },
+          {
+            "id": "wwdc2024-10074",
+            "title": "Get started with Dynamic Type"
+          },
+          {
+            "id": "wwdc2024-10073",
+            "title": "Catch up on accessibility in SwiftUI"
+          },
+          {
+            "id": "wwdc2025-229",
+            "title": "Make your Mac app more accessible to everyone"
+          }
+        ],
+        "doc_hints": [
+          "nsstatusitem",
+          "nswindow",
+          "commands"
+        ]
+      },
+      "macOS status-item bug": {
+        "latency_ms": 235,
+        "error": false,
+        "readiness": "ready_for_code_review",
+        "band": "high",
+        "caveats": [],
+        "total": 6,
+        "sources": [
+          {
+            "id": "wwdc2026-289",
+            "title": "Modernize your AppKit app"
+          },
+          {
+            "id": "wwdc2026-212",
+            "title": "Rev up your CarPlay app"
+          },
+          {
+            "id": "wwdc2024-10181",
+            "title": "Xcode essentials"
+          },
+          {
+            "id": "wwdc2025-208",
+            "title": "Elevate the design of your iPad app"
+          },
+          {
+            "id": "wwdc2025-243",
+            "title": "What’s new in UIKit"
+          },
+          {
+            "id": "wwdc2025-284",
+            "title": "Build a UIKit app with the new design"
+          }
+        ],
+        "doc_hints": [
+          "nsstatusitem",
+          "nswindow",
+          "commands"
+        ]
+      },
+      "NavigationStack exact (2026)": {
+        "latency_ms": 2,
+        "error": false,
+        "readiness": "needs_follow_up",
+        "band": "medium",
+        "caveats": [
+          "semantic rerank unavailable; results use FTS only",
+          "more results available via offset"
+        ],
+        "total": 16,
+        "sources": [
+          {
+            "id": "wwdc2026-221",
+            "title": "Prepare your tvOS apps for Dynamic Type",
+            "band": "medium"
+          },
+          {
+            "id": "wwdc2026-232",
+            "title": "Run local agentic AI on the Mac using MLX",
+            "band": "medium"
+          },
+          {
+            "id": "wwdc2026-8120",
+            "title": "SwiftUI Group Lab",
+            "band": "medium"
+          },
+          {
+            "id": "wwdc2026-224",
+            "title": "Expand the capabilities of your Virtualization app",
+            "band": "medium"
+          },
+          {
+            "id": "wwdc2026-268",
+            "title": "Profile, fix, and verify: Improve app responsiveness with Instruments",
+            "band": "medium"
+          }
+        ]
+      },
+      "NavigationStack exact (2025)": {
+        "latency_ms": 2,
+        "error": false,
+        "readiness": "needs_follow_up",
+        "band": "medium",
+        "caveats": [
+          "semantic rerank unavailable; results use FTS only",
+          "more results available via offset"
+        ],
+        "total": 21,
+        "sources": [
+          {
+            "id": "wwdc2025-275",
+            "title": "Explore new advances in App Intents",
+            "band": "medium"
+          },
+          {
+            "id": "wwdc2025-282",
+            "title": "Make your UIKit app more flexible",
+            "band": "medium"
+          },
+          {
+            "id": "wwdc2025-229",
+            "title": "Make your Mac app more accessible to everyone",
+            "band": "medium"
+          },
+          {
+            "id": "wwdc2025-308",
+            "title": "Optimize CPU performance with Instruments",
+            "band": "medium"
+          },
+          {
+            "id": "wwdc2025-256",
+            "title": "What’s new in SwiftUI",
+            "band": "medium"
+          }
+        ]
+      },
+      "Search keyboard dismissal": {
+        "latency_ms": 1,
+        "error": false,
+        "readiness": "needs_follow_up",
+        "band": "medium",
+        "caveats": [
+          "semantic rerank unavailable; results use FTS only"
+        ],
+        "total": 1,
+        "sources": [
+          {
+            "id": "wwdc2026-292",
+            "title": "Design intuitive search experiences",
+            "band": "medium"
+          }
+        ]
+      },
+      "Broad SwiftUI query": {
+        "latency_ms": 6,
+        "error": false,
+        "readiness": "good_seed_context",
+        "band": "high",
+        "caveats": [
+          "semantic rerank unavailable; results use FTS only",
+          "more results available via offset"
+        ],
+        "total": 520,
+        "sources": [
+          {
+            "id": "wwdc2025-266",
+            "title": "Explore concurrency in SwiftUI",
+            "band": "high"
+          },
+          {
+            "id": "wwdc2023-10149",
+            "title": "Discover Observation in SwiftUI",
+            "band": "high"
+          },
+          {
+            "id": "wwdc2021-10019",
+            "title": "Discover concurrency in SwiftUI",
+            "band": "high"
+          },
+          {
+            "id": "wwdc2022-102",
+            "title": "Platforms State of the Union",
+            "band": "low"
+          },
+          {
+            "id": "wwdc2022-112",
+            "title": "Platforms State of the Union (ASL)",
+            "band": "low"
+          }
+        ]
+      },
+      "Typo query": {
+        "latency_ms": 10,
+        "error": false,
+        "readiness": "insufficient_context",
+        "band": "low",
+        "caveats": [
+          "no indexed matches; broaden query or run targeted ingest",
+          "semantic rerank unavailable; results use FTS only",
+          "No matches for the query as typed. Did you mean: \"SwiftUI navigation\"? (suggested, not run)"
+        ],
+        "total": 0,
+        "sources": []
+      },
+      "Nonexistent symbol": {
+        "latency_ms": 6,
+        "error": false,
+        "readiness": "insufficient_context",
+        "band": "low",
+        "caveats": [
+          "no indexed matches; broaden query or run targeted ingest",
+          "semantic rerank unavailable; results use FTS only"
+        ],
+        "total": 0,
+        "sources": []
+      }
+    },
+    "candidate": {
+      "iPhone keyboard bug": {
+        "latency_ms": 166,
+        "error": false,
+        "readiness": "seed_context_only",
+        "band": "low",
+        "caveats": [
+          "No direct indexed evidence for Apple API symbol(s): NavigationStack, TextField; confirm the official API documentation before code changes",
+          "No indexed Apple API documentation or HIG excerpt corroborates the requested change across source families",
+          "top source matches do not directly substantiate the requested feature or symptom; verify a focused Apple reference before code changes"
+        ],
+        "total": 1,
+        "sources": [
+          {
+            "id": "wwdc2026-292",
+            "title": "Design intuitive search experiences"
+          }
+        ],
+        "doc_hints": [
+          "navigationstack",
+          "textfield",
+          "focusstate"
+        ]
+      },
+      "macOS status-item bug": {
+        "latency_ms": 128,
+        "error": false,
+        "readiness": "insufficient_context",
+        "band": "low",
+        "caveats": [
+          "No indexed Apple API documentation or HIG excerpt corroborates the requested change across source families",
+          "top source matches do not directly substantiate the requested feature or symptom; verify a focused Apple reference before code changes",
+          "No session directly matches both the requested feature and failure symptom; do not substitute unrelated WWDC talks as code-change evidence."
+        ],
+        "total": 0,
+        "sources": [],
+        "doc_hints": [
+          "nsstatusitem"
+        ]
+      },
+      "NavigationStack exact (2026)": {
+        "latency_ms": 7,
+        "error": false,
+        "readiness": "insufficient_context",
+        "band": "low",
+        "caveats": [
+          "no indexed matches; broaden query or run targeted ingest",
+          "semantic rerank unavailable; results use FTS only",
+          "No exact indexed matches for this API symbol under the chosen filters. Expand the year range or search the separated words as a broader, non-exact query."
+        ],
+        "total": 0,
+        "sources": []
+      },
+      "NavigationStack exact (2025)": {
+        "latency_ms": 3,
+        "error": false,
+        "readiness": "insufficient_context",
+        "band": "low",
+        "caveats": [
+          "semantic rerank unavailable; results use FTS only"
+        ],
+        "total": 1,
+        "sources": [
+          {
+            "id": "wwdc2025-275",
+            "title": "Explore new advances in App Intents",
+            "band": "low"
+          }
+        ]
+      },
+      "Search keyboard dismissal": {
+        "latency_ms": 1,
+        "error": false,
+        "readiness": "needs_follow_up",
+        "band": "medium",
+        "caveats": [
+          "semantic rerank unavailable; results use FTS only"
+        ],
+        "total": 1,
+        "sources": [
+          {
+            "id": "wwdc2026-292",
+            "title": "Design intuitive search experiences",
+            "band": "medium"
+          }
+        ]
+      },
+      "Broad SwiftUI query": {
+        "latency_ms": 7,
+        "error": false,
+        "readiness": "good_seed_context",
+        "band": "high",
+        "caveats": [
+          "semantic rerank unavailable; results use FTS only",
+          "more results available via offset"
+        ],
+        "total": 423,
+        "sources": [
+          {
+            "id": "wwdc2022-10072",
+            "title": "Use SwiftUI with UIKit",
+            "band": "high"
+          },
+          {
+            "id": "wwdc2022-10075",
+            "title": "Use SwiftUI with AppKit",
+            "band": "high"
+          },
+          {
+            "id": "wwdc2024-10150",
+            "title": "SwiftUI essentials",
+            "band": "high"
+          },
+          {
+            "id": "wwdc2026-272",
+            "title": "Use SwiftUI with AppKit and UIKit",
+            "band": "high"
+          },
+          {
+            "id": "wwdc2023-10115",
+            "title": "Design with SwiftUI",
+            "band": "high"
+          }
+        ]
+      },
+      "Typo query": {
+        "latency_ms": 5,
+        "error": false,
+        "readiness": "insufficient_context",
+        "band": "low",
+        "caveats": [
+          "no indexed matches; broaden query or run targeted ingest",
+          "semantic rerank unavailable; results use FTS only",
+          "No matches for the query as typed. Did you mean: \"SwiftUI navigation\"? (suggested, not run)"
+        ],
+        "total": 0,
+        "sources": []
+      },
+      "Nonexistent symbol": {
+        "latency_ms": 3,
+        "error": false,
+        "readiness": "insufficient_context",
+        "band": "low",
+        "caveats": [
+          "no indexed matches; broaden query or run targeted ingest",
+          "semantic rerank unavailable; results use FTS only",
+          "No exact indexed matches for this API symbol under the chosen filters. Expand the year range or search the separated words as a broader, non-exact query."
+        ],
+        "total": 0,
+        "sources": []
+      }
+    }
+  },
+  "verdict": {
+    "pass": true,
+    "failures": []
+  }
+}

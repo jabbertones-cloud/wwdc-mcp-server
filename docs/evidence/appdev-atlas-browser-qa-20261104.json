@@ -1,0 +1,83 @@
+{
+  "tested_page": "website/index.html",
+  "page_sha256": "b48a99878e87e21fcfd76d7f2dd950c35b6bf6b4b1e3b0bf5aca5846da303787",
+  "test_date": "2026-11-04",
+  "harness": "RemoteDesk Cloudflare BrowserConnector CDP, Page.navigate to data URL constructed from the candidate HTML",
+  "observed_viewports": [
+    {
+      "width": 320,
+      "document_scroll_width": 320,
+      "nav_min_height": 44,
+      "unreachable_anchors": 0,
+      "scrollable_pre_blocks": 5
+    },
+    {
+      "width": 375,
+      "document_scroll_width": 375,
+      "nav_min_height": 44,
+      "unreachable_anchors": 0,
+      "scrollable_pre_blocks": 5
+    },
+    {
+      "width": 768,
+      "document_scroll_width": 768,
+      "nav_min_height": 44,
+      "unreachable_anchors": 0,
+      "scrollable_pre_blocks": 0
+    },
+    {
+      "width": 1024,
+      "document_scroll_width": 1024,
+      "nav_min_height": 44,
+      "unreachable_anchors": 0,
+      "scrollable_pre_blocks": 0
+    }
+  ],
+  "code_blocks_keyboard_focusable": true,
+  "copy_button": {
+    "native_api": "navigator.clipboard.writeText",
+    "success_simulated": {
+      "value": "https://wwdc-mcp.smatdesigns.com/mcp",
+      "feedback": "MCP URL copied"
+    },
+    "unavailable_fallback_observed": "Copy unavailable. Select the URL above."
+  },
+  "limitations": [
+    "Rendered candidate locally in a CDP data URL, not at the published production origin",
+    "Layout/interactive DOM measurements were recorded; a separate human visual screenshot review was not completed",
+    "Clipboard success was tested with a stubbed native browser API; actual OS clipboard was not read or modified",
+    "No assistive-technology/VoiceOver navigation test was performed"
+  ],
+  "support_page": {
+    "candidate_file": "website/support.html",
+    "sha256": "d07d5022c6f7529c405701853b68a20e43414a283e7e2ffe6c86b13dcdf4865d",
+    "observed_viewports": [
+      {
+        "width": 320,
+        "document_scroll_width": 320,
+        "nav_min_height": 44,
+        "broken_anchors": 0
+      },
+      {
+        "width": 375,
+        "document_scroll_width": 375,
+        "nav_min_height": 44,
+        "broken_anchors": 0
+      },
+      {
+        "width": 768,
+        "document_scroll_width": 768,
+        "nav_min_height": 44,
+        "broken_anchors": 0
+      },
+      {
+        "width": 1024,
+        "document_scroll_width": 1024,
+        "nav_min_height": 44,
+        "broken_anchors": 0
+      }
+    ],
+    "method": "Same CDP data-URL candidate rendering and measured DOM dimensions",
+    "limitations": "Not a live-origin test, full human screenshot review, or assistive-technology test"
+  }
+}
