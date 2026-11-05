@@ -23,6 +23,10 @@ As of 2026-11-04:
 
 Registry versions are immutable. Never replace a published Registry version with different package bytes or a different SHA. If a published bundle is defective, issue a patch version and deprecate the bad version.
 
+## 0. Independent product acceptance (blocking)
+
+Before building a release, follow [Product Acceptance Gate](PRODUCT-ACCEPTANCE.md). Human-centered and adversarial user tests are a separate gate from technical CI; do not approve a release because the tests, Registry publisher or HTTP health checks are green. Verify actual hosted and bundled MCP outputs, source relevance, platform correctness, truthfulness of readiness, first-use onboarding, and the failure paths. A P0/P1 quality defect blocks the release until the failing user journey is reproduced, fixed and retested, with links and measured before/after evidence. Another reviewer should challenge the implementer's conclusions. An unavailable independent review means "not approved", not "passed".
+
 ## 1. Preflight
 
 From a clean checkout:

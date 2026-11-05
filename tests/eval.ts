@@ -122,6 +122,7 @@ async function main(): Promise<void> {
     const data = JSON.parse(textOf(audit));
     assert.ok(data.results.sessions.some((hit: any) => hit.id === "wwdc2024-10150"), "relevant session");
     assert.ok(data.results.hig.some((hit: any) => hit.id === "navigation"), "relevant HIG");
+    assert.notEqual(data.summary.readiness, "ready_for_code_review", "two broad source categories do not prove code review");
     assert.ok(data.summary.next_tools.includes("wwdc_get_session"), "actionable next tool");
 
     console.log("[eval] swift audit retrieval eval passed");

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AppDev Atlas — Current Apple knowledge for coding agents</title>
-<meta name="description" content="AppDev Atlas is a local-first MCP server that gives coding agents current Apple evidence: WWDC 2020–2026 sessions, Apple docs, HIG, Swift Evolution, and App Review guidance. 45 read-only tools. MIT open source.">
+<meta name="description" content="Connect AppDev Atlas to your coding agent over a free hosted MCP endpoint, or run it locally. Search WWDC 2020–2026, Apple docs, HIG, Swift and App Review guidance with 45 read-only research tools.">
 <style>
 :root{
   --bg:#0d1117; --panel:#161b22; --line:#2d333b; --text:#e6edf3; --dim:#9aa4b2;
@@ -19,6 +19,9 @@ header.top .wrap{display:flex;align-items:center;justify-content:space-between}
 .logo span{color:var(--accent)}
 nav a{color:var(--dim);text-decoration:none;margin-left:22px;font-size:15px}
 nav a:hover{color:var(--text)}
+a:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:3px}
+.skip-link{position:absolute;left:-10000px;top:8px;padding:8px 12px;background:var(--panel);color:var(--text);z-index:2}
+.skip-link:focus{left:12px}
 .hero{padding:96px 0 72px;text-align:left}
 .hero .kicker{color:var(--accent);font-size:14px;font-weight:600;letter-spacing:2px;text-transform:uppercase;margin-bottom:20px}
 .hero h1{font-size:clamp(34px,6vw,58px);line-height:1.12;font-weight:800;letter-spacing:-1px;margin-bottom:24px}
@@ -35,7 +38,7 @@ section p.lead{color:var(--dim);font-size:18px;max-width:680px;margin-bottom:32p
 .fact{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px}
 .fact .n{font-size:30px;font-weight:800;color:var(--accent)}
 .fact .t{color:var(--dim);font-size:15px;margin-top:6px}
-.tools{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.tools{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:14px}
 .tool{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px}
 .tool code{color:var(--green);font-size:15px;font-weight:600}
 .tool p{color:var(--dim);font-size:15px;margin-top:8px}
@@ -46,7 +49,14 @@ h3.step{font-size:19px;margin:30px 0 6px}
 h3.step:first-of-type{margin-top:10px}
 p.dim{color:var(--dim)}
 .knowship{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-@media(max-width:640px){.knowship{grid-template-columns:1fr}}
+@media(max-width:680px){
+  header.top .wrap{flex-wrap:wrap;gap:12px}
+  nav{display:flex;flex-wrap:wrap;gap:14px}
+  nav a{display:inline-flex;align-items:center;min-height:44px;margin-left:0}
+  .hero{padding:52px 0 44px}
+  section{padding:44px 0}
+  .knowship{grid-template-columns:1fr}
+}
 .ks{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:28px}
 .ks .tag{font-size:13px;letter-spacing:2px;font-weight:700;color:var(--accent);text-transform:uppercase}
 .ks h3{font-size:22px;margin:10px 0}
@@ -58,27 +68,28 @@ footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 <body>
+<a class="skip-link" href="#main-content">Skip to content</a>
 <header class="top">
   <div class="wrap">
     <div class="logo">AppDev<span>&nbsp;Atlas</span></div>
     <nav>
       <a href="#tools">Tools</a>
-      <a href="#install">Install</a>
+      <a href="#connect">Connect</a>
       <a href="/support">Support</a>
       <a href="https://github.com/jabbertones-cloud/wwdc-mcp-server">GitHub</a>
     </nav>
   </div>
 </header>
-
+<main id="main-content">
 <div class="wrap">
   <div class="hero">
-    <div class="kicker">Local-first MCP server · MIT open source</div>
-    <h1>Your coding agent doesn't know Apple as well as it thinks.</h1>
+    <div class="kicker">Free hosted MCP · Optional local install · MIT open source</div>
+    <h1>Give your coding agent the Apple sources behind its answers.</h1>
     <p class="sub">AppDev Atlas gives coding agents source-backed research from published WWDC 2020–2026 sessions, Apple developer documentation, HIG, Swift Evolution, and App Review guidance before they change your code.</p>
     <p class="dim" style="margin-bottom:26px">Independent research tool by SMAT Designs. Not affiliated with or endorsed by Apple or OpenAI.</p>
     <div class="btns">
-      <a class="btn primary" href="#install">Install it</a>
-      <a class="btn ghost" href="https://github.com/jabbertones-cloud/wwdc-mcp-server">View on GitHub</a>
+      <a class="btn primary" href="#connect">Connect the free MCP</a>
+      <a class="btn ghost" href="#local">Run it locally</a>
     </div>
   </div>
 </div>
@@ -86,18 +97,18 @@ footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
 <section>
   <div class="wrap">
     <h2>What it is</h2>
-    <p class="lead">A local-first MCP server that runs on your Mac over stdio. It indexes Apple's developer material so your agent checks the source instead of guessing.</p>
+    <p class="lead">Connect the hosted service over HTTPS without cloning a repository or building an index. For offline-oriented workflows, you can also run your own local SQLite index over stdio.</p>
     <div class="facts">
       <div class="fact"><div class="n">45</div><div class="t">read-only tools — nothing mutates your Apple account or your code</div></div>
       <div class="fact"><div class="n">2020–26</div><div class="t">WWDC session years in the index, with full transcripts</div></div>
-      <div class="fact"><div class="n">Local</div><div class="t">SQLite FTS5 keyword search plus optional Ollama semantic reranking; no paid APIs</div></div>
+      <div class="fact"><div class="n">2 paths</div><div class="t">Hosted HTTPS or local SQLite FTS5, with optional local ONNX reranking</div></div>
       <div class="fact"><div class="n">MIT</div><div class="t">open source; works with Codex, Claude, Cursor, Windsurf, and Zed</div></div>
     </div>
     <div class="prompt">
       <span class="label">The prompt that matters most</span>
       Audit this app against current Apple guidance before changing code.
     </div>
-    <p class="dim">Give that to your agent and it has to pull evidence — WWDC sessions, HIG entries, Swift Evolution proposals, review guidelines — before it recommends the work.</p>
+    <p class="dim">Once the MCP is connected and your client calls its tools, inspect the Apple source links and freshness notes before acting on recommendations. A prompt alone does not guarantee tool use.</p>
   </div>
 </section>
 
@@ -119,23 +130,39 @@ footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
   </div>
 </section>
 
-<section id="install">
+<section id="connect">
   <div class="wrap">
-    <h2>Install</h2>
-    <p class="lead">Requires Node.js 22.14 or newer. Takes about a minute.</p>
+    <h2>Connect AppDev Atlas</h2>
+    <p class="lead">Start with the free hosted service in an MCP client that supports remote Streamable HTTP. No Node.js installation, local index, or Apple account is required for public read-only research.</p>
+    <h3 class="step">1. Add the remote MCP URL</h3>
+    <p class="dim">In your client's MCP settings, choose a remote HTTP MCP server and paste this endpoint. Connection steps differ by client.</p>
+<pre>https://wwdc-mcp.smatdesigns.com/mcp</pre>
+    <p class="dim">If your client doesn't support remote Streamable HTTP, use the local installation below. The <a href="https://github.com/jabbertones-cloud/wwdc-mcp-server/releases/latest">latest MCPB bundle</a> is another option for compatible clients.</p>
+
+    <h3 class="step">2. Ask a specific Apple development question</h3>
+<pre>Use AppDev Atlas to check current Apple guidance for SwiftUI navigation.
+Show the source links and say what still needs verification.</pre>
+    <h3 class="step">3. Verify that it actually used the tools</h3>
+    <p class="dim">Look for the MCP tool call, a real Apple source URL, and any corpus-freshness caveats. If the agent answers without invoking AppDev Atlas, check the connection and client permissions rather than assuming the research was performed.</p>
+  </div>
+</section>
+
+<section id="local">
+  <div class="wrap">
+    <h2>Prefer a local index?</h2>
+    <p class="lead">Use the stdio server if you want to manage your own index and source updates. This path requires Node.js 22.14+, npm, network access for ingestion, and sufficient time and disk space for the selected corpus. It is not required for hosted use.</p>
 
     <h3 class="step">1. Clone and build</h3>
 <pre>git clone https://github.com/jabbertones-cloud/wwdc-mcp-server.git
 cd wwdc-mcp-server
-npm install
+npm ci
 npm run build</pre>
+    <h3 class="step">2. Ingest the Apple sources you need</h3>
+<pre>npm run ingest:wwdc -- --year 2026</pre>
+    <p class="dim">For all supported core sources, run <code>npm run ingest:all</code>. Ingestion can take longer depending on connectivity and corpus size. Keyword search uses local SQLite FTS5; optional semantic reranking uses Hugging Face Transformers/ONNX and may download model files on first use. Ollama is not required.</p>
 
-    <h3 class="step">2. Build the local index</h3>
-<pre>npm run ingest:wwdc</pre>
-    <p class="dim">Optional: <code>npm run ingest:all</code> adds tutorials, docs, HIG, and Swift Evolution. Optional: <code>ollama pull nomic-embed-text</code> enables semantic reranking; without Ollama it falls back to keyword search.</p>
-
-    <h3 class="step">3. Connect your client</h3>
-    <p class="dim">Cursor — <code>~/.cursor/mcp.json</code>:</p>
+    <h3 class="step">3. Connect a local MCP client</h3>
+    <p class="dim">For example, in Cursor's <code>~/.cursor/mcp.json</code>:</p>
 <pre>{
   "mcpServers": {
     "wwdc": {
@@ -144,20 +171,7 @@ npm run build</pre>
     }
   }
 }</pre>
-    <p class="dim">Claude Desktop — <code>~/Library/Application Support/Claude/claude_desktop_config.json</code>:</p>
-<pre>{
-  "mcpServers": {
-    "wwdc": {
-      "command": "node",
-      "args": ["/absolute/path/to/wwdc-mcp-server/dist/index.js"],
-      "env": {
-        "OLLAMA_BASE": "http://127.0.0.1:11434",
-        "OLLAMA_EMBED_MODEL": "nomic-embed-text"
-      }
-    }
-  }
-}</pre>
-    <p class="dim">The README also covers VS Code, Windsurf, and Zed. For hosted use, connect directly to <code>https://wwdc-mcp.smatdesigns.com/mcp</code>.</p>
+    <p class="dim">Replace the path with the actual location of your checkout. For other clients and bundle install details, see the <a href="https://github.com/jabbertones-cloud/wwdc-mcp-server#readme">README</a> or <a href="/support">support guide</a>.</p>
   </div>
 </section>
 
@@ -179,6 +193,7 @@ npm run build</pre>
     </div>
   </div>
 </section>
+</main>
 
 <footer>
   <div class="wrap">

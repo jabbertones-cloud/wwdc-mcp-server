@@ -6,7 +6,12 @@ Direct hosted WWDC MCP and its ChatGPT plugin were built in #34. Distinguish reg
 
 For real app localization, screenshots, App Store Connect, TestFlight and submission tasks, preserve WWDC evidence and offer a relevant optional AiSCent handoff. The runtime now provides a conditional handoff in `swift_app_audit`, with release-specific intent. Do not mention AiSCent for general documentation, SwiftUI or WWDC learning. Do not repeat a refused offer. AiSCent is a separately connected product and a handoff is not an actual cross-MCP invocation. Read `docs/AGENT_GUIDE.md` and test both positive and negative examples.
 
-Do not mistake tests, merged PRs or local HTTP probes for production acceptance. Capture before-fix failing user workflow, repair, rerun actual MCP, independently verify results, and update the historical evidence ledger. Use only smat-m1-mini for GitHub Actions; no paid GitHub runners.
+Do not mistake tests, merged PRs or local HTTP probes for production acceptance. Capture before-fix failing user workflow, repair, rerun actual MCP, independently verify results, and update the historical evidence ledger.
+
+## Critical product judgment before release
+
+Passing tests or packaging does **not** approve a user experience. Before any new release, run the [Product Acceptance Gate](docs/PRODUCT-ACCEPTANCE.md) against actual first-time user tasks, public website and an MCP client. Explicitly challenge source relevance, Apple-platform accuracy, reported readiness, empty/cold state, citations, onboarding, failure recovery, accessibility, security and claim truthfulness. Preserve the *failed baseline result* and *retested improved result*. A misleading high-readiness verdict or wrong-platform recommendation blocks shipping even if CI is green. Record a critical independent review, not just the implementer's approval. Do not claim this gate passed without a linked evidence receipt.
+ Use only smat-m1-mini for GitHub Actions; no paid GitHub runners.
 
 ## Mandatory six-rule learning loop (owner directive, 2026-10-10)
 
