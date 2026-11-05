@@ -389,6 +389,10 @@ type AppleDocHint = {
 };
 
 const APPLE_DOC_HINTS: AppleDocHint[] = [
+  docHint("navigationstack", "NavigationStack", "swiftui/navigationstack", ["navigationstack", "navigation stack"]),
+  docHint("textfield", "TextField", "swiftui/textfield", ["textfield", "text field"]),
+  docHint("focusstate", "FocusState", "swiftui/focusstate", ["focusstate", "focus state", "keyboard", "dismiss keyboard", "keyboard dismiss"]),
+  docHint("scrolldismisseskeyboard", "scrollDismissesKeyboard(_:)", "swiftui/view/scrolldismisseskeyboard%28_%3A%29", ["scrolldismisseskeyboard", "keyboard dismiss", "dismiss keyboard", "keyboard"]),
   docHint("screencapturekit", "ScreenCaptureKit", "screencapturekit", ["screencapturekit", "screen capture", "screenshot", "display capture", "window capture"]),
   docHint("nspasteboard", "NSPasteboard", "appkit/nspasteboard", ["nspasteboard", "pasteboard", "clipboard", "copy", "paste"]),
   docHint("nsstatusitem", "NSStatusItem", "appkit/nsstatusitem", ["nsstatusitem", "status item", "menu bar", "menubar"]),
@@ -416,7 +420,8 @@ const APPLE_DOC_HINTS: AppleDocHint[] = [
   docHint("fileimporter", "fileImporter", "swiftui/view/fileimporter(ispresented:allowedcontenttypes:allowsmultipleselection:oncompletion:)", ["fileimporter", "file importer", "import file"]),
   docHint("fileexporter", "fileExporter", "swiftui/view/fileexporter(ispresented:document:contenttype:defaultfilename:oncompletion:)", ["fileexporter", "file exporter", "export file"]),
   docHint("sharelink", "ShareLink", "swiftui/sharelink", ["sharelink", "share", "export"]),
-  docHint("appstoreconnectapi", "App Store Connect API", "appstoreconnectapi", ["app store connect api", "appstoreconnectapi", "asc api", "screenshot upload", "build upload", "webhook notification", "testflight api"]),
+  docHint("app-screenshots", "App Screenshots", "appstoreconnectapi/app-screenshots", ["app store connect screenshot", "app store screenshot", "screenshot upload", "upload screenshot"]),
+  docHint("appstoreconnectapi", "App Store Connect API", "appstoreconnectapi", ["app store connect", "appstoreconnectapi", "asc api", "screenshot upload", "build upload", "webhook notification", "testflight api"]),
 ];
 
 function docHint(id: string, title: string, path: string, terms: string[]): AppleDocHint {
@@ -543,7 +548,12 @@ function judgeHit(query: string, hit: SearchHitWithJudgment): NonNullable<Search
   if ((hit.topics ?? []).some((topic) => topic.toLowerCase().includes(q))) reasons.push("query appears in topics/status");
   if ((hit.platforms ?? []).some((platform) => signals.platformTerms.includes(platform.toLowerCase()))) reasons.push("query appears in platform metadata");
   if (signals.frameworkTerms.some((term) => `${hit.title} ${(hit.topics ?? []).join(" ")} ${hit.snippet ?? ""}`.toLowerCase().includes(term))) reasons.push("Apple framework term matches indexed metadata");
-  if (hit.kind === "session" && hit.year && hit.year >= 2024) reasons.push("recent WWDC session");
+  if (hit.kind === "session" && hit.year && hit.year >= 2024 && reasons.length === 0) {
+    caveats.push("visible title and snippet do not show the match; inspect the full session/transcript before citing");
+  }
+  if (hit.kind === "session" && reasons.length === 1 && reasons[0] === "query appears in indexed snippet") {
+    caveats.push("match appears only in a source excerpt; verify the session context before treating it as guidance");
+  }
   if (!hit.snippet) caveats.push("no snippet available for this hit");
   if (hit.kind === "session" && !hit.year) caveats.push("session year missing");
   if (signals.isPlatformOnly) caveats.push("platform-only query is broad; add framework, API, or failure symptom for audit-grade guidance");
@@ -606,7 +616,7 @@ function splitAuditTerms(value?: string): string[] {
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .split(/[^A-Za-z0-9+.#]+/)
     .map((word) => word.trim())
-    .filter((word) => word.length >= 3);
+    .filter((word) => word.length >= 3 && !/^(the|and|for|with|from|when|that|this|will|does|not|are|was|have|has|into|main)$/i.test(word));
   const phrases: string[] = [];
   for (let i = 0; i < words.length - 1; i++) {
     phrases.push(`${words[i]} ${words[i + 1]}`);
@@ -623,7 +633,8 @@ function auditArchetypeTerms(args: {
 }): string[] {
   const text = `${args.focus} ${args.platforms.join(" ")} ${args.frameworks.join(" ")} ${args.feature ?? ""} ${args.symptom ?? ""}`.toLowerCase();
   const terms: string[] = [];
-  if (/\b(menu|status item|command|window|appkit)\b/.test(text)) {
+  const macTarget = args.platforms.length === 0 || args.platforms.includes("macOS");
+  if (macTarget && /\b(menu|status item|command|window|appkit)\b/.test(text)) {
     terms.push("menu bar", "menus", "keyboard shortcuts", "windows", "AppKit", "SwiftUI macOS", "NSStatusItem", "NSWindow", "commands");
   }
   if (/\b(clipboard|paste|pasteboard|nspasteboard)\b/.test(text)) {
@@ -684,6 +695,10 @@ function auditArchetypeValidationTerms(args: {
 }): string[] {
   const text = `${args.focus} ${args.platforms.join(" ")} ${args.frameworks.join(" ")} ${args.feature ?? ""} ${args.symptom ?? ""}`.toLowerCase();
   const terms: string[] = [];
+  if (args.platforms.includes("iOS") && /\b(keyboard|textfield|focus)\b/.test(text)) {
+    terms.push("Reproduce menu access with TextField focused on iPhone; verify explicit @FocusState dismissal and focus changes",
+      "Check keyboard overlap and safe-area behavior on device; use scrollDismissesKeyboard only for scrollable content");
+  }
   if (/\b(display|monitor|brightness|nsscreen|hdr|color)\b|color profile|display profile/.test(text)) {
     terms.push("Test internal, external, mirrored, and disconnected display states", "Verify HDR/EDR and color-profile behavior on supported displays", "Handle NSScreen changes without stale monitor state");
   }
@@ -705,16 +720,20 @@ function auditArchetypeValidationTerms(args: {
   if (/\b(clipboard|paste|pasteboard|nspasteboard)\b/.test(text)) {
     terms.push("Verify pasteboard privacy prompts and failure states", "Test copy/paste with text, files, and unavailable pasteboard contents");
   }
-  if (/screenshot|screen capture|annotation|export/.test(text)) {
+  const captureRequested = /screen capture|screen recording|capture screenshots?|record screen|screen grab/.test(text);
+  const storeAssetTask = /app store connect|app store screenshot|screenshot localization|localized screenshot|localizeshots/.test(text);
+  if (captureRequested || (!storeAssetTask && /screenshot|annotation|export/.test(text))) {
     terms.push("Verify ScreenCaptureKit permissions, denied states, and capture target changes", "Test export/share paths and Photos authorization states");
   }
   if (/localized screenshot|app store screenshot|app store connect|screenshot localization|localizeshots|subscription review|review screenshot/.test(text)) {
-    terms.push(
-      "Validate every App Store locale has metadata and screenshot assets before submit",
-      "Verify StoreKit products load, purchase, restore, and entitlement refresh outside screenshot QA mode",
-      "Confirm subscription review screenshots match live pricing and are COMPLETE in App Store Connect",
-      "Run Mac App Store target build and inspect bundled resources for scripts or non-review-safe tooling",
-    );
+    terms.push("Validate every App Store locale has metadata and screenshot assets before submit");
+    if (/paywall|subscription|storekit|in-app purchase/.test(text)) {
+      terms.push("Verify StoreKit products load, purchase, restore, and entitlement refresh outside screenshot QA mode",
+        "Confirm subscription review screenshots match live pricing and are COMPLETE in App Store Connect");
+    }
+    if (args.platforms.includes("macOS")) {
+      terms.push("Run Mac App Store target build and inspect bundled resources for scripts or non-review-safe tooling");
+    }
   }
   return terms;
 }
@@ -727,8 +746,12 @@ function auditDocHints(args: {
   symptom?: string;
   archetypeTerms: string[];
 }): AppleDocHint[] {
-  const auditText = `${args.focus} ${args.platforms.join(" ")} ${args.frameworks.join(" ")} ${args.feature ?? ""} ${args.symptom ?? ""} ${args.archetypeTerms.join(" ")}`.toLowerCase();
-  const hints = APPLE_DOC_HINTS.filter((hint) => hint.terms.some((term) => auditTextMatchesTerm(auditText, term)));
+  const auditText = [args.focus, ...args.platforms, ...args.frameworks, args.feature ?? "", args.symptom ?? ""].join(" ").toLowerCase();
+  const macTarget = args.platforms.length === 0 || args.platforms.includes("macOS");
+  const hints = APPLE_DOC_HINTS.filter((hint) =>
+    (macTarget || (!hint.path.startsWith("appkit/") && hint.id !== "commands")) &&
+    (hint.id !== "scrolldismisseskeyboard" || /(scroll|list|texteditor|text editor)/.test(auditText)) &&
+    hint.terms.some((term) => auditTextMatchesTerm(auditText, term)));
   return hints.slice(0, 10);
 }
 
@@ -751,12 +774,13 @@ function auditPathwayHints(args: {
   const add = (id: string, title: string, reason: string) => {
     if (!pathways.some((p) => p.id === id)) pathways.push({ id, title, reason });
   };
-  if (/\b(menu|status item|command|nsstatusitem)\b/.test(text)) add("macos-menu-bar-utilities", "macOS menu bar utilities", "menu/status-item archetype");
-  if (/\b(display|monitor|brightness|nsscreen|hdr|color)\b|color profile|display profile/.test(text)) add("macos-display-monitor-tools", "macOS display and monitor tools", "display/monitor archetype");
+  const macTarget = args.platforms.length === 0 || args.platforms.includes("macOS");
+  if (macTarget && /\b(menu|status item|command|nsstatusitem)\b/.test(text)) add("macos-menu-bar-utilities", "macOS menu bar utilities", "menu/status-item archetype");
+  if (macTarget && /\b(display|monitor|brightness|nsscreen|hdr|color)\b|color profile|display profile/.test(text)) add("macos-display-monitor-tools", "macOS display and monitor tools", "display/monitor archetype");
   if (/\b(reader|training|lesson|course|curriculum|hls|video|avkit|avplayer|magic link|keychain|auth|authentication|universal link|applinks|safari|web purchase|booking|critique)\b/.test(text)) add("ios-reader-authenticated-video-training", "iOS reader and authenticated video training apps", "reader/authenticated-video training archetype");
-  if (/file browser|file explorer|finder|sidebar|drag|drop|quick look/.test(text)) add("macos-file-browser-navigation", "macOS file browser navigation", "Finder-style navigation archetype");
-  if (/window switcher|app switcher|tab switcher|alt tab|mission control|spaces|minimized|focus/.test(text)) add("macos-window-app-switcher", "macOS window and app switchers", "window/app switcher archetype");
-  if (/\b(clipboard|paste|pasteboard|nspasteboard)\b/.test(text)) add("macos-clipboard-workflows", "macOS clipboard workflows", "pasteboard archetype");
+  if (macTarget && /file browser|file explorer|finder|sidebar|drag|drop|quick look/.test(text)) add("macos-file-browser-navigation", "macOS file browser navigation", "Finder-style navigation archetype");
+  if (macTarget && /window switcher|app switcher|tab switcher|alt tab|mission control|spaces|minimized|focus/.test(text)) add("macos-window-app-switcher", "macOS window and app switchers", "window/app switcher archetype");
+  if (macTarget && /\b(clipboard|paste|pasteboard|nspasteboard)\b/.test(text)) add("macos-clipboard-workflows", "macOS clipboard workflows", "pasteboard archetype");
   if (/screenshot|screen capture|annotation|export/.test(text)) add("screenshot-capture-tools", "Screenshot and capture tools", "screen capture archetype");
   if (/localized screenshot|app store screenshot|app store connect|screenshot localization|localizeshots|subscription review|review screenshot/.test(text)) add("app-store-localized-screenshot-workflows", "App Store localized screenshot workflows", "localized screenshot and App Store submission archetype");
   if (/game|gamekit|leaderboard|match|turn|storekit/.test(text)) add("gamekit-storekit-games", "GameKit and StoreKit games", "game monetization archetype");
@@ -835,10 +859,38 @@ function pickTopSearchHits(
 function pickRankedAuditHits(
   searches: Array<{ query: string; hits: SearchHitWithJudgment[]; priority: number }>,
   limit: number,
+  request: { feature?: string; symptom?: string; platforms?: string[] } = {},
 ): SearchHitWithJudgment[] {
+  // Generic framework and transcript-only hits are context, not proof of a
+  // specific feature or user-visible failure. Require a visible evidence term.
+  const exactSymbols = (request.feature?.match(/\b[A-Za-z]+[a-z][A-Z][A-Za-z]*\b/g) ?? []).map((v) => v.toLowerCase());
+  const stop = /^(swiftui|ios|iphone|ipad|macos|application|screen|using|there|where|which|should|could|would|their|after|before|does|while|blocks|main|view|with|menu|prepare)$/;
+  const featureTerms = [...new Set((request.feature ?? "").toLowerCase().match(/[a-z]{5,}/g) ?? [])]
+    .filter((term) => !stop.test(term));
+  const symptomTerms = [...new Set((request.symptom ?? "").toLowerCase().match(/[a-z]{7,}/g) ?? [])]
+    .filter((term) => !stop.test(term));
+  const relevant = (hit: SearchHitWithJudgment) => {
+    const visible = [hit.title, hit.snippet ?? "", ...(hit.topics ?? [])].join(" ").toLowerCase();
+    if (request.platforms?.length === 1 && request.platforms[0] === "iOS" &&
+        /\b(mac app|macos|appkit|nswindow|nsstatusitem|watchos|tvos|visionos)\b/i.test(hit.title) &&
+        !/\b(ios|iphone|uikit)\b/i.test(hit.title)) return false;
+    const symbolMatched = exactSymbols.some((term) => visible.includes(term));
+    const featureMatched = symbolMatched ||
+      featureTerms.some((term) => visible.includes(term)) ||
+      (/\btextfield\b/i.test(request.feature ?? "") && /\b(search field|text field)\b/.test(visible));
+    const symptomMatched = symptomTerms.some((term) => visible.includes(term));
+    // For a specific failure report, a generic single-token "keyboard"
+    // match is not evidence about the named control or its failure.
+    if (request.feature && request.symptom) return featureMatched && symptomMatched;
+    if (exactSymbols.length) return symbolMatched;
+    if (request.feature) return featureTerms.length === 0 ||
+      featureTerms.filter((term) => visible.includes(term)).length >= Math.min(2, featureTerms.length);
+    return symptomTerms.length === 0 || symptomMatched;
+  };
   const best = new Map<string, SearchHitWithJudgment & { priority: number }>();
   for (const search of searches) {
     for (const hit of search.hits) {
+      if (!relevant(hit)) continue;
       const key = `${hit.kind}:${hit.id}`;
       const current = best.get(key);
       const ranked = { ...hit, priority: search.priority };
@@ -860,8 +912,27 @@ function buildSwiftAuditSummary(args: {
   totalMatches: number;
   indexedItems: number;
   sourceCoverage?: ReturnType<typeof auditSourceCoverage>;
+  evidence: SearchHitWithJudgment[];
 }) {
   const caveats: string[] = [];
+  const evidenceText = args.evidence.map((hit) =>
+    `${hit.title} ${hit.snippet ?? ""} ${(hit.topics ?? []).join(" ")}`.toLowerCase());
+  const substantiates = (request?: string): boolean => {
+    if (!request) return true;
+    const terms = uniqueTerms(splitAuditTerms(request)
+      .filter((term) => term.length >= 5 && !term.includes(" ")))
+      .map((term) => term.toLowerCase())
+      .filter((term) => !/^(iphone|ipad|macos|swiftui|screen|using|blocks)$/i.test(term));
+    if (terms.length === 0) return true;
+    return evidenceText.some((text) => terms.filter((term) => text.includes(term)).length >= Math.min(2, terms.length));
+  };
+  const directEvidence = substantiates(args.feature) && substantiates(args.symptom);
+  if (!directEvidence) caveats.push("top source matches do not directly substantiate the requested feature or symptom; verify a focused Apple reference before code changes");
+  // This MCP reads an Apple-source index. It never inspects the caller's app
+  // source, signed build, simulator or real-device behavior. Matching sources
+  // cannot certify the implementation is ready for code review or release.
+  const appUninspected = true;
+  caveats.push("this audit did not inspect the app source or reproduce device behavior; Apple references are investigation context, not an approved implementation");
   if (args.indexedItems === 0) caveats.push("local index appears empty; run `npm run ingest:all` before relying on this audit");
   if (args.sourceCoverage?.hig === 0) caveats.push("HIG index is empty; run `npm run ingest:hig`");
   if (args.sourceCoverage?.tutorials === 0) caveats.push("tutorial index is empty; run `npm run ingest:tutorials`");
@@ -881,7 +952,7 @@ function buildSwiftAuditSummary(args: {
   // boundary-walking of the audit judgment layer, so the public summary
   // carries `readiness_band` (high / medium / low) and nothing finer.
   const confidence: "high" | "medium" | "low" =
-    args.totalMatches >= 5 && hasUsefulCoverage ? "high" : args.totalMatches > 0 ? "medium" : "low";
+    args.totalMatches >= 5 && hasUsefulCoverage && directEvidence && !appUninspected ? "high" : args.totalMatches > 0 ? "medium" : "low";
   return {
     readiness_band: confidence,
     readiness,
@@ -921,7 +992,9 @@ export function registerAllTools(
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     async ({ query, kinds, year, year_min, year_max, topics, platforms, require_transcript, judgment, detail, limit, offset, format }) => {
-      const fts = ftsQuote(query);
+      // A CamelCase API name is a symbol, not two generic English words.
+      const isApiSymbol = /^[A-Za-z]*[a-z][A-Z][A-Za-z0-9]*$/.test(query);
+      const fts = isApiSymbol ? '"' + query + '"' : ftsQuote(query);
       const runKinds = (ftsQuery: string): { hits: SearchHitWithJudgment[]; total: number } => {
         const acc: SearchHitWithJudgment[] = [];
         let accTotal = 0;
@@ -961,7 +1034,7 @@ export function registerAllTools(
       // search return nothing. Retry once with any-term matching and label
       // it, instead of dead-ending at zero hits.
       let fallback: "or_relaxed" | undefined;
-      if (total === 0) {
+      if (total === 0 && !isApiSymbol) {
         const ftsOr = ftsQuoteOr(query);
         if (ftsOr && ftsOr !== fts) {
           const relaxed = runKinds(ftsOr);
@@ -1004,6 +1077,9 @@ export function registerAllTools(
       const searchJudgment = judgment || detail === "detailed" ? judgeSearch(query, judgedPage, total, embeddingsOn, embeddingsState, ingestStatus) : undefined;
       if (fallback && searchJudgment) {
         searchJudgment.caveats.push("No all-terms match (a term may be misspelled); showing broader any-term matches.");
+      }
+      if (isApiSymbol && total === 0 && searchJudgment) {
+        searchJudgment.caveats.push("No exact indexed matches for this API symbol under the chosen filters. Expand the year range or search the separated words as a broader, non-exact query.");
       }
       // First-class no-hit disclosure (TestLabs Job 6, GAP-01): the fallback
       // label must not live only in the machine `fallback` field and a
@@ -1545,10 +1621,13 @@ export function registerAllTools(
         ...archetypeTerms,
       ]);
       const sessionQueries = uniqueTerms([
-        ...featureTerms,
-        ...frameworkTerms,
-        ...platforms,
+        feature, symptom,
+        ...splitAuditTerms(feature).slice(0, 4),
+        ...splitAuditTerms(symptom).slice(0, 4),
+        ...frameworks,
         ...profile.session,
+        ...archetypeTerms,
+        ...platforms,
       ]);
       const higQueries = uniqueTerms([
         ...featureTerms,
@@ -1568,13 +1647,43 @@ export function registerAllTools(
         return 2;
       };
 
-      const sessionSearches = sessionQueries.slice(0, 14).map((query) => {
-        const filtered = searchSessionsFts(db, ftsQuote(query), Math.min(limit, 5), 0, {
+      // Treat a specific problem report as a question about both the feature
+      // AND the failure. Native SQLite FTS5 AND queries beat isolated generic
+      // tokens like "menu", which otherwise surface unrelated Mac sessions.
+      const auditSignalWords = (text?: string): string[] => splitAuditTerms(text)
+        .filter((term) => term.length >= 5 &&
+          !/^(iphone|ipad|macos|swiftui|screen|using|users|user|covers|taps|buttons|button|shows|please|could)$/i.test(term));
+      const featureSignals = auditSignalWords(feature).slice(0, 4);
+      const symptomSignals = auditSignalWords(symptom);
+      const firstSymptom = symptomSignals[0];
+      const lastSymptom = symptomSignals.at(-1);
+      const focusedSessionQueries = featureSignals.length && firstSymptom
+        ? uniqueTerms([
+            ...featureSignals.flatMap((signal) => [
+              ...(lastSymptom && lastSymptom !== firstSymptom ? [`${signal} ${firstSymptom} ${lastSymptom}`] : []),
+              `${signal} ${firstSymptom}`,
+            ]),
+            ...(lastSymptom && lastSymptom !== firstSymptom ? [`${firstSymptom} ${lastSymptom}`] : []),
+          ]).slice(0, 14)
+        : [];
+      const hasSpecificProblem = Boolean(feature?.trim() && symptom?.trim());
+      const executedSessionQueries = hasSpecificProblem ? focusedSessionQueries : sessionQueries.slice(0, 14);
+      const excludesTargetPlatform = (title: string) =>
+        platforms.includes("iOS") && !platforms.includes("macOS") &&
+        /\b(appkit|macos|mac app|mac apps|watchos|tvos|visionos)\b/i.test(title);
+      const sessionSearches = executedSessionQueries.map((query) => {
+        const filtered = searchSessionsFts(db, ftsQuote(query), Math.min(limit * 2, 10), 0, {
           yearMin: year_min,
           platforms,
           requireTranscript: false,
         });
-        return { query, priority: priorityFor(query), ...filtered, usedPlatformFallback: false };
+        return {
+          query,
+          priority: hasSpecificProblem ? 0 : priorityFor(query),
+          hits: filtered.hits.filter((hit) => !excludesTargetPlatform(hit.title)),
+          total: filtered.total,
+          usedPlatformFallback: false,
+        };
       });
       const tutorialSearches = sessionQueries.slice(0, 12).map((query) => ({
         query,
@@ -1602,10 +1711,17 @@ export function registerAllTools(
       // STD-OUT-1: audit session hits ship WITHOUT their per-hit judgment
       // objects — judgeHit carries a confidence value, and the audit's
       // judgment layer must not leak through the results payload either.
-      const sessions = pickRankedAuditHits(sessionSearches, limit);
-      const docs = pickRankedAuditHits(docSearches, Math.min(limit, 6));
-      const tutorials = pickRankedAuditHits(tutorialSearches, Math.min(limit, 4));
-      const hig = pickRankedAuditHits(higSearches, Math.min(limit, 5));
+      const requestedEvidence = { feature, symptom, platforms };
+      const sessions = pickRankedAuditHits(sessionSearches, limit, requestedEvidence);
+      const docs = pickRankedAuditHits(docSearches, Math.min(limit, 6), requestedEvidence);
+      const tutorials = pickRankedAuditHits(tutorialSearches, Math.min(limit, 4), requestedEvidence);
+      // HIG is broader design context. Include guidance matching the user's
+      // requested feature OR selected audit focus; neither alone is proof of
+      // the app bug. Reuse the existing hit deduplication instead of a new ranker.
+      const hig = pickTopSearchHits([
+        { query: feature ?? "", hits: pickRankedAuditHits(higSearches, Math.min(limit, 5), { feature, platforms }) },
+        { query: focus, hits: pickRankedAuditHits(higSearches, Math.min(limit, 5), { feature: focus, platforms }) },
+      ], Math.min(limit, 5));
       const evolution = pickRankedAuditHits(evolutionSearches, Math.min(limit, 5));
       // App Store Guidelines — especially useful for app-store focus and all audits
       const guidelineTerms = featureTerms.slice(0, 6);
@@ -1645,7 +1761,13 @@ export function registerAllTools(
         totalMatches,
         indexedItems,
         sourceCoverage,
+        evidence: [...sessions, ...docs, ...tutorials, ...hig],
       });
+      if (hasSpecificProblem && !sessions.length) {
+        summary.caveats.push("No session directly matches both the requested feature and failure symptom; do not substitute unrelated WWDC talks as code-change evidence.");
+        summary.readiness = "insufficient_context";
+        summary.readiness_band = "low";
+      }
       if (sessionSearches.some((search) => search.usedPlatformFallback)) {
         summary.caveats.push("session platform metadata unavailable for one or more queries; session results include unfiltered WWDC matches");
         if (summary.readiness === "ready_for_code_review") summary.readiness = "seed_context_only";
@@ -1690,7 +1812,7 @@ export function registerAllTools(
             year_min,
             ...(releaseHandoff ? { optional_release_handoff: releaseHandoff } : {}),
             summary,
-            queries: { sessions: sessionQueries, docs: sessionQueries, tutorials: sessionQueries, hig: higQueries, evolution: evolutionQueries },
+            queries: { sessions: executedSessionQueries, docs: sessionQueries, tutorials: sessionQueries, hig: higQueries, evolution: evolutionQueries },
             platform_fallback_used: sessionSearches.some((search) => search.usedPlatformFallback),
             source_coverage: sourceCoverage,
             doc_hints: docHints,
