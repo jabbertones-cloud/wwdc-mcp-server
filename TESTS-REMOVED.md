@@ -9,9 +9,13 @@ Why, in Scott's terms:
 - The tests were detrimental and negative. They consumed the time
   and tokens that were supposed to go to researching the problem
   and fixing it.
-- Building them created loops: write tests, fix tests, bend the
-  code to satisfy the tests, write more tests — more tokens, less
-  finished, more pretend.
+- Building them created a loop that never touched the product:
+  tests written to say pass; when they didn't, the TESTS got fixed
+  until they said pass — the code untouched. "You spend more time
+  making tests that say pass and fixing the tests to say pass
+  instead of testing the actual code to actually work." The word
+  "testing" was spent entirely on the tests themselves, never on
+  whether the actual code actually works in use.
 - They were lies: green checkmarks over systems that don't work.
   A suite passing against fixtures proved nothing about the real
   system in real use.
