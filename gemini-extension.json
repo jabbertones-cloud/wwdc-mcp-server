@@ -1,0 +1,10 @@
+{
+  "name": "appdev-atlas",
+  "version": "0.1.0",
+  "description": "Independent WWDC, Swift, HIG, and App Review research with Apple-source citations.",
+  "mcpServers": {
+    "wwdc": {
+      "httpUrl": "https://wwdc-mcp.smatdesigns.com/mcp"
+    }
+  }
+}
