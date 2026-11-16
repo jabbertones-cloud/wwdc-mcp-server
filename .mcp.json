@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "wwdc": {
+      "type": "http",
+      "url": "https://wwdc-mcp.smatdesigns.com/mcp",
+      "note": "Public read-only AppDev Atlas; independent Apple developer research; no Apple account access or write tools."
+    }
+  }
+}
