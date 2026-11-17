@@ -91,6 +91,15 @@ for(const bad of ['x'.repeat(31),'\tinvalid']){
  assert.throws(()=>validateInterface({...publicManifest.interface,shortDescription:bad}));
 }
 assert.throws(()=>assertAligned({...publicManifest,extensions:{'com.openai':{interface:{...publicManifest.interface,category:'Other'}}}}));
+const skillPath=path.join(ROOT,publicDir,'skills/apple-development-research/SKILL.md');
+const skill=fs.readFileSync(skillPath,'utf8');
+assert.match(skill,/^---\r?\nname: apple-development-research\r?\n/,'skill frontmatter must declare stable name');
+assert.match(skill,/description: Research Apple-platform development questions/,'skill discovery trigger missing');
+for(const tool of ['wwdc_search','apple_doc_lookup','apple_api_availability','swift_app_audit','appstore_guidelines_search']){
+ assert.ok(skill.includes('`'+tool+'`'),`skill missing routed MCP tool: ${tool}`);
+}
+assert.match(skill,/cannot authenticate to App Store Connect/,'skill must not promise private ASC access');
+assert.ok(fs.statSync(path.join(ROOT,publicDir,'skills/apple-development-research/agents/openai.yaml')).size>0,'skill UI metadata missing');
 console.log('[plugin] private metadata aligned; public candidate 0.2.6 validated; 38 locales, 5+3 reviewer cases and artwork verified');
 if(process.argv.includes('--live')){
  const server=publicMcp.mcpServers.wwdc.url;
