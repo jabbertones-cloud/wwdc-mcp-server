@@ -4,6 +4,7 @@
  */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
@@ -43,13 +44,13 @@ assertAligned(privateManifest);
 assert.equal(privateManifest.interface.shortDescription,'Apple developer evidence');
 assert.equal(privateMcp.mcpServers.wwdc.url,'https://wwdc-mcp.smatdesigns.com/mcp');
 assert.equal(publicManifest.name,'wwdc-apple-developer','public package identity is immutable for an existing OpenAI plugin release');
-assert.equal(publicManifest.version,'0.2.6','this is a NEXT version candidate, not submitted 0.2.5');
+assert.equal(publicManifest.version,'0.2.7','this is the next revision of the published 0.2.6 release');
 assertAligned(publicManifest);
 assert.deepEqual(publicManifest,mirror,'root and agent plugin manifest copies must agree');
 assert.deepEqual(publicManifest.interface,publicManifest.extensions['com.openai'].interface,'public interfaces must not diverge');
 assert.equal(publicManifest.interface.displayName,'AppDev Atlas');
 assert.ok(!/\b(WWDC|Apple|OpenAI|ChatGPT)\b/i.test(publicManifest.interface.displayName),'no third-party marks in public display name');
-assert.equal(publicManifest.interface.shortDescription,'Source-backed app research');
+assert.equal(publicManifest.interface.shortDescription,'SwiftUI, WWDC & App Review');
 assert.match(publicManifest.interface.longDescription,/not affiliated with or endorsed by Apple or OpenAI/i,'public listing must disclose independence');
 assert.equal(publicMcp.mcpServers.wwdc.url,'https://wwdc-mcp.smatdesigns.com/mcp');
 assert.equal(publicMcp.mcpServers.wwdc.extensions['com.openai'].auth.type,'none');
@@ -86,12 +87,36 @@ for(const f of ['assets/icon.png','assets/composer-icon.png','icon.png','compose
 }
 assert.ok(!JSON.stringify(publicManifest).includes('test_credentials'),'do not include credentials in submission metadata');
 assert.ok(!JSON.stringify(publicManifest).includes('reviewer_instructions'),'reviewer instructions must use dashboard');
+// Freeze the actual published 0.2.6 logo bytes and all 38 localized listings.
+// Failing this gate requires an explicit separately-reviewed brand/localization change.
+const lock=load(publicDir+'/preservation.lock.json');
+const sha256=(data)=>crypto.createHash('sha256').update(data).digest('hex');
+assert.equal(publicManifest.name,lock.immutable_plugin_name,'existing published package identity must not change');
+assert.equal(publicMcp.mcpServers.wwdc.url,lock.immutable_mcp_url,'existing MCP URL must not change');
+assert.equal(Object.keys(translations).length,lock.locale_count,'all published locales must remain');
+assert.equal(sha256(JSON.stringify(translations)),lock.translations_sha256,'localized subtitles and descriptions changed');
+for(const [asset,expected] of Object.entries(lock.asset_sha256)){
+ const actual=sha256(fs.readFileSync(path.join(ROOT,publicDir,asset)));
+ assert.equal(actual,expected,`published artwork changed: ${asset}`);
+}
+for(const skill of ['get-started','apple-app-research']){
+ const base=path.join(ROOT,publicDir,'skills',skill);
+ const instructions=fs.readFileSync(path.join(base,'SKILL.md'),'utf8');
+ const metadata=fs.readFileSync(path.join(base,'agents','openai.yaml'),'utf8');
+ assert.ok(instructions.startsWith('---\\nname: '+skill+'\\n'),`skill frontmatter missing: ${skill}`);
+ assert.match(instructions,/\\ndescription: .+Use /,`skill needs task-specific triggers: ${skill}`);
+ assert.match(metadata,/^interface:\\n  display_name:/,`skill UI metadata missing: ${skill}`);
+ assert.ok(!/TODO|placeholder/i.test(instructions),`unfinished skill ${skill}`);
+}
+assert.deepEqual(publicManifest.interface.capabilities,publicManifest.extensions['com.openai'].interface.capabilities);
+assert.deepEqual(publicManifest.interface.defaultPrompt,publicManifest.extensions['com.openai'].interface.defaultPrompt);
+
 // Assert the validator actually detects the originally reported regressions.
 for(const bad of ['x'.repeat(31),'\tinvalid']){
  assert.throws(()=>validateInterface({...publicManifest.interface,shortDescription:bad}));
 }
 assert.throws(()=>assertAligned({...publicManifest,extensions:{'com.openai':{interface:{...publicManifest.interface,category:'Other'}}}}));
-console.log('[plugin] private metadata aligned; public candidate 0.2.6 validated; 38 locales, 5+3 reviewer cases and artwork verified');
+console.log('[plugin] private metadata aligned; public candidate 0.2.7 validated; original 38 locales and logos locked; 2 skills; 5+3 reviewer cases');
 if(process.argv.includes('--live')){
  const server=publicMcp.mcpServers.wwdc.url;
  const post=async(method,params,id=1)=>{
