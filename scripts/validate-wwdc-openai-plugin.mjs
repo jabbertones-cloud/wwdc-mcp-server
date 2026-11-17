@@ -43,7 +43,7 @@ assertAligned(privateManifest);
 assert.equal(privateManifest.interface.shortDescription,'Apple developer evidence');
 assert.equal(privateMcp.mcpServers.wwdc.url,'https://wwdc-mcp.smatdesigns.com/mcp');
 assert.equal(publicManifest.name,'wwdc-apple-developer','public package identity is immutable for an existing OpenAI plugin release');
-assert.equal(publicManifest.version,'0.2.6','this is a NEXT version candidate, not submitted 0.2.5');
+assert.equal(publicManifest.version,'0.2.7','next candidate must advance beyond published v0.2.6');
 assertAligned(publicManifest);
 assert.deepEqual(publicManifest,mirror,'root and agent plugin manifest copies must agree');
 assert.deepEqual(publicManifest.interface,publicManifest.extensions['com.openai'].interface,'public interfaces must not diverge');
@@ -104,7 +104,7 @@ const skillAgent=fs.readFileSync(path.join(ROOT,publicDir,'skills/apple-developm
 assert.match(skillAgent,/value: "wwdc"/,'skill must refer to shipped WWDC MCP key');
 assert.match(skillAgent,/url: "https:\/\/wwdc-mcp\.smatdesigns\.com\/mcp"/,'skill dependency must use existing reviewed MCP origin');
 assert.ok(fs.statSync(path.join(ROOT,publicDir,'skills/apple-development-research/agents/openai.yaml')).size>0,'skill UI metadata missing');
-console.log('[plugin] private metadata aligned; public candidate 0.2.6 validated; 38 locales, 5+3 reviewer cases and artwork verified');
+console.log('[plugin] private metadata aligned; public candidate 0.2.7 validated; 38 locales, 5+3 reviewer cases and artwork verified');
 if(process.argv.includes('--live')){
  const server=publicMcp.mcpServers.wwdc.url;
  const post=async(method,params,id=1)=>{
