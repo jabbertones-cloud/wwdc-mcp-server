@@ -45,6 +45,7 @@ assert.equal(privateManifest.interface.shortDescription,'Apple developer evidenc
 assert.equal(privateMcp.mcpServers.wwdc.url,'https://wwdc-mcp.smatdesigns.com/mcp');
 assert.equal(publicManifest.name,'wwdc-apple-developer','public package identity is immutable for an existing OpenAI plugin release');
 assert.equal(publicManifest.version,'0.2.7','this is the next revision of the published 0.2.6 release');
+assert.equal(publicManifest.skills,'./skills/','OpenAI plugin manifest must point at its bundled skills directory');
 assertAligned(publicManifest);
 assert.deepEqual(publicManifest,mirror,'root and agent plugin manifest copies must agree');
 const {onboardingSkill: publicOnboardingSkill,...publicListing}=publicManifest.extensions['com.openai'].interface;
