@@ -1,3 +1,10 @@
 interface:
   display_name: "Apple Development Research"
   short_description: "Cited WWDC and Apple API guidance"
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "wwdc"
+      description: "Read-only WWDC sessions, Apple documentation and API research"
+      transport: "streamable_http"
+      url: "https://wwdc-mcp.smatdesigns.com/mcp"
