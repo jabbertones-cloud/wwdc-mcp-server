@@ -17,7 +17,7 @@ const opt=args.indexOf('--out');
 const target=opt>=0?path.resolve(args[opt+1]):path.join(ROOT,'_artifacts',`wwdc-openai-plugin-${version}-candidate.zip`);
 assert.ok(!target.startsWith(dir+path.sep),'ZIP output must not be inside source directory');
 fs.mkdirSync(path.dirname(target),{recursive:true});
-const allow=['plugin.json','.agent-plugin/plugin.json','mcp.json','README.txt','icon.png','composer-icon.png','assets/icon.png','assets/composer-icon.png'];
+const allow=['plugin.json','.agent-plugin/plugin.json','mcp.json','README.txt','icon.png','composer-icon.png','assets/icon.png','assets/composer-icon.png','skills/apple-development-research/SKILL.md','skills/apple-development-research/agents/openai.yaml'];
 assert.equal(allow.length,new Set(allow).size);
 const names=allow.sort();
 const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'wwdc-openai-zip-'));
