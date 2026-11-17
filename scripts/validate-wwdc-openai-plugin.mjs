@@ -103,9 +103,9 @@ for(const skill of ['get-started','apple-app-research']){
  const base=path.join(ROOT,publicDir,'skills',skill);
  const instructions=fs.readFileSync(path.join(base,'SKILL.md'),'utf8');
  const metadata=fs.readFileSync(path.join(base,'agents','openai.yaml'),'utf8');
- assert.ok(instructions.startsWith('---\\nname: '+skill+'\\n'),`skill frontmatter missing: ${skill}`);
- assert.match(instructions,/\\ndescription: .+Use /,`skill needs task-specific triggers: ${skill}`);
- assert.match(metadata,/^interface:\\n  display_name:/,`skill UI metadata missing: ${skill}`);
+ assert.ok(instructions.startsWith('---\nname: '+skill+'\n'),`skill frontmatter missing: ${skill}`);
+ assert.match(instructions,/\ndescription: .+Use /,`skill needs task-specific triggers: ${skill}`);
+ assert.match(metadata,/^interface:\n  display_name:/,`skill UI metadata missing: ${skill}`);
  assert.ok(!/TODO|placeholder/i.test(instructions),`unfinished skill ${skill}`);
 }
 assert.deepEqual(publicManifest.interface.capabilities,publicManifest.extensions['com.openai'].interface.capabilities);
