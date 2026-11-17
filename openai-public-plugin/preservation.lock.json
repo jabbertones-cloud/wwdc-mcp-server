@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "baseline": "AppDev-Atlas-0.2.6.zip",
+  "baseline_archive_sha256": "d4a83be99db0dc68717f0db87eb486d9f39f71c77b9e20c6a3d7cf521bcd0236",
+  "locale_count": 38,
+  "translations_sha256": "c059e714d50b81c9ad13d1b4ba1553b4a3e8db8e665bf0a2085f5833ea668de0",
+  "asset_sha256": {
+    "assets/icon.png": "4ad5b64e072e0ebb4b0d690ef707c4b28f207341ed00ea2822142a8d8269ded7",
+    "assets/composer-icon.png": "ee7f386ce215f4d941906879cfd01089bd788a1ccc8d4a21b9146402bcff200f",
+    "icon.png": "4ad5b64e072e0ebb4b0d690ef707c4b28f207341ed00ea2822142a8d8269ded7",
+    "composer-icon.png": "ee7f386ce215f4d941906879cfd01089bd788a1ccc8d4a21b9146402bcff200f"
+  },
+  "immutable_plugin_name": "wwdc-apple-developer",
+  "immutable_mcp_url": "https://wwdc-mcp.smatdesigns.com/mcp",
+  "notes": "Lock assembled against verified published 0.2.6 ZIP found in Downloads November 17 2026. Do not change logos or localized listing copy in the 0.2.7 metadata and skill release."
+}

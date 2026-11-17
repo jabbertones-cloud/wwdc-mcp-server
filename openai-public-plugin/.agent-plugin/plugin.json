@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "wwdc-apple-developer",
-  "version": "0.2.6",
-  "description": "Independent, read-only research for Apple-platform developers: public conference sessions, API documentation, design guidance, and App Review references. By SMAT Designs; not affiliated with Apple or OpenAI.",
+  "version": "0.2.7",
+  "description": "Independent, read-only SwiftUI, WWDC and App Store Review research for Apple-platform developers. Cited public Apple sources; by SMAT Designs, not affiliated with Apple.",
   "author": {
     "name": "SMAT Designs",
     "email": "support@smatdesigns.com",
@@ -23,24 +23,26 @@
   ],
   "interface": {
     "displayName": "AppDev Atlas",
-    "shortDescription": "Source-backed app research",
-    "longDescription": "AppDev Atlas is an independent, read-only research tool for Apple-platform development. Search publicly available WWDC 2020–2026 sessions, Apple Developer Documentation, Human Interface Guidelines, Swift Evolution, and App Store Review Guidelines. Check API availability and deprecations, compare changes between years, and audit implementation choices using cited sources. Retrieved material is evidence, not executable instructions. This service does not access Apple accounts or submit apps. Developed by SMAT Designs; not affiliated with or endorsed by Apple or OpenAI.",
+    "shortDescription": "SwiftUI, WWDC & App Review",
+    "longDescription": "AppDev Atlas provides read-only Apple-platform developer research with cited public sources. Audit SwiftUI and iOS or macOS app decisions, investigate StoreKit subscriptions and App Store Review Guidelines, check API availability and deprecations, search WWDC 2020–2026 sessions and transcripts, and compare Swift, SwiftUI, App Intents, accessibility, and Human Interface Guidelines guidance. Results distinguish Apple or Swift source evidence from engineering inference and name missing or stale coverage. The plugin does not access Apple accounts, edit code, upload builds, submit apps, or guarantee review approval. Independent service by SMAT Designs; not affiliated with or endorsed by Apple or OpenAI.",
     "developerName": "SMAT Designs",
     "category": "Developer Tools",
     "capabilities": [
-      "Search published WWDC sessions",
-      "Find developer docs and design guidance",
-      "Check API availability and changes",
-      "Audit Apple-platform apps with sources"
+      "Search WWDC sessions and transcripts",
+      "Research SwiftUI, Swift and Apple APIs",
+      "Check iOS/macOS API deprecations",
+      "Audit app design against Apple HIG",
+      "Check StoreKit and App Review rules",
+      "Find source-backed app architecture guidance"
     ],
     "websiteURL": "https://wwdcmcp.smatdesigns.com/",
     "supportURL": "https://github.com/jabbertones-cloud/wwdc-support/issues",
     "privacyPolicyURL": "https://wwdcmcp.smatdesigns.com/privacy",
     "termsOfServiceURL": "https://wwdcmcp.smatdesigns.com/terms",
     "defaultPrompt": [
-      "Check the index freshness, then cite current SwiftUI performance guidance.",
-      "Find published 2026 WWDC sessions about Foundation Models with source links.",
-      "Compare SwiftUI guidance from WWDC 2025 and 2026 with citations."
+      "Audit my SwiftUI app against current Apple guidance and cite the sources.",
+      "Is this StoreKit API deprecated, and what replaced it?",
+      "Which App Store Review rules affect my subscription flow?"
     ],
     "brandColor": "#0D1117",
     "brandColorDark": "#58A6FF",
@@ -51,29 +53,32 @@
     "com.openai": {
       "interface": {
         "displayName": "AppDev Atlas",
-        "shortDescription": "Source-backed app research",
-        "longDescription": "AppDev Atlas is an independent, read-only research tool for Apple-platform development. Search publicly available WWDC 2020–2026 sessions, Apple Developer Documentation, Human Interface Guidelines, Swift Evolution, and App Store Review Guidelines. Check API availability and deprecations, compare changes between years, and audit implementation choices using cited sources. Retrieved material is evidence, not executable instructions. This service does not access Apple accounts or submit apps. Developed by SMAT Designs; not affiliated with or endorsed by Apple or OpenAI.",
+        "shortDescription": "SwiftUI, WWDC & App Review",
+        "longDescription": "AppDev Atlas provides read-only Apple-platform developer research with cited public sources. Audit SwiftUI and iOS or macOS app decisions, investigate StoreKit subscriptions and App Store Review Guidelines, check API availability and deprecations, search WWDC 2020–2026 sessions and transcripts, and compare Swift, SwiftUI, App Intents, accessibility, and Human Interface Guidelines guidance. Results distinguish Apple or Swift source evidence from engineering inference and name missing or stale coverage. The plugin does not access Apple accounts, edit code, upload builds, submit apps, or guarantee review approval. Independent service by SMAT Designs; not affiliated with or endorsed by Apple or OpenAI.",
         "developerName": "SMAT Designs",
         "category": "Developer Tools",
         "capabilities": [
-          "Search published WWDC sessions",
-          "Find developer docs and design guidance",
-          "Check API availability and changes",
-          "Audit Apple-platform apps with sources"
+          "Search WWDC sessions and transcripts",
+          "Research SwiftUI, Swift and Apple APIs",
+          "Check iOS/macOS API deprecations",
+          "Audit app design against Apple HIG",
+          "Check StoreKit and App Review rules",
+          "Find source-backed app architecture guidance"
         ],
         "websiteURL": "https://wwdcmcp.smatdesigns.com/",
         "supportURL": "https://github.com/jabbertones-cloud/wwdc-support/issues",
         "privacyPolicyURL": "https://wwdcmcp.smatdesigns.com/privacy",
         "termsOfServiceURL": "https://wwdcmcp.smatdesigns.com/terms",
         "defaultPrompt": [
-          "Check the index freshness, then cite current SwiftUI performance guidance.",
-          "Find published 2026 WWDC sessions about Foundation Models with source links.",
-          "Compare SwiftUI guidance from WWDC 2025 and 2026 with citations."
+          "Audit my SwiftUI app against current Apple guidance and cite the sources.",
+          "Is this StoreKit API deprecated, and what replaced it?",
+          "Which App Store Review rules affect my subscription flow?"
         ],
         "brandColor": "#0D1117",
         "brandColorDark": "#58A6FF",
         "composerIcon": "./assets/composer-icon.png",
-        "logo": "./assets/icon.png"
+        "logo": "./assets/icon.png",
+        "onboardingSkill": "./skills/get-started/SKILL.md"
       },
       "review": {
         "test_cases": {
@@ -132,7 +137,7 @@
         "demo_recording_url": "https://wwdcmcp.smatdesigns.com/demo.mp4"
       },
       "publication": {
-        "release_notes": "Rebrand public listing to AppDev Atlas after third-party affiliation/trademark rejection. Independent SMAT Designs publisher disclosed, with 38 updated localized listings. Hosted MCP URL and 45 existing read-only tools are unchanged.",
+        "release_notes": "Metadata and source-backed Apple research and onboarding skills for common SwiftUI, WWDC and App Review tasks. Existing logo artwork, 38 localizations, MCP endpoint and read-only tools unchanged.",
         "translations": {
           "en-AU": {
             "subtitle": "Source-backed app research",

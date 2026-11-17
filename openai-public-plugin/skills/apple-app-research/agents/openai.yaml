@@ -1,0 +1,10 @@
+interface:
+  display_name: "Apple App Research"
+  short_description: "Cited SwiftUI, WWDC and App Review help"
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "wwdc"
+      description: "Read-only WWDC, SwiftUI, Apple API and App Review evidence"
+      transport: "streamable_http"
+      url: "https://wwdc-mcp.smatdesigns.com/mcp"

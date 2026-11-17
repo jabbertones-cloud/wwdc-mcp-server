@@ -1,0 +1,10 @@
+interface:
+  display_name: "Get Started with AppDev Atlas"
+  short_description: "Your first source-backed Apple answer"
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "wwdc"
+      description: "Read-only source-backed Apple developer research"
+      transport: "streamable_http"
+      url: "https://wwdc-mcp.smatdesigns.com/mcp"
