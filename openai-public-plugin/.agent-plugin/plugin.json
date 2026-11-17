@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "wwdc-apple-developer",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "skills": "./skills/",
   "description": "Independent, read-only research for Apple-platform developers: public conference sessions, API documentation, design guidance, and App Review references. By SMAT Designs; not affiliated with Apple or OpenAI.",
   "author": {
@@ -133,7 +133,7 @@
         "demo_recording_url": "https://wwdcmcp.smatdesigns.com/demo.mp4"
       },
       "publication": {
-        "release_notes": "Rebrand public listing to AppDev Atlas after third-party affiliation/trademark rejection. Independent SMAT Designs publisher disclosed, with 38 updated localized listings. Hosted MCP URL and 45 existing read-only tools are unchanged.",
+        "release_notes": "Adds an Apple development research skill for source-backed WWDC sessions, SwiftUI APIs, HIG, and App Review questions. The existing MCP endpoint, 45 read-only tools, logo, and 38 localized listings are unchanged.",
         "translations": {
           "en-AU": {
             "subtitle": "Source-backed app research",
