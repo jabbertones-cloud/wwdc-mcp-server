@@ -1,0 +1,17 @@
+{
+  "name": "appdev-atlas",
+  "version": "0.1.0",
+  "description": "Read-only WWDC and Apple API research for Grok Build via AppDev Atlas's hosted MCP.",
+  "author": {
+    "name": "SMAT Designs"
+  },
+  "repository": "https://github.com/jabbertones-cloud/wwdc-mcp-server",
+  "license": "MIT",
+  "keywords": [
+    "apple",
+    "wwdc",
+    "swift",
+    "swiftui",
+    "mcp"
+  ]
+}
