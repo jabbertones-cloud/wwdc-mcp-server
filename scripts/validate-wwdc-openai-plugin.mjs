@@ -47,7 +47,8 @@ assert.equal(publicManifest.name,'wwdc-apple-developer','public package identity
 assert.equal(publicManifest.version,'0.2.7','this is the next revision of the published 0.2.6 release');
 assertAligned(publicManifest);
 assert.deepEqual(publicManifest,mirror,'root and agent plugin manifest copies must agree');
-assert.deepEqual(publicManifest.interface,publicManifest.extensions['com.openai'].interface,'public interfaces must not diverge');
+const {onboardingSkill: publicOnboardingSkill,...publicListing}=publicManifest.extensions['com.openai'].interface;
+assert.deepEqual(publicManifest.interface,publicListing,'public interfaces must not diverge apart from the OpenAI onboarding skill');
 assert.equal(publicManifest.interface.displayName,'AppDev Atlas');
 assert.ok(!/\b(WWDC|Apple|OpenAI|ChatGPT)\b/i.test(publicManifest.interface.displayName),'no third-party marks in public display name');
 assert.equal(publicManifest.interface.shortDescription,'SwiftUI, WWDC & App Review');
