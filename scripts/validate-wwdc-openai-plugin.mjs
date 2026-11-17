@@ -110,6 +110,12 @@ for(const skill of ['get-started','apple-app-research']){
 }
 assert.deepEqual(publicManifest.interface.capabilities,publicManifest.extensions['com.openai'].interface.capabilities);
 assert.deepEqual(publicManifest.interface.defaultPrompt,publicManifest.extensions['com.openai'].interface.defaultPrompt);
+assert.equal(publicManifest.extensions['com.openai'].interface.onboardingSkill,'./skills/get-started/SKILL.md','onboarding must include its actual skill');
+for(const skill of ['get-started','apple-app-research']){
+ const yaml=fs.readFileSync(path.join(ROOT,publicDir,'skills',skill,'agents','openai.yaml'),'utf8');
+ assert.ok(yaml.includes('value: "wwdc"') && yaml.includes(publicMcp.mcpServers.wwdc.url),`skill must link unchanged MCP: ${skill}`);
+}
+
 
 // Assert the validator actually detects the originally reported regressions.
 for(const bad of ['x'.repeat(31),'\tinvalid']){
