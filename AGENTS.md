@@ -11,7 +11,7 @@ Do not mistake tests, merged PRs or local HTTP probes for production acceptance.
 ## Critical product judgment before release
 
 Passing tests or packaging does **not** approve a user experience. Before any new release, run the [Product Acceptance Gate](docs/PRODUCT-ACCEPTANCE.md) against actual first-time user tasks, public website and an MCP client. Explicitly challenge source relevance, Apple-platform accuracy, reported readiness, empty/cold state, citations, onboarding, failure recovery, accessibility, security and claim truthfulness. Preserve the *failed baseline result* and *retested improved result*. A misleading high-readiness verdict or wrong-platform recommendation blocks shipping even if CI is green. Record a critical independent review, not just the implementer's approval. Do not claim this gate passed without a linked evidence receipt.
- Use only smat-m1-mini for GitHub Actions; no paid GitHub runners.
+ GitHub Actions are permanently disabled, with no exceptions. Do not enable or rely on GitHub Actions. Use independently authorized direct scripts or non-GitHub-Action execution on the approved runner instead.
 
 ## Mandatory six-rule learning loop (owner directive, 2026-10-10)
 
