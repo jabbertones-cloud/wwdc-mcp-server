@@ -77,7 +77,8 @@
         "brandColor": "#0D1117",
         "brandColorDark": "#58A6FF",
         "composerIcon": "./assets/composer-icon.png",
-        "logo": "./assets/icon.png"
+        "logo": "./assets/icon.png",
+        "onboardingSkill": "./skills/get-started/SKILL.md"
       },
       "review": {
         "test_cases": {
