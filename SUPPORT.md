@@ -2,6 +2,17 @@
 
 AppDev Atlas is an independent Apple-platform research service by SMAT Designs, not affiliated with or endorsed by Apple or OpenAI. The public product support page is https://wwdcmcp.smatdesigns.com/support.
 
+## Current release status and supported scope
+
+**Reviewed:** November 17, 2026. The product's public name is **AppDev Atlas**; `wwdc` technical identifiers remain for compatibility.
+
+- **Published ChatGPT plugin:** v0.2.6 at https://chatgpt.com/plugins/plugin_asdk_app_6ad90350c9fc8191abcbd6ccd10052c9
+- **Proposed next plugin packaging:** v0.2.7 source metadata and two task-specific skills are merged but do not prove an OpenAI Platform upload, approval or rollout.
+- **Read-only Apple research:** 45 tools covering Apple public documentation and WWDC research. No private App Store Connect account, Apple submission permissions or GitHub issue write access are granted by these tools.
+- **Dated verification and troubleshooting:** https://github.com/jabbertones-cloud/wwdc-support/blob/main/docs/release-status-2026-11-17.md
+
+A source commit or an installed MCP package version is not evidence that a user's ChatGPT listing, hosted server, or indexed Apple corpus is current. Verify the tool response and original Apple documentation for the specific question.
+
 ## Start with the failure layer
 
 - **Install or connection problem:** include your MCP client, Node/npm version, AppDev Atlas release/version (legacy MCP package version is fine), and whether you use stdio or HTTP.
