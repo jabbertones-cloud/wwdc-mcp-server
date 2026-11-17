@@ -1,0 +1,10 @@
+interface:
+  display_name: "Apple Source Audit"
+  short_description: "Search primary Apple developer and WWDC source evidence"
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "wwdc"
+      description: "Search primary Apple developer and WWDC source evidence"
+      transport: "streamable_http"
+      url: "https://wwdc-mcp.smatdesigns.com/mcp"
