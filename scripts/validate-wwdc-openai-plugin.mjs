@@ -47,6 +47,7 @@ assert.equal(publicManifest.version,'0.2.6','this is a NEXT version candidate, n
 assertAligned(publicManifest);
 assert.deepEqual(publicManifest,mirror,'root and agent plugin manifest copies must agree');
 assert.deepEqual(publicManifest.interface,publicManifest.extensions['com.openai'].interface,'public interfaces must not diverge');
+assert.equal(publicManifest.skills,'./skills/','plugin manifest must explicitly reference shipped skill directory');
 assert.equal(publicManifest.interface.displayName,'AppDev Atlas');
 assert.ok(!/\b(WWDC|Apple|OpenAI|ChatGPT)\b/i.test(publicManifest.interface.displayName),'no third-party marks in public display name');
 assert.equal(publicManifest.interface.shortDescription,'Source-backed app research');
@@ -99,6 +100,9 @@ for(const tool of ['wwdc_search','apple_doc_lookup','apple_api_availability','sw
  assert.ok(skill.includes('`'+tool+'`'),`skill missing routed MCP tool: ${tool}`);
 }
 assert.match(skill,/cannot authenticate to App Store Connect/,'skill must not promise private ASC access');
+const skillAgent=fs.readFileSync(path.join(ROOT,publicDir,'skills/apple-development-research/agents/openai.yaml'),'utf8');
+assert.match(skillAgent,/value: "wwdc"/,'skill must refer to shipped WWDC MCP key');
+assert.match(skillAgent,/url: "https:\/\/wwdc-mcp\.smatdesigns\.com\/mcp"/,'skill dependency must use existing reviewed MCP origin');
 assert.ok(fs.statSync(path.join(ROOT,publicDir,'skills/apple-development-research/agents/openai.yaml')).size>0,'skill UI metadata missing');
 console.log('[plugin] private metadata aligned; public candidate 0.2.6 validated; 38 locales, 5+3 reviewer cases and artwork verified');
 if(process.argv.includes('--live')){
