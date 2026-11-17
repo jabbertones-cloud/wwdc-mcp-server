@@ -2,7 +2,6 @@
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "wwdc-apple-developer",
   "version": "0.2.7",
-  "skills": "./skills/",
   "description": "Independent, read-only SwiftUI, WWDC and App Store Review research for Apple-platform developers. Cited public Apple sources; by SMAT Designs, not affiliated with Apple.",
   "author": {
     "name": "SMAT Designs",
